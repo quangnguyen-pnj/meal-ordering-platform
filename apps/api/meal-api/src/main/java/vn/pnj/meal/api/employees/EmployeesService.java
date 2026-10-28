@@ -123,6 +123,28 @@ public class EmployeesService {
     return new Page(described.size(), List.copyOf(described.subList(from, to)));
   }
 
+  /** Every active employee of the factory, described, by employee code (for /admin/org lists). */
+  @Transactional(readOnly = true)
+  public List<EmployeeMappingView> describeActive(String factoryId) {
+    List<Row> rows =
+        jdbc.sql(
+                """
+                SELECT e.id, e."employeeCode", e.name, e.status::text AS status, e."orgUnitId",
+                       e."floorOverrideId", e."dmpCostCenterCode"
+                FROM "Employee" e JOIN "OrgUnit" o ON o.id = e."orgUnitId"
+                WHERE e.status = 'ACTIVE' AND o."factoryId" = :factoryId
+                ORDER BY e."employeeCode"
+                """)
+            .param("factoryId", factoryId)
+            .query(Row.class)
+            .list();
+    OrgSnapshot snapshot = org.load(factoryId);
+    Map<String, String> ccByCode = org.costCenterIdsByCode(factoryId);
+    Map<String, String> names = org.masterNames(factoryId);
+    Map<String, List<String>> roles = activeRoles();
+    return rows.stream().map(e -> describe(snapshot, e, ccByCode, names, roles)).toList();
+  }
+
   @Transactional(readOnly = true)
   public List<OrgSnapshot.FilterOption> orgUnits(ListScope scope, String factoryId) {
     return org.load(factoryId).filterOptions(scope);

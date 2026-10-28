@@ -444,3 +444,83 @@ The P0 part of the API now runs on Java with the same HTTP contract: the existin
 - 140 Java tests: the rules (57), the legacy e2e suites for auth, RBAC, security and the seed, the employee finder and the role screens, the DMP mock and HTTP clients, the settings, and the OIDC flow. Every legacy P0 test has a Java equivalent; the BR-03 fake-time test from `clock.service.spec.ts` moved next to `regularCloseAt`.
 - The `/system` role test checks access with `/api/system/sync-runs` instead of `/api/admin/settings`, which arrives in J2.
 - **Checked with the real web app:** the Java API on port 3001 behind `next dev`, driven by Playwright: forced PIN change and sign-in with the new PIN, HC admin employee list, dept admin scope (837 employees, all under Xưởng Chế tác), system admin through the mock Microsoft page with the roles and sync-log screens. No 5xx answer.
+
+## Java migration – J2, P1 on Java (2026-10-28)
+
+The P1 part of the API now runs on Java with the same HTTP contract: org structure, master data, dish libraries, weekly menus, settings, banners and the background jobs. With the Java API alone, every screen of P0 and P1 works with the existing web. Only registration (P2: `/week`, `/today`, `/team`, `/history` and `/admin/registrations`) still needs the legacy API until J3.
+
+### Scope of J2
+
+- **Endpoints, in their current legacy shape:**
+  - `/api/admin/settings` (list, `PUT /{key}`) and `/api/admin/supplier`.
+  - `/api/admin/master/{canteens,floors,cost-centers}`.
+  - `/api/admin/org/*`: tree, unit mapping, dept admins, unassigned and missing-cost-center lists, mapping export and import, manual sync.
+  - `/api/admin/{dishes,desserts,dish-types}`, plus `/api/admin/dish-library/{template,import}`.
+  - `/api/admin/menu/*` (canteens, week, save, publish, save-and-publish) and `/api/menu/my-week`.
+  - `/api/me/banners` and `/api/me/notifications/{id}/read`.
+- **Rules in meal-rules:**
+  - Deadlines BR-04 to BR-06 (`computeCloseAt`, `dayFreeEditDeadline`, `menuPublishWarnAt`, `upcomingWeekStart`).
+  - The menu rules (BR-08, BR-10 to BR-14, publishing gaps, `planMenuDayEdit`).
+  - Library and mapping import validation.
+  - The DMP tree builder (BR-61).
+  - The two registration checkpoints the jobs need (BR-07 forecast lines, BR-36 leavers).
+- **`HttpDmpClient` reads the org tree and the employee pages** (`DmpParsers`, the same field-name fallbacks as the legacy parsers, tested against a local fake DMP). Attendance and leave stay in P3.
+- **The jobs need parts of P2,** so they came now. close-week (the BR-07 forecast snapshot), reselect-deadline (BR-14) and the leaver cancellation of the org sync (BR-36) live in `ForecastService`, ported from the legacy one. The registration API itself is J3.
+
+### Choices
+
+- **P1 tables are read and written with `JdbcClient`, not JPA entities.** The legacy code is mostly conditional updates, which an entity would have to emulate. Examples:
+  - publishing runs `UPDATE ... WHERE status = 'DRAFT'`, so two clicks never both publish;
+  - the snapshot takes `CLOSED` only when `closedAt IS NULL`;
+  - BR-14 moves registrations in bulk;
+  - jsonb payloads, enum arrays (`Dish.sessions`) and many one-off joins.
+
+  SQL keeps each of these one statement, as in Prisma. JPA stays for the P0 sign-in tables. Plan 6.1 is updated.
+
+- **PATCH bodies are read field by field (`JsonBody`).** A Java record cannot tell an absent field ("leave it") from an explicit `null` ("clear it, inherit again"), and the web relies on that difference for org mapping and dish-type bounds. Create bodies stay records with Bean Validation.
+- **Excel uses Apache POI 5.5.1.**
+  - 6.0.0 was released on 2026-10-19, too recently to adopt.
+  - Cells are read as Excel shows them (`DataFormatter`), like ExcelJS's `cell.text`.
+  - The library template keeps its two drop-down lists.
+  - Exports write text cells only.
+- **Jobs run on `@Scheduled` + ShedLock.**
+  - The schedules are the legacy ones, in Vietnam time: sync at 02:00, the menu warning hourly, close-week every minute, reselect-deadline every minute at :30.
+  - `JobsConfig` (scheduling and the lock provider) exists only when `JOBS_ENABLED=true`. The handlers are plain methods that tests call directly.
+  - **Flyway V4 adds the `shedlock` table,** the first schema change made outside Prisma. The legacy API's `prisma migrate deploy` ignores it.
+  - The Compose `api-java` service keeps `JOBS_ENABLED=false` until J3, because the legacy API still runs the jobs on pg-boss.
+  - If both APIs run locally with jobs on, both run them. Every job is idempotent: conditional updates and an advisory lock for the sync.
+- **Settings are stored the way the Zod parse returned them:** unknown keys of a weekday-time value are dropped, and `24.0` is stored as `24` (`SettingKey.normalize`).
+
+### Fixed on the way: database sessions are UTC
+
+The PostgreSQL JDBC driver opens each session in the JVM's zone, which is Asia/Ho_Chi_Minh in the Docker image. A column default such as `"createdAt" DEFAULT CURRENT_TIMESTAMP` then stored Vietnam time in a UTC column, 7 hours ahead.
+
+J1 relied on that default for sessions, role assignments and seeded rows. On `/system`, an assignment's date would have shown 7 hours late.
+
+Every connection now runs `SET TIME ZONE 'UTC'` (`spring.datasource.hikari.connection-init-sql`). `MigrationTest` checks it under the Vietnam JVM zone of the tests, and fails without the setting. New J2 code also writes every timestamp explicitly from `ClockService`, so fake time applies.
+
+### Tests
+
+- **311 Java tests** (100 rules, 211 API), all passing in `mvnw verify` with the Spotless check.
+- **Ported suites:**
+  - `org.e2e-spec.ts` → `OrgTest`.
+  - `menu.e2e-spec.ts` → `MenuTest`.
+  - The settings, supplier, master-data, BR-06 and 403 parts of `admin.e2e-spec.ts` → `AdminSettingsTest`.
+  - The P1 rule tests of `packages/shared` → `CloseAtTest`, `MenuRulesTest`, `LibraryImportTest`, `OrgImportTest`, `RegistrationRulesTest`.
+- **The jobs:** `JobsTest` covers them with registrations written directly, because the legacy suite tests them through the registration API:
+  - close-week snapshots active, positive lines once, with the mapping in effect;
+  - a leaver loses the unlocked meals from the end date;
+  - reselect-deadline cancels at the day's lock, once.
+
+  `ShedLockTest` checks the lock provider on the V4 table.
+
+- **Test changes:**
+  - `SecretsTest` reads every new P1 endpoint.
+  - The `/system` role test is back on `/api/admin/settings`.
+  - With fake time frozen, audit rows share one timestamp, so tests that check the order of audit actions sort by physical row order (`ctid`; AuditLog is append-only).
+- **Checked with the real web app:**
+  - **Setup:** the Java API alone, with jobs on, on a Java-seeded database, behind `next dev`.
+  - **Screens:** Playwright walked them as HC admin: master data, settings with the supplier price, the org tree with the BR-06 banner, dishes, the menu as a draft and then published, and employees. Then `/system` as system admin, the employee list as dept admin, and `/today` as an employee.
+  - **Data flow:** dishes, a dessert and a published week were created through the web's own `/api` proxy. A mapping export re-imports as a preview with no changes, and a manual sync changes nothing on the seed.
+  - **Jobs:** ShedLock rows for close-week and reselect-deadline appeared within a minute.
+  - **Errors:** the only failing calls were `/api/registrations/me/day` from `/today`, which is J3. No 5xx and no error in the API log.

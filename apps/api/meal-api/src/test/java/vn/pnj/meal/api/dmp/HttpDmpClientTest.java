@@ -52,7 +52,8 @@ class HttpDmpClientTest {
                   + path
                   + " "
                   + exchange.getRequestHeaders().getFirst("Authorization"));
-          Reply reply = handler.handle(path);
+          String query = exchange.getRequestURI().getRawQuery();
+          Reply reply = handler.handle(query == null ? path : path + "?" + query);
           byte[] body = reply.body().getBytes(StandardCharsets.UTF_8);
           exchange.getResponseHeaders().add("Content-Type", "application/json");
           exchange.sendResponseHeaders(reply.status(), body.length);
@@ -69,13 +70,105 @@ class HttpDmpClientTest {
   }
 
   @Test
-  @DisplayName("leaves the endpoint methods to their phases")
+  @DisplayName("leaves attendance and leave to P3")
   void notImplemented() throws IOException {
     start(path -> new Reply(200, "{}"));
     assertThatThrownBy(() -> client().getAttendance(LocalDate.of(2026, 10, 19)))
         .isInstanceOf(DmpException.class)
         .hasMessageContaining("P3");
-    assertThatThrownBy(() -> client().getOrgTree()).hasMessageContaining("J2");
+    assertThatThrownBy(
+            () -> client().getLeave(LocalDate.of(2026, 10, 19), LocalDate.of(2026, 10, 20)))
+        .hasMessageContaining("P3");
+  }
+
+  private static Reply login(String path) {
+    return path.equals("/api/auth/login") ? new Reply(200, "{\"token\":\"t\"}") : null;
+  }
+
+  @Test
+  @DisplayName("BR-61: reads the hierarchy tree, depth first, with fallback field names")
+  void hierarchy() throws IOException {
+    start(
+        path -> {
+          Reply auth = login(path);
+          return auth != null
+              ? auth
+              : new Reply(
+                  200,
+                  """
+                  {"code":"ROOT","name":"Công ty","levelName":"Công ty","children":[
+                    {"unitCode":"A","unitName":"Khối A","type":"Khối","costCenter":"CC1",
+                     "childs":[{"id":42}]},
+                    {"code":" B ","children":null,"subUnits":[{"code":"B1","name":"  "}]}
+                  ]}
+                  """);
+        });
+    assertThat(client().getOrgTree())
+        .containsExactly(
+            new DmpClient.OrgNode("ROOT", "Công ty", null, "Công ty", null),
+            new DmpClient.OrgNode("A", "Khối A", "ROOT", "Khối", "CC1"),
+            new DmpClient.OrgNode("42", "42", "A", "Cấp 3", null),
+            new DmpClient.OrgNode("B", "B", "ROOT", "Cấp 2", null),
+            new DmpClient.OrgNode("B1", "B1", "B", "Cấp 3", null));
+  }
+
+  @Test
+  @DisplayName("a hierarchy node without a code fails the read")
+  void hierarchyWithoutCode() throws IOException {
+    start(path -> login(path) != null ? login(path) : new Reply(200, "[{\"name\":\"x\"}]"));
+    assertThatThrownBy(() -> client().getOrgTree())
+        .isInstanceOf(DmpException.class)
+        .hasMessageContaining("without a code");
+  }
+
+  @Test
+  @DisplayName(
+      "reads employees page by page, keeps only the allowed fields, parses both date forms")
+  void employees() throws IOException {
+    start(
+        path -> {
+          Reply auth = login(path);
+          if (auth != null) {
+            return auth;
+          }
+          return path.contains("page=0")
+              ? new Reply(
+                  200,
+                  """
+                  {"content":[
+                    {"employeeId":"PNJP1","fullName":"An","email":"a@x.vn","unitCode":"A",
+                     "costCenterCode":"CC1","startWDate":"2024-03-01T00:00:00","endWDate":null,
+                     "phoneNumber":"0909","birthDate":"1990-01-01"},
+                    {"employeeId":"PNJP2","unitCode":null},
+                    {"employeeCode":"PNJP3","departmentCode":"B","startDate":"05-01-2023",
+                     "endDate":"30-06-2026"}
+                  ],"number":0,"totalPages":2,"last":false}
+                  """)
+              : new Reply(200, "{\"content\":[],\"number\":1,\"totalPages\":2}");
+        });
+    assertThat(client().getEmployees())
+        .containsExactly(
+            new DmpClient.Employee(
+                "PNJP1", "An", "a@x.vn", "A", "CC1", LocalDate.of(2024, 3, 1), null),
+            new DmpClient.Employee(
+                "PNJP3",
+                "PNJP3",
+                null,
+                "B",
+                null,
+                LocalDate.of(2023, 1, 5),
+                LocalDate.of(2026, 6, 30)));
+    assertThat(calls.stream().filter(c -> c.startsWith("GET")))
+        .containsExactly("GET /api/hr-employees Bearer t", "GET /api/hr-employees Bearer t");
+  }
+
+  @Test
+  @DisplayName("a response that is not a page fails the read")
+  void notAPage() throws IOException {
+    start(path -> login(path) != null ? login(path) : new Reply(200, "{\"items\":[]}"));
+    assertThatThrownBy(() -> client().getEmployees())
+        .isInstanceOf(DmpException.class)
+        .hasMessageContaining("did not return a page");
   }
 
   @Test

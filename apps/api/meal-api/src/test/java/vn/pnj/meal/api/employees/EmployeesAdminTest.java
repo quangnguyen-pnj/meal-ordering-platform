@@ -28,14 +28,6 @@ class EmployeesAdminTest extends IntegrationTest {
     deptProd = signInReady(Demo.DEPT_ADMIN_PRODUCTION);
   }
 
-  private String read(Cookie who, String url) throws Exception {
-    return mvc.perform(get(url).cookie(who))
-        .andExpect(status().isOk())
-        .andReturn()
-        .getResponse()
-        .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
-  }
-
   private int floorOverride(String code, String body) throws Exception {
     return mvc.perform(
             put("/api/employees/" + code + "/floor-override")

@@ -39,7 +39,22 @@ class SecretsTest extends IntegrationTest {
           "/api/system/roles",
           "/api/system/sync-runs",
           "/api/dev/clock",
-          "/api/openapi.json");
+          "/api/openapi.json",
+          "/api/me/banners",
+          "/api/admin/settings",
+          "/api/admin/supplier",
+          "/api/admin/master/canteens",
+          "/api/admin/master/floors",
+          "/api/admin/master/cost-centers",
+          "/api/admin/org/tree",
+          "/api/admin/org/unassigned",
+          "/api/admin/org/missing-cost-center",
+          "/api/admin/dish-types",
+          "/api/admin/dishes?canteenId=ct_gv&includeArchived=true",
+          "/api/admin/desserts?canteenId=ct_gv&includeArchived=true",
+          "/api/admin/menu/canteens",
+          "/api/admin/menu/weeks?canteenId=ct_gv&weekStart=2027-03-01",
+          "/api/menu/my-week");
 
   @ParameterizedTest(name = "{0}: no PIN hash, token hash or configured secret in any read")
   @ValueSource(strings = {Demo.HC_ADMIN, Demo.SYS_ADMIN, Demo.DEPT_ADMIN_PRODUCTION})

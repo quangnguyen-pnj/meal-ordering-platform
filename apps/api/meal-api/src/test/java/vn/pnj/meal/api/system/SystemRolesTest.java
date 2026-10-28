@@ -45,9 +45,9 @@ class SystemRolesTest extends IntegrationTest {
     assertThat(JsonPath.<List<String>>read(list, "$.items[*].id")).contains(id);
 
     Cookie newHc = signInReady("PNJP000110");
-    mvc.perform(get("/api/system/sync-runs").cookie(newHc)).andExpect(status().isOk());
+    mvc.perform(get("/api/admin/settings").cookie(newHc)).andExpect(status().isOk());
     mvc.perform(post("/api/system/roles/" + id + "/revoke").cookie(sys)).andExpect(status().isOk());
-    mvc.perform(get("/api/system/sync-runs").cookie(newHc)).andExpect(status().isForbidden());
+    mvc.perform(get("/api/admin/settings").cookie(newHc)).andExpect(status().isForbidden());
 
     List<Map<String, Object>> sysRows = JsonPath.read(list, "$.items[?(@.role == 'SYS_ADMIN')]");
     assertThat(sysRows).hasSize(1);
