@@ -1,0 +1,51 @@
+{
+  "_comment": "Scenarios for MockDmpClient (DMP_MODE=mock, pick one with DMP_MOCK_SCENARIO). Employee selectors: 'employees' lists codes, 'range' is an inclusive [from, to] pair of employee codes. Times are Vietnam local HH:mm.",
+  "scenarios": {
+    "on-time": {
+      "description": "Everyone checks in at 07:45.",
+      "defaultCheckIn": "07:45"
+    },
+    "late": {
+      "description": "PNJP000008-PNJP000020 check in at 08:15, after the 08:10 cutoff (BR-30).",
+      "defaultCheckIn": "07:45",
+      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": "08:15" }]
+    },
+    "forgot-to-check-in": {
+      "description": "PNJP000008-PNJP000020 have no attendance record at all.",
+      "defaultCheckIn": "07:45",
+      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": null }]
+    },
+    "morning-leave": {
+      "description": "PNJP000008-PNJP000020 are on morning leave and arrive at 13:00 (BR-35).",
+      "defaultCheckIn": "07:45",
+      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": "13:00" }],
+      "leave": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "dayType": "AM",
+          "leaveTypeName": "Nghỉ phép nửa ngày (sáng)"
+        }
+      ]
+    },
+    "afternoon-leave": {
+      "description": "PNJP000008-PNJP000020 are on afternoon leave and check in at 07:45 (BR-35).",
+      "defaultCheckIn": "07:45",
+      "leave": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "dayType": "PM",
+          "leaveTypeName": "Nghỉ phép nửa ngày (chiều)"
+        }
+      ]
+    },
+    "api-error": {
+      "description": "Every attendance and leave call fails, as when DMP is down.",
+      "error": "Simulated DMP API error"
+    },
+    "too-little-data": {
+      "description": "DMP returns attendance for only the first 30% of employees (BR-34 safety check).",
+      "defaultCheckIn": "07:45",
+      "presentRatio": 0.3
+    }
+  }
+}

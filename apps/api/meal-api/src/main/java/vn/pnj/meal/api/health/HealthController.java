@@ -4,6 +4,7 @@ import java.util.Map;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.pnj.meal.api.access.Public;
 
 /** Liveness for Docker and nginx: answers only when the database answers. */
 @RestController
@@ -14,7 +15,7 @@ public class HealthController {
     this.jdbc = jdbc;
   }
 
-  // TODO(J1): mark @Public once the access guard exists; until then every route is open.
+  @Public
   @GetMapping("/health")
   Map<String, String> check() {
     jdbc.sql("SELECT 1").query(Integer.class).single();

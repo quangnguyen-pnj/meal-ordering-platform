@@ -397,3 +397,50 @@ Company standard: the backend moves to Java (plan v1.2). The repository moved to
 
 - **`docker/api.Dockerfile` is the Java image** (Temurin 25 JDK to build, JRE to run, Spring Boot layers, non-root user, curl only for the health check). Flyway migrates at startup, so it needs no entrypoint script. The legacy image is `docker/api-legacy.Dockerfile`.
 - **Compose keeps the legacy `api`** for the web and adds `api-java` behind the `java` profile, on the same database, started after the legacy API has migrated it. **Not built here** (no Docker daemon in this environment); the same layered jar was extracted and started with `JarLauncher` against PostgreSQL 17 instead.
+
+## Java migration – J1, P0 on Java (2026-10-28)
+
+The P0 part of the API now runs on Java with the same HTTP contract: the existing web signs in (PIN and the mock Microsoft page), forces the PIN change, lists employees by scope, resets PINs and manages HC and system admins against the Java API with no change on its side. P1 and P2 screens still need the legacy API until J2 and J3.
+
+### Scope of J1
+
+- **Endpoints, in their current legacy shape** (not the historical P0 shape, so the web keeps working): `/api/auth/*` (PIN login, change, logout, me, Entra login, callback, mock page), `/api/employees` (finder, `org-units`, PIN reset, pick-up floor), `/api/system/sync-runs`, `/api/system/roles` (list, assign, revoke), `/api/dev/clock`, `/api/health`. The pick-up floor and the role screens came with P1 and the change requests, but they belong to the employee and system controllers ported here.
+- **Rules in meal-rules:** time (J0), PIN lock, Entra email, the permission matrix with list scopes, mapping resolution (BR-60 to BR-63) and the BR-03 regular closeAt. The rest of the deadline rules (BR-04 to BR-06) come with menu publishing in J2.
+- **Settings:** the 17 keys of plan 6.4 with their defaults and value checks (`SettingKey`), read through `SettingsService` with the legacy fallback (missing or malformed row → default). Editing them (`/api/admin/settings`) is J2.
+- **Left for J2:** `/api/me/banners` (the web hides the banner area when it fails), the org sync and `HttpDmpClient.getOrgTree/getEmployees`, settings, master data, org, dishes, menus and the jobs.
+
+### Choices that differ from plan 6.1 (plan updated)
+
+- **Authorization is a Spring MVC `HandlerInterceptor` (`AccessInterceptor`), not Spring Security.** It needs the handler method's annotations and the path variables, which an interceptor sees directly; it is the same shape as the legacy Nest guard, with the same order (public → session → forced PIN change → fail closed → scope → matrix) and the same 401/403/404 answers. Spring Security's filter chain would have added CSRF, session and redirect defaults to switch off. Only `spring-security-crypto` is used, for argon2.
+- **Entra sign-in uses the Nimbus OAuth 2.0 SDK directly**, the library under Spring Security's OAuth2 client. Spring's `oauth2Login` keeps its own routes and HTTP-session state; Nimbus lets the API keep `/api/auth/entra/login` and `/callback`, the HMAC-signed transaction cookie and the mock mode. The id_token is checked against the tenant's keys, issuer, audience and nonce. Still untested against a real tenant (no app registration yet), but `OidcEntraProviderTest` runs the whole Authorization Code + PKCE exchange against a local fake provider: wrong state, wrong nonce, a foreign signing key and a refused code are all rejected.
+- **No Resilience4j:** the DMP client's retry is a 3-attempt loop with backoff and one re-login on 401, as in the legacy client.
+
+### Data access
+
+- **JPA entities without relationships.** Foreign keys stay plain id fields, so nothing loads lazily behind a service; reads that join or aggregate use `JdbcClient` with SQL. Hibernate keeps the quoted camelCase names (`PhysicalNamingStrategyStandardImpl` + `globally_quoted_identifiers`), Postgres enum columns bind through `PostgreSQLEnumJdbcType`, and JSONB columns are written with `JdbcClient` and `CAST(... AS jsonb)`. `ddl-auto` is `none`: Flyway owns the schema.
+- **A JPQL enum literal does not work** (Hibernate casts it to a lower-case type name that does not exist); queries that filter on an enum value use native SQL.
+- **Timestamps stay UTC in `TIMESTAMP(3)`.** Hibernate writes them with `hibernate.jdbc.time_zone=UTC`; `JdbcClient` code goes through `SqlTime`, never `java.sql.Timestamp`, because JDBC would apply the JVM zone (Asia/Ho_Chi_Minh in Docker). Tests run with `-Duser.timezone=Asia/Ho_Chi_Minh`, so a mix-up fails in CI. `ClockService.now()` keeps milliseconds only, like the columns.
+- **Instants on the wire look like JavaScript's `toISOString()`** (`2026-10-19T01:15:00.000Z`), via one Jackson serializer, so `lockedUntil`, `createdAt` and the dev clock read the same as before.
+- **New ids** are text, "c" + base-36 time + 16 random base-36 characters (`Ids`), next to the existing cuid ids.
+
+### Seed
+
+- **The Java seed writes the same rows as the legacy seed.** The tree, the master data and the employee generator (the mulberry32 PRNG and the largest-remainder allocation, ported bit for bit) were checked table by table: a Java-seeded and a legacy-seeded database give identical hashes for Employee (code, name, email, org unit, meal unit, start date), OrgUnit, Setting, RoleAssignment, Floor, CostCenter, DishType, Factory, Supplier and Canteen. Only the generated ids of employees, settings and role assignments differ. `SeedDataTest` pins four employees read back from a legacy-seeded database.
+- **How to run it:** `pnpm --filter @meal/api db:seed`, `java -jar meal-api.jar seed`, or `SEED_ON_START=true`. It refuses to run in production, like the legacy one. The root `pnpm db:seed` still runs the legacy seed until J3 (both give the same data).
+
+### Sign-in details
+
+- **argon2 hashes are compatible both ways:** `PinHasher` uses the legacy parameters (16-byte salt, 32-byte hash, 4 lanes, 64 MiB, 3 passes) in the same PHC string. The Java side verifies a hash written by Node (`PinHasherTest`) and Node verified one written by Java.
+- **Failed PIN attempts are committed even though the call ends in an error** (`@Transactional(noRollbackFor = ApiException.class)`), otherwise the lock after 5 attempts would never trigger.
+- **`/api/dev/clock` exists only when fake time is allowed** (`FakeTimeAllowedCondition`), so it answers 404 elsewhere, as the legacy API did. It stays system-admin only and audited.
+- **Status codes follow the legacy API,** including the ones NestJS chose by default: `POST /api/system/roles` answers 201, the other POSTs 200 or 204.
+
+### OpenAPI
+
+- **springdoc serves `/api/openapi.json`** when `API_DOCS_ENABLED=true` (`.env.example` and the Compose `api-java` service turn it on for development; off by default and in production). It is public like the legacy health route; it describes routes, never data. Generating the web's types from it is J3.
+
+### Tests
+
+- 140 Java tests: the rules (57), the legacy e2e suites for auth, RBAC, security and the seed, the employee finder and the role screens, the DMP mock and HTTP clients, the settings, and the OIDC flow. Every legacy P0 test has a Java equivalent; the BR-03 fake-time test from `clock.service.spec.ts` moved next to `regularCloseAt`.
+- The `/system` role test checks access with `/api/system/sync-runs` instead of `/api/admin/settings`, which arrives in J2.
+- **Checked with the real web app:** the Java API on port 3001 behind `next dev`, driven by Playwright: forced PIN change and sign-in with the new PIN, HC admin employee list, dept admin scope (837 employees, all under Xưởng Chế tác), system admin through the mock Microsoft page with the roles and sync-log screens. No 5xx answer.

@@ -2,7 +2,7 @@
 
 Replaces the Excel-and-paper lunch ordering at the PNJP Go Vap factory: employees register a week ahead, the system cancels meals for absent employees from DMP attendance, and the HC admin finalizes the count at 08:30 and exports a file for the caterer.
 
-Status: **Phase 0 (foundation)**, **Phase 1 (org structure and menu)** and **Phase 2 (registration)** are built, plus the change requests of 2026-10-23 (dish types, per-canteen libraries, pick-up floor, Excel imports; see `docs/decisions.md`). The backend is moving from NestJS to **Java 25 + Spring Boot 4** (plan v1.2, phases J0–J3): **J0 (Java foundation)** is built; the web still talks to the NestJS API until J3. Attendance, reconciliation, delivery and reports follow in P3 to P7, in Java.
+Status: **Phase 0 (foundation)**, **Phase 1 (org structure and menu)** and **Phase 2 (registration)** are built, plus the change requests of 2026-10-23 (dish types, per-canteen libraries, pick-up floor, Excel imports; see `docs/decisions.md`). The backend is moving from NestJS to **Java 25 + Spring Boot 4** (plan v1.2, phases J0–J3): **J0 (Java foundation)** and **J1 (P0 on Java: sign-in, roles, employees)** are built; the web still needs the NestJS API for the P1 and P2 screens until J3. Attendance, reconciliation, delivery and reports follow in P3 to P7, in Java.
 
 ## Layout
 
@@ -13,7 +13,7 @@ Status: **Phase 0 (foundation)**, **Phase 1 (org structure and menu)** and **Pha
 | `apps/web`        | Next.js app (login, menus, registration, admin screens)                                    |
 | `packages/shared` | Zod schemas, enums and rule functions of the TypeScript side                               |
 | `docker`          | Dockerfiles, Compose file, nginx config                                                    |
-| `docs`            | `plan.md`, `decisions.md`, `open-questions.md`, `security.md`, `demo-p0.md` … `demo-j0.md` |
+| `docs`            | `plan.md`, `decisions.md`, `open-questions.md`, `security.md`, `demo-p0.md` … `demo-j1.md` |
 
 Working rules for contributors and agents are in [AGENTS.md](AGENTS.md).
 
