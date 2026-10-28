@@ -50,6 +50,6 @@ pnpm build
 
 ## Notes
 
-- `docs/plan.md` (the MVP plan) is deliberately not in this repository because it lists unpatched DMP security findings; ask the team for a copy.
+- `docs/plan.md` is the MVP plan and the source of truth for every phase.
 - All user-facing copy is Vietnamese and lives in `apps/web/src/messages/vi.ts`.
 - `docs/security.md` is the security checklist every change goes through. Production must run on HTTPS (`COOKIE_SECURE=true`; the api refuses to start otherwise).

@@ -7,7 +7,7 @@ Choices made while building, where the plan (`docs/plan.md`, MVP Plan v1.1) was 
 ### Repository and tooling
 
 - **One repo, `meal-ordering`.** A single pnpm + Turborepo monorepo (`apps/api`, `apps/web`, `packages/shared`).
-- **`docs/plan.md` is not committed** (it is git-ignored). The GitHub repo is public and the plan lists unpatched DMP security findings (section 8). Keep the plan locally, or make the repo private and remove the ignore line.
+- **`docs/plan.md` was not committed** in the original `meal-ordering` repo because it lists unpatched DMP security findings (section 8). Since the move to `meal-ordering-platform` the owner chose to commit it; making the repo private is recommended while those findings are open.
 - **Keep the checkout path short on Windows.** `node_modules/.pnpm/...` plus a long parent folder exceeds the Win32 working-directory limit and breaks postinstall scripts (esbuild, Prisma, argon2) and Node's package lookup. `D:\Web Programming\Projects\meal` is fine.
 - **pnpm 9.15.9** pinned via `packageManager`. Node **>= 22.12** is required because `openid-client` v6 is ESM-only and the CommonJS API loads it with `require()` of an ES module.
 - **ESLint enforces plan rule 3** (`no Date.now()` / `new Date()` in business code) with `no-restricted-syntax`. Only the clock service, specs, tests and the seed are exempt.
