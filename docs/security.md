@@ -18,8 +18,8 @@ Until the end of J3 both APIs exist: a check names the legacy file (`apps/api-le
 
 ## Access
 
-- [ ] Every endpoint has an explicit `@Public()`, `@Authenticated()` or `@RequirePermission()` (the guard denies a route without one), and every admin endpoint has a 403 test for out-of-scope access (`rbac.e2e-spec.ts`).
-- [ ] Ids taken from the URL or body are checked against the caller's scope (factory, org unit, canteen), not only against existence.
+- [ ] Every endpoint has an explicit `@Public()`, `@Authenticated()` or `@RequirePermission()` (the guard denies a route without one), and every admin endpoint has a 403 test for out-of-scope access (`rbac.e2e-spec.ts`; Java: `AccessControlTest` checks every route declares a rule, and `OrgTest`, `MenuTest`, `AdminSettingsTest` sweep the P1 endpoints with employee, dept-admin and, where the matrix excludes them, system-admin sessions).
+- [ ] Ids taken from the URL or body are checked against the caller's scope (factory, org unit, canteen), not only against existence. Java: every P1 service loads the row and compares its `factoryId` with the caller's before acting; another factory's id answers 404 like a missing one.
 - [ ] **Cached data in the browser is per user.** A PIN sign-in drops every cached query, and the banners key holds the user id, so a second person signing in in the same tab does not see the first person's data (`apps/web/src/components/forms.test.tsx`, `banner-area.test.tsx`). Microsoft sign-in is a full page load, which starts with an empty cache.
 - [ ] **The Microsoft transaction cookie cannot be forged or replayed late:** HMAC-SHA256 with `SESSION_SECRET`, compared in constant time, 10-minute expiry judged by `ClockService` (`EntraSignInTest`). The id_token is checked for signature, issuer, audience and nonce (`OidcEntraProviderTest`).
 - [ ] **Wrong PINs are counted even though the request fails** (the transaction does not roll back on the 401), so the lock after `pin.maxAttempts` holds (`AuthFlowTest`).
@@ -28,8 +28,8 @@ Until the end of J3 both APIs exist: a check names the legacy file (`apps/api-le
 ## Input and output
 
 - [ ] Every body and query is validated on the server: a shared Zod schema in the legacy API (`ZodValidationPipe`), Jakarta Bean Validation (`@Valid` on record DTOs) in the Java API.
-- [ ] Uploads have a size and row limit and are parsed, never executed; a file that is not the template is rejected.
-- [ ] Spreadsheet exports write user-entered text as text cells, never as formulas; a CSV export escapes a leading `=`, `+`, `-` or `@` (formula injection).
+- [ ] Uploads have a size and row limit and are parsed, never executed; a file that is not the template is rejected. Java: 5 MB per file (`spring.servlet.multipart`), 20,000 mapping rows and 2,000 library rows, `.xlsx` only through Apache POI, whose XML parsing has external entities off and whose zip reader refuses archives that inflate suspiciously (`OrgTest`, `MenuTest` "not the template").
+- [ ] Spreadsheet exports write user-entered text as text cells, never as formulas; a CSV export escapes a leading `=`, `+`, `-` or `@` (formula injection). Java: `Xlsx.addRow` only calls `setCellValue(String)`, which POI stores as a string even when it starts with `=`.
 - [ ] The web app cannot be framed (`X-Frame-Options: DENY`, `frame-ancestors 'none'` in `apps/web/next.config.ts`).
 
 ## What we decided not to do
@@ -45,7 +45,7 @@ Until the end of J3 both APIs exist: a check names the legacy file (`apps/api-le
 
 ```bash
 pnpm --filter @meal/api-legacy test -- security env.spec   # leaks, headers, COOKIE_SECURE in production
-cd apps/api && ./mvnw verify                        # Java: SecretsTest, AccessControlTest, AuthFlowTest, AppPropertiesTest, HttpBasicsTest
+cd apps/api && ./mvnw verify                        # Java: SecretsTest (P0 and P1 reads), AccessControlTest, AuthFlowTest, AppPropertiesTest, HttpBasicsTest
 pnpm --filter @meal/web test -- forms               # PIN forms post natively
 curl -sI localhost:3001/api/auth/me                 # cache-control: no-store, nosniff
 ```

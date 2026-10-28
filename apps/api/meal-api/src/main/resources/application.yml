@@ -10,7 +10,18 @@ spring:
   threads:
     virtual:
       enabled: true
+  # Excel uploads (mapping, dish library) are limited to 5 MB, like the legacy API.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   # spring.datasource.* comes from DATABASE_URL (DatabaseUrlEnvironmentPostProcessor).
+  datasource:
+    hikari:
+      # The JDBC driver opens sessions in the JVM's zone (Asia/Ho_Chi_Minh in Docker), and a column
+      # default such as "createdAt" DEFAULT CURRENT_TIMESTAMP would then store Vietnam time in a UTC
+      # column. Every session is UTC, like the stored timestamps (plan 7.1 rule 4).
+      connection-init-sql: SET TIME ZONE 'UTC'
   jpa:
     open-in-view: false
     hibernate:

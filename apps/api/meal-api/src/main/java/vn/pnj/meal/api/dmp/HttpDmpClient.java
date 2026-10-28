@@ -4,6 +4,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatusCode;
@@ -17,9 +18,8 @@ import vn.pnj.meal.api.config.AppProperties;
 
 /**
  * The real DMP client (plan section 5): service-token login and a GET helper with the 10 s timeout
- * and 3 attempts with backoff, re-logging in once on 401. The endpoint methods follow with their
- * phases (org tree and employees in J2, attendance and leave in P3). Never used against a real DMP
- * in tests.
+ * and 3 attempts with backoff, re-logging in once on 401. Org tree and employees are implemented;
+ * attendance and leave follow in P3. Never used against a real DMP in tests.
  *
  * <p>Endpoint notes: GET /api/hr-employees (page, size <= 500, sort=employeeId,asc; Spring Page,
  * sequential pages); GET /api/hierarchy (full tree, unpaged); GET /api/attendance (fromDate, toDate
@@ -30,6 +30,10 @@ import vn.pnj.meal.api.config.AppProperties;
 public class HttpDmpClient implements DmpClient {
   static final Duration TIMEOUT = Duration.ofSeconds(10);
   static final int MAX_ATTEMPTS = 3;
+  static final int PAGE_SIZE = 500;
+
+  /** Safety stop: 1,700 employees fit in 4 pages; 200 pages means the paging is broken. */
+  static final int MAX_PAGES = 200;
 
   private final RestClient http;
   private final AppProperties.Dmp config;
@@ -51,14 +55,33 @@ public class HttpDmpClient implements DmpClient {
             .build();
   }
 
+  /** GET /api/hierarchy: the full tree, unpaged. */
   @Override
   public List<OrgNode> getOrgTree() {
-    throw notImplemented("getOrgTree", "J2");
+    return DmpParsers.parseHierarchy(get("/api/hierarchy"));
   }
 
+  /** GET /api/hr-employees: pages fetched one after another, size 500, sorted by employeeId. */
   @Override
   public List<Employee> getEmployees() {
-    throw notImplemented("getEmployees", "J2");
+    List<Employee> all = new ArrayList<>();
+    for (int page = 0; page < MAX_PAGES; page++) {
+      DmpParsers.EmployeePage result =
+          DmpParsers.parseEmployeePage(
+              get(
+                  "/api/hr-employees?page="
+                      + page
+                      + "&size="
+                      + PAGE_SIZE
+                      + "&sort=employeeId,asc"));
+      all.addAll(result.items());
+      if (result.last()) {
+        return all;
+      }
+    }
+    throw new DmpException(
+        DmpException.Kind.API_ERROR,
+        "DMP /api/hr-employees returned more than " + MAX_PAGES + " pages");
   }
 
   @Override

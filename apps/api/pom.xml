@@ -28,6 +28,9 @@
     <bouncycastle.version>1.86</bouncycastle.version>
     <oauth2-oidc-sdk.version>11.38.2</oauth2-oidc-sdk.version>
     <springdoc.version>3.2.0</springdoc.version>
+    <!-- 6.0.0 (2026-10-19) is too new to adopt; 5.5.1 is the last 5.x. -->
+    <poi.version>5.5.1</poi.version>
+    <shedlock.version>7.10.1</shedlock.version>
     <embedded-postgres.version>2.2.2</embedded-postgres.version>
     <!-- Same PostgreSQL major as docker/docker-compose.yml. -->
     <embedded-postgres-binaries.version>17.11.0</embedded-postgres-binaries.version>

@@ -1,24 +1,31 @@
 package vn.pnj.meal.api.support;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import vn.pnj.meal.api.auth.PinHasher;
 import vn.pnj.meal.api.auth.SessionService;
 import vn.pnj.meal.api.clock.ClockService;
@@ -139,5 +146,63 @@ public abstract class IntegrationTest {
 
   protected static String json(String singleQuoted) {
     return singleQuoted.replace('\'', '"');
+  }
+
+  /** Sends a request as {@code who} (null: no session) with an optional JSON body. */
+  protected MockHttpServletResponse send(Cookie who, HttpMethod method, String url, String body)
+      throws Exception {
+    MockHttpServletRequestBuilder request = request(method, url);
+    if (who != null) {
+      request.cookie(who);
+    }
+    if (body != null) {
+      request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+    MockHttpServletResponse response = mvc.perform(request).andReturn().getResponse();
+    response.setCharacterEncoding("UTF-8");
+    return response;
+  }
+
+  /** GET that must answer 200; returns the body. */
+  protected String read(Cookie who, String url) throws Exception {
+    MockHttpServletResponse res = send(who, HttpMethod.GET, url, null);
+    assertThat(res.getStatus()).as("GET " + url).isEqualTo(200);
+    return res.getContentAsString();
+  }
+
+  /** Sends and checks the status; returns the body. */
+  protected String expect(int status, Cookie who, HttpMethod method, String url, String body)
+      throws Exception {
+    MockHttpServletResponse res = send(who, method, url, body == null ? null : json(body));
+    assertThat(res.getStatus())
+        .as(method + " " + url + " -> " + res.getContentAsString())
+        .isEqualTo(status);
+    return res.getContentAsString();
+  }
+
+  /** An endpoint for the "403 on every admin endpoint" checks (plan 7.1 rule 5). */
+  protected record Endpoint(HttpMethod method, String url, String body) {
+    public static Endpoint get(String url) {
+      return new Endpoint(HttpMethod.GET, url, null);
+    }
+
+    public static Endpoint of(HttpMethod method, String url, String singleQuotedBody) {
+      return new Endpoint(method, url, singleQuotedBody);
+    }
+  }
+
+  /** Plan 7.1 rule 5: every admin endpoint has a 403 test. Asserts 403 for each caller. */
+  protected void expectForbidden(List<Cookie> callers, List<Endpoint> endpoints) throws Exception {
+    List<String> failures = new ArrayList<>();
+    for (Cookie who : callers) {
+      for (Endpoint e : endpoints) {
+        int status =
+            send(who, e.method(), e.url(), e.body() == null ? null : json(e.body())).getStatus();
+        if (status != 403) {
+          failures.add(e.method() + " " + e.url() + " -> " + status);
+        }
+      }
+    }
+    assertThat(failures).isEmpty();
   }
 }
