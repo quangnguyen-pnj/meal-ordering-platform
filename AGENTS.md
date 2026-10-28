@@ -26,5 +26,6 @@ pnpm install
 pnpm lint && pnpm typecheck && pnpm test   # all via turbo, Java included
 cd apps/api && ./mvnw verify               # the Java API alone (Spotless check, tests)
 cd apps/api && ./mvnw spotless:apply       # format Java code
-pnpm db:generate && pnpm db:migrate && pnpm db:seed   # legacy API until J1 brings the Java seed
+pnpm --filter @meal/api db:seed            # Java seed (same data as the legacy seed)
+pnpm db:generate && pnpm db:migrate && pnpm db:seed   # legacy schema and seed, until J3
 ```

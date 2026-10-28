@@ -3,6 +3,7 @@ package vn.pnj.meal.api.clock;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import vn.pnj.meal.api.common.ApiException;
@@ -36,10 +37,13 @@ public class ClockService {
     return fakeTimeAllowed;
   }
 
-  /** Current instant: the frozen fake time when set, otherwise the real time. */
+  /**
+   * Current instant: the frozen fake time when set, otherwise the real time. Milliseconds, like the
+   * {@code TIMESTAMP(3)} columns, so a stored instant compares equal to the one it came from.
+   */
   public Instant now() {
     Instant fake = fakeNow;
-    return fake != null ? fake : system.instant();
+    return fake != null ? fake : system.instant().truncatedTo(ChronoUnit.MILLIS);
   }
 
   public boolean isFake() {
@@ -48,7 +52,7 @@ public class ClockService {
 
   public void setFakeTime(Instant at) {
     assertAllowed();
-    fakeNow = at;
+    fakeNow = at.truncatedTo(ChronoUnit.MILLIS);
   }
 
   public synchronized void advanceFakeTime(Duration by) {

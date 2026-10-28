@@ -11,11 +11,30 @@ spring:
     virtual:
       enabled: true
   # spring.datasource.* comes from DATABASE_URL (DatabaseUrlEnvironmentPostProcessor).
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+      naming:
+        # The schema uses quoted camelCase names ("Employee"."employeeCode"), like Prisma made them.
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        globally_quoted_identifiers: true
+        # Timestamps are stored as UTC in TIMESTAMP(3) columns (plan 7.1 rule 4).
+        jdbc.time_zone: UTC
   flyway:
     # Only for a development database created by the legacy API's `prisma migrate deploy`: it
     # already holds V1..V3, so Flyway records them instead of running them again.
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
     baseline-version: 3
+
+# OpenAPI description of the API at /api/openapi.json (the web's types are generated from it in
+# J3). Off unless API_DOCS_ENABLED=true; .env.example turns it on for development.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /api/openapi.json
 
 server:
   port: ${API_PORT:3001}
@@ -41,6 +60,9 @@ meal:
     client-id: ${ENTRA_CLIENT_ID:}
     client-secret: ${ENTRA_CLIENT_SECRET:}
     redirect-uri: ${ENTRA_REDIRECT_URI:}
+  seed:
+    initial-pin: ${SEED_INITIAL_PIN:123456}
+    on-start: ${SEED_ON_START:false}
   dmp:
     mode: ${DMP_MODE:mock}
     mock-scenario: ${DMP_MOCK_SCENARIO:on-time}

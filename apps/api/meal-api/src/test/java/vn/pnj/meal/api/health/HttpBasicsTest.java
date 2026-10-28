@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import vn.pnj.meal.api.access.Public;
 import vn.pnj.meal.api.common.ApiErrorCode;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.support.IntegrationTest;
@@ -100,6 +101,7 @@ class HttpBasicsTest extends IntegrationTest {
   @TestConfiguration
   static class Probe {
     @RestController
+    @Public
     static class ProbeController {
       record PinBody(@Pattern(regexp = "\\d{6}") String pin) {}
 
