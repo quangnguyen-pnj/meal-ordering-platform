@@ -11,7 +11,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/next-env.d.ts',
       '**/*.config.js',
-      'apps/api/src/generated/**',
+      'apps/api-legacy/src/generated/**',
     ],
   },
   js.configs.recommended,
@@ -45,7 +45,7 @@ export default tseslint.config(
   {
     // Nest providers are resolved by constructor parameter types at runtime, so these
     // imports must stay value imports.
-    files: ['apps/api/**/*.ts'],
+    files: ['apps/api-legacy/**/*.ts'],
     rules: {
       '@typescript-eslint/consistent-type-imports': 'off',
     },
@@ -57,8 +57,8 @@ export default tseslint.config(
       '**/*.spec.ts',
       '**/*.test.ts',
       '**/*.test.tsx',
-      'apps/api/test/**',
-      'apps/api/prisma/**',
+      'apps/api-legacy/test/**',
+      'apps/api-legacy/prisma/**',
     ],
     rules: { 'no-restricted-syntax': 'off' },
   },

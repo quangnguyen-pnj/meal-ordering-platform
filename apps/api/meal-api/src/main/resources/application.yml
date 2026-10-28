@@ -1,0 +1,50 @@
+# Environment variables keep the names of .env.example. Locally the API also reads the file named
+# by MEAL_ENV_FILE (the pnpm scripts point it at the repository's .env).
+spring:
+  application:
+    name: meal-api
+  config:
+    import: optional:file:${MEAL_ENV_FILE:.env}[.properties]
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  # spring.datasource.* comes from DATABASE_URL (DatabaseUrlEnvironmentPostProcessor).
+  flyway:
+    # Only for a development database created by the legacy API's `prisma migrate deploy`: it
+    # already holds V1..V3, so Flyway records them instead of running them again.
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: 3
+
+server:
+  port: ${API_PORT:3001}
+  # Behind nginx: trust X-Forwarded-* so secure cookies and client IPs work.
+  forward-headers-strategy: native
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+
+meal:
+  environment: ${APP_ENV:${NODE_ENV:development}}
+  app-base-url: ${APP_BASE_URL:http://localhost:8080}
+  session-secret: ${SESSION_SECRET:}
+  session-ttl-hours: ${SESSION_TTL_HOURS:12}
+  cookie-secure: ${COOKIE_SECURE:false}
+  clock-fake-enabled: ${CLOCK_FAKE_ENABLED:false}
+  jobs-enabled: ${JOBS_ENABLED:true}
+  first-system-admin-code: ${FIRST_SYSTEM_ADMIN_CODE:}
+  entra:
+    mode: ${ENTRA_MODE:mock}
+    tenant-id: ${ENTRA_TENANT_ID:}
+    client-id: ${ENTRA_CLIENT_ID:}
+    client-secret: ${ENTRA_CLIENT_SECRET:}
+    redirect-uri: ${ENTRA_REDIRECT_URI:}
+  dmp:
+    mode: ${DMP_MODE:mock}
+    mock-scenario: ${DMP_MOCK_SCENARIO:on-time}
+    base-url: ${DMP_BASE_URL:}
+    service-email: ${DMP_SERVICE_EMAIL:}
+    service-password: ${DMP_SERVICE_PASSWORD:}
+    company-code: ${DMP_COMPANY_CODE:}

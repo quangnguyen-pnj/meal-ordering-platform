@@ -1,6 +1,13 @@
 # MVP Plan – PNJP Meal Ordering System
 
-Oct 19, 2026 · @Quang · v1.1, aligned with BRQ-MEAL-001 v1.0
+Oct 19, 2026 · @Quang · v1.2, aligned with BRQ-MEAL-001 v1.0
+
+**Changes in v1.2 (Oct 28, 2026): backend on Java**
+
+- Company standard: the API moves from NestJS (TypeScript) to Java 25 + Spring Boot 4, built with Maven. The web app stays on Next.js. No business rule changes.
+- The stack (6.1), the repo layout (6.2) and the agent rules (7.1) name the Java tools. Business rules live in `apps/api/meal-rules`.
+- P0–P2 were built on NestJS first. Phases J0–J3 (after P2, before P3) port them to Java with the same HTTP contract and database schema, then remove the TypeScript API.
+- The code moved to the `meal-ordering-platform` repository with its full history.
 
 **Changes in v1.1, aligning with BRQ-MEAL-001 v1.0**
 
@@ -95,7 +102,7 @@ The top row runs once per served week; the bottom row repeats on every serving d
 
 ### 2.3 Registration
 
-- **BR-20** No portion limit (BRQ MEAL-PLAN\_WEEK.05). Per employee, per day, per meal session, an employee may pick any dishes on that day's menu, several dishes and several types, each with a quantity that is a non-negative integer. Zero or no row means not registered. The company pays for all of them. The check stays a function in packages/shared/rules, so a cap could later be added as a setting without touching callers.
+- **BR-20** No portion limit (BRQ MEAL-PLAN\_WEEK.05). Per employee, per day, per meal session, an employee may pick any dishes on that day's menu, several dishes and several types, each with a quantity that is a non-negative integer. Zero or no row means not registered. The company pays for all of them. The check stays a function in the rules module (`apps/api/meal-rules`), so a cap could later be added as a setting without touching callers.
 - **BR-21** No registration means no meal. Dept admins see a "not registered" list from the moment registration opens and may register on behalf of employees until 08:00 on each day D.
 - **BR-22** Before closeAt, employees add, change and remove freely; the result at closeAt is the forecast.
 - **BR-23** From closeAt to 08:00 on day D, employees may still add, change and remove meals for day D, including employees who had no forecast (BRQ MEAL-ACTUAL\_DAILY.04, .09). The forecast snapshot never changes; every difference shows in reconciliation (BR-41).
@@ -188,7 +195,7 @@ Four roles stack on one employee account: admins still order their own meals lik
 
 **Implementation rules.**
 
-- Permissions are checked as a (role, action, scope) triple in a NestJS guard, not as scattered checks inside handlers.
+- Permissions are checked as a (role, action, scope) triple by one authorization component of the API (Spring Security, an annotation on each endpoint), not as scattered checks inside handlers.
 - Every list query by a dept admin is filtered by scope; requests for employees outside scope return 403.
 - Any action after a lock requires a reason and writes to the audit log (BR-70).
 
@@ -294,7 +301,7 @@ The system only reads data from DMP through its existing REST API, by scheduled 
 
 ## 6. Architecture & data model
 
-A monorepo holds a Next.js web app, a NestJS API and a shared package with Zod schemas and business-rule functions. Everything runs in Docker on PNJ's internal infrastructure behind a same-domain reverse proxy. Deadlines are checked on every request; background jobs only do proactive work such as syncing, snapshots and reminders.
+A monorepo holds a Next.js web app, a Java (Spring Boot) API with a separate pure business-rules module, and a small TypeScript package the web app uses for types and UI helpers. Everything runs in Docker on PNJ's internal infrastructure behind a same-domain reverse proxy. Deadlines are checked on every request; background jobs only do proactive work such as syncing, snapshots and reminders.
 
 &#91;embedded content: architecture · 4 internal components, DMP and Entra ID\]
 
@@ -304,32 +311,40 @@ The browser reaches both the web app and /api through one intranet domain; only 
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Monorepo | pnpm workspaces + Turborepo | apps/web, apps/api, packages/shared |
+| Monorepo | pnpm workspaces + Turborepo; Maven (wrapper) for the API, run by turbo | apps/web, apps/api, packages/shared |
 | Web | Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, Motion | Calls the API through same-domain /api with a fetch wrapper + TanStack Query; no Axios |
-| Forms | React Hook Form + Zod | No Formik |
+| Forms | React Hook Form + Zod | No Formik. Zod only checks forms in the browser; the API validates everything again |
 | State and drag-and-drop | Zustand only for the menu builder; dnd-kit |  |
-| API | NestJS, Prisma, PostgreSQL | nestjs-zod to share schemas with the web app |
-| Sign-in | openid-client in NestJS: Entra OIDC Authorization Code + PKCE; Postgres-backed sessions via httpOnly cookie | PINs hashed with argon2 |
-| Background jobs | pg-boss on Postgres | No Redis needed |
-| Excel | exceljs |  |
-| Tests | Vitest for shared and web; Jest for api (NestJS default); Playwright for e2e | No Storybook in the MVP |
-| Infrastructure | Docker Compose for dev; Docker on PNJ infrastructure; nginx: / to web, /api to api | Intranet only |
+| API | Java 25 (LTS), Spring Boot 4 (Spring MVC on virtual threads), PostgreSQL 17 | Not WebFlux, no Java EE application server |
+| Database access | Flyway migrations; Spring Data JPA (Hibernate) for CRUD; `JdbcClient` for snapshots, bulk upserts and reports |  |
+| Validation and contract | Jakarta Bean Validation on record DTOs; springdoc-openapi, with web types generated by openapi-typescript | No Lombok, no MapStruct |
+| Sign-in | Spring Security OAuth2 Client: Entra OIDC Authorization Code + PKCE; own Postgres-backed sessions via httpOnly cookie | PINs hashed with argon2id (`Argon2PasswordEncoder`) |
+| Authorization | `@RequirePermission(action, scope)` on every endpoint, checked by one Spring Security `AuthorizationManager`; a route without a declaration is denied |  |
+| Background jobs | Spring `@Scheduled` + ShedLock on Postgres | No Redis, no job queue |
+| DMP client | Spring `RestClient` + Resilience4j retry |  |
+| Excel | Apache POI |  |
+| Tests | JUnit 5, AssertJ, Spring Boot Test + MockMvc, embedded PostgreSQL (no Docker needed), ArchUnit for the API; Vitest for shared and web; Playwright for e2e | No Storybook in the MVP |
+| Code style | Spotless with google-java-format for Java; ESLint and Prettier for TypeScript |  |
+| Infrastructure | Docker Compose for dev; Docker on PNJ infrastructure (the API image carries its own Java 25 runtime); nginx: / to web, /api to api | Intranet only |
 
 ### 6.2 Repo layout
 
 ```text
-meal/
+meal-ordering-platform/
   AGENTS.md                 agent rules (section 7.1)
-  docs/                     plan.md (this document), decisions.md, open-questions.md
+  docs/                     plan.md (this document), decisions.md, open-questions.md, security.md
   apps/
     web/                    Next.js: (employee)/today, week, team, history; admin/*; system/*
-    api/                    NestJS
-      src/modules/          auth, org, employees, menu, registrations, attendance,
-                            reconciliation, delivery, reports, settings, audit, dmp, jobs
-      prisma/               schema.prisma, seed/ (1,700 fake employees, mock attendance scenarios)
+    api/                    Java 25 + Spring Boot, Maven
+      meal-rules/           pure business rules (BR-xx): deadlines, portions, meal-unit and mapping
+                            resolution; no Spring, no database, no wall clock
+      meal-api/             vn.pnj.meal.api: auth, org, employees, menu, registrations, attendance,
+                            reconciliation, delivery, reports, settings, audit, dmp, jobs, seed
+        src/main/resources/db/migration/   Flyway migrations
+    api-legacy/             NestJS API of P0–P2, removed at the end of J3
   packages/
-    shared/                 zod schemas, enums, rules/ (portion validation, deadlines, meal-unit and mapping resolution)
-  docker/                   docker-compose.yml, nginx.conf
+    shared/                 used by the web only: types, enums, UI helpers
+  docker/                   docker-compose.yml, Dockerfiles, nginx.conf
 ```
 
 ### 6.3 Data model
@@ -406,13 +421,13 @@ Every job is idempotent per (factory, date). If a job is missed, the first reque
 
 ## 7. Phases for agents
 
-The MVP is split into 8 phases, done in order from P0 to P7. P0–P2 run fully against the DMP mock; P3 needs a DMP service account for real testing. A phase is done only when all of its exit criteria are met.
+The MVP is split into 8 phases, done in order from P0 to P7, with the Java migration J0–J3 between P2 and P3. P0–P2 were first built on NestJS; their checklists below still name the tools used then. P0–P2 run fully against the DMP mock; P3 needs a DMP service account for real testing. A phase is done only when all of its exit criteria are met.
 
 ### 7.1 Agent working rules (copy into AGENTS.md)
 
 1. Read docs/plan.md before each phase. Do exactly one phase per run; never start work belonging to a later phase.
-2. Business rules are pure functions in packages/shared/rules; test names cite the BR code, e.g. "BR-23: an employee with no forecast can add a meal at 07:59 on day D".
-3. Never call Date.now() or new Date() in business code: use ClockService in the api and pass now into rule functions. Read every deadline from Setting; never hardcode.
+2. Business rules are pure Java functions in apps/api/meal-rules; test names cite the BR code with @DisplayName, e.g. "BR-23: an employee with no forecast can add a meal at 07:59 on day D".
+3. Never read the wall clock in business code (Instant.now(), LocalDate.now(), new Date(), System.currentTimeMillis() and the like): use ClockService in the api and pass now into rule functions. Read every deadline from Setting; never hardcode.
 4. Store timestamps in UTC; convert to Asia/Ho\_Chi\_Minh in rules and UI. Store serving days as date.
 5. Check permissions in the guard as (role, action, scope). Every admin endpoint has a 403 test for out-of-scope access.
 6. Every change after a lock requires a reason and writes an AuditLog entry.
@@ -463,11 +478,51 @@ The MVP is split into 8 phases, done in order from P0 to P7. P0–P2 run fully a
 
 **Done when:** an e2e test with fake time walks register on Tuesday, free edits, forecast snapshot at 23:59 Thursday, then one employee adds a meal and another with no forecast registers for Monday at 07:59, full lock at 08:00 on day D, and both show as differences from the forecast; the bulk grid saves 50 employees × 5 days; the forecast snapshot is unchanged after edits.
 
+### J0–J3 – Java migration (after P2, before P3)
+
+The API of P0–P2 is rewritten in Java. The HTTP contract (routes, bodies, error codes, cookies) and the database schema stay the same, so the web app keeps working unchanged. Until J3 ends, `apps/api-legacy` (NestJS) serves the web; the Java API grows in `apps/api`. Each J phase is one run, like a P phase.
+
+**J0 – Java foundation**
+
+- [ ] Maven multi-module `apps/api` (meal-rules, meal-api), Java 25, Spring Boot 4, Maven wrapper; turbo runs lint (Spotless), typecheck (compile), test and build.
+- [ ] Flyway V1–V3 copied from the Prisma migrations; baseline option for a development database created by the legacy API.
+- [ ] Configuration from the `.env.example` names with the same production refusals; `DATABASE_URL` converted for JDBC.
+- [ ] ClockService with fake time outside production; ArchUnit rule against reading the wall clock; meal-rules free of Spring.
+- [ ] `/api` prefix, security headers, the shared error body for every error, `/api/health`.
+- [ ] Tests on an embedded PostgreSQL 17 (no Docker), `TEST_DATABASE_URL` override; Java Dockerfile; Compose keeps the legacy API and adds the Java one behind a profile.
+
+**Done when:** `mvnw verify` passes; the Java API starts on an empty database and on one seeded by the legacy API; `/api/health` answers; the ArchUnit rule fails on `Instant.now()` outside ClockService.
+
+**J1 – P0 on Java**
+
+- [ ] Rules of P0 in meal-rules (time, deadlines, mapping, permissions, PIN, SSO) with their tests ported.
+- [ ] JPA entities for the P0 tables; Java seed with the same deterministic ids and data as the legacy seed.
+- [ ] PIN sign-in (argon2id, hashes made by the legacy API still verify), sessions, Entra OIDC + PKCE and its mock, PIN change and reset.
+- [ ] RBAC: `@RequirePermission` + scope resolution, fail closed; AuditLog service; first system admin; dev clock endpoint.
+- [ ] DmpClient interface, MockDmpClient (same scenarios), HttpDmpClient skeleton; springdoc OpenAPI.
+
+**Done when:** the P0 exit criteria and `docs/demo-p0.md` pass against the Java API with the existing web; every P0 test of the legacy API has a Java equivalent.
+
+**J2 – P1 on Java**
+
+- [ ] Org and employee sync, master data, org mapping with Excel import and export (Apache POI), dish libraries and their import, menus, publishing and closeAt, BR-14 notices, settings.
+- [ ] Jobs on `@Scheduled` + ShedLock: sync-org-employees, menu-publish-warning, close-week, reselect-deadline.
+
+**Done when:** the P1 exit criteria, `docs/demo-p1.md` and the change-request demos pass against the Java API.
+
+**J3 – P2 on Java and switch-over**
+
+- [ ] Registration (own, admin, bulk grid, import), forecast snapshot, team, history, leavers.
+- [ ] Web types generated from OpenAPI; Compose and nginx point at the Java API.
+- [ ] `apps/api-legacy`, Prisma and the API-only parts of `packages/shared` removed.
+
+**Done when:** the P2 exit criteria, `docs/demo-p2.md` and every legacy e2e scenario pass against the Java API, and the legacy API is gone.
+
 ### P3 – Attendance and day-D processing
 
 - [ ] HttpDmpClient: service token, /api/attendance, /api/daily-forecast for leave, date-time parsers.
 - [ ] poll-attendance, provisional-cancel and sync-leave jobs; DailyPresence and LeaveFlag tables.
-- [ ] Rules BR-30 to BR-35 in packages/shared, tested against every mock scenario.
+- [ ] Rules BR-30 to BR-35 in meal-rules, tested against every mock scenario.
 - [ ] /admin/today: default filters, inline edits, presence confirmation, exceptions tab; /today shows attendance status.
 - [ ] Sync status, re-run button, banner on failure.
 

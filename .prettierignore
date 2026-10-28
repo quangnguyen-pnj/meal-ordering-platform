@@ -4,4 +4,4 @@ dist
 coverage
 pnpm-lock.yaml
 docs/plan.md
-apps/api/prisma/migrations
+apps/api-legacy/prisma/migrations

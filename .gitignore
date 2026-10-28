@@ -8,5 +8,8 @@ coverage
 .env.*
 !.env.example
 .pg-data
-apps/api/src/generated
+apps/api-legacy/src/generated
 
+
+# Maven
+target

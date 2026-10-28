@@ -29,7 +29,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: docker/api.Dockerfile
+      dockerfile: docker/api-legacy.Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
@@ -66,6 +66,51 @@ services:
           '-e',
           "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Java API (plan J0-J3). Not started by default: `--profile java` adds it next to the legacy api,
+  # on the same database (Flyway baselines the schema the legacy api migrated) and reachable at
+  # http://localhost:${API_JAVA_PORT:-3002}/api/health. The web keeps using the legacy api until J3.
+  api-java:
+    profiles: ['java']
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${API_JAVA_PORT:-3002}:3001'
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      TZ: Asia/Ho_Chi_Minh
+      DATABASE_URL: postgresql://${POSTGRES_USER:-meal}:${POSTGRES_PASSWORD:-meal_dev_password}@postgres:5432/${POSTGRES_DB:-meal}?schema=public
+      FLYWAY_BASELINE_ON_MIGRATE: 'true'
+      API_PORT: '3001'
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-dev-only-change-me-dev-only}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CLOCK_FAKE_ENABLED: ${CLOCK_FAKE_ENABLED:-true}
+      JOBS_ENABLED: 'false'
+      FIRST_SYSTEM_ADMIN_CODE: ${FIRST_SYSTEM_ADMIN_CODE:-PNJP000004}
+      ENTRA_MODE: ${ENTRA_MODE:-mock}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-}
+      DMP_MODE: ${DMP_MODE:-mock}
+      DMP_MOCK_SCENARIO: ${DMP_MOCK_SCENARIO:-on-time}
+      DMP_BASE_URL: ${DMP_BASE_URL:-}
+      DMP_SERVICE_EMAIL: ${DMP_SERVICE_EMAIL:-}
+      DMP_SERVICE_PASSWORD: ${DMP_SERVICE_PASSWORD:-}
+      DMP_COMPANY_CODE: ${DMP_COMPANY_CODE:-}
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3001/api/health']
       interval: 10s
       timeout: 5s
       retries: 12

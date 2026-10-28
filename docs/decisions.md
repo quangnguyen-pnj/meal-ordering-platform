@@ -346,3 +346,54 @@ A unit can have a few hundred people (Tổ Nhẫn: 296), so "Nhập theo bảng"
 ## UI copy: "Đơn vị nhận cơm" (2026-10-27)
 
 - **The `/admin/org` screen and its menu item are called "Đơn vị nhận cơm"** (was "Cơ cấu tổ chức"), at the PO's request. The name says what the screen is for: choosing which unit is the meal point and where it eats, rather than naming the data source. "Vị trí nhận cơm" was turned down because it overlaps with the "Nhà ăn, tầng, trung tâm chi phí" catalogue and leaves out cost centers and department admins. The intro leads with the task and mentions DMP last. The tab "Cây tổ chức" and the phrase "theo cơ cấu tổ chức" (cost center source) stay, because there they mean the org tree itself. The URL is unchanged.
+
+## Java migration – J0, foundation (2026-10-28)
+
+Company standard: the backend moves to Java (plan v1.2). The repository moved to `meal-ordering-platform` with its full history; `docs/plan.md` is now committed at the owner's request.
+
+### Stack
+
+- **Java 25 (LTS) + Spring Boot 4.1 (Spring MVC on virtual threads), Maven with the wrapper.** The runtime travels inside the Docker image (`eclipse-temurin:25-jre`), so servers only need Docker, not a matching Java install. No Java EE application server: Spring Boot already uses the Jakarta EE pieces that matter (Servlet, Bean Validation, JPA) and runs as one self-contained process, which is what DMP, also Spring, does.
+- **No WebFlux, no Lombok, no MapStruct, no Kotlin.** 1,700 users do not need reactive code; records replace Lombok; mapping is written by hand.
+- **Two Maven modules.** `meal-rules` holds the pure business rules and depends on nothing but the JDK, so it stays a plain library like `packages/shared/rules` was; ArchUnit (`ArchitectureTest`) fails the build if it reaches for Spring, JDBC or the API. `meal-api` is the Spring Boot application, package `vn.pnj.meal.api`.
+- **Java code style is Spotless with google-java-format** (2-space indent, matching `.editorconfig`), checked in `verify` and in `pnpm lint`.
+
+### Layout during the migration
+
+- **The NestJS API moved to `apps/api-legacy`** (package `@meal/api-legacy`) and the Java API took `apps/api` (package `@meal/api`), so the final layout needs no second rename. The legacy API still serves the web, Compose (`api` service) and the root `db:*` scripts until J3; its 190 tests still pass after the move.
+- **Turbo runs Maven** through `apps/api/package.json` and `scripts/mvn.mjs`, which calls `mvnw` or `mvnw.cmd`: `lint` = Spotless check, `typecheck` = compile with tests, `test` = `verify`, `build` = `package`. `MAVEN_CMD` can point at an installed Maven instead of the wrapper. Turbo passes `JAVA_HOME`, `MAVEN_CMD`, `MAVEN_OPTS`, `JAVA_TOOL_OPTIONS` and `TEST_DATABASE_URL` through (`globalPassThroughEnv`); `TEST_DATABASE_URL` used to be dropped by turbo for the legacy tests too.
+- **The Java dev server is `pnpm --filter @meal/api start:dev`, not `dev`,** so `pnpm dev` does not start two APIs on port 3001. Run it with `API_PORT=3002` next to the legacy API.
+
+### Database
+
+- **Flyway V1–V3 are byte-for-byte copies of the three Prisma migrations,** so the schema is identical by construction (`MigrationTest` checks the tables, the history and the `ForecastLine` write-once trigger). Prisma ids stay `text` (cuid); new rows may use other text ids later.
+- **`FLYWAY_BASELINE_ON_MIGRATE`** (default false; true in `.env.example` for development) lets the Java API open a database the legacy API already migrated: Flyway records V3 as the baseline instead of re-running V1–V3. It has no effect on an empty database. From now on every schema change is a Flyway migration (AGENTS.md rule 13); the legacy Prisma schema is frozen.
+- **One `DATABASE_URL` for everything.** `DatabaseUrl` turns the Prisma-style `postgresql://user:pass@host/db?schema=public` into JDBC settings (`schema` becomes `currentSchema`), applied by `DatabaseUrlEnvironmentPostProcessor` unless `spring.datasource.url` is set directly.
+
+### Configuration
+
+- **`AppProperties` keeps the `.env.example` names.** `application.yml` maps each variable onto the record, and the record's constructor applies every rule of the legacy `env.ts` (Entra and DMP settings required by their modes; in production no fake time, no mock Microsoft page, no example secret, `COOKIE_SECURE=true`), listing all problems at once. Locally the API also reads the repository `.env` (`MEAL_ENV_FILE`, set by the pnpm scripts); real environment variables win over the file.
+- **The environment is `APP_ENV`, falling back to `NODE_ENV`,** so one `.env` serves the web and the API. An empty or unknown value stops the API: it must never count as "not production" and allow fake time.
+- **Secrets stay out of `toString()`** of `AppProperties` and `DatabaseUrl` (docs/security.md).
+
+### HTTP contract
+
+- **`/api` prefix** through `WebConfig.addPathPrefix` for every `@RestController`, like the legacy global prefix; controllers map their own paths.
+- **Every error is the legacy `ApiErrorBody`** (`statusCode`, `code`, `message`, optional `details` and `lockedUntil`). `ApiErrorCode` mirrors `API_ERROR_CODES` until the web reads the codes from OpenAPI (J3). Bean Validation errors become `VALIDATION_FAILED` with `details: [{ path, message }]`, without the value sent. An unknown method on a known path answers 404 `NOT_FOUND`, as NestJS did. Anything unexpected is logged and answered with a bare 500 `INTERNAL`.
+- **Security headers** (`Cache-Control: no-store`, `nosniff`, `Referrer-Policy: same-origin`) on every answer, from a servlet filter; Tomcat sends no `X-Powered-By`.
+- **`/api/health` is open** until the access guard arrives in J1 (`TODO(J1)` in `HealthController`); every other legacy route is J1–J3 work.
+
+### Clock
+
+- **`ClockService` wraps `java.time.Clock`** and is the only class allowed to read it; `ArchitectureTest` fails on `Instant.now()`, `LocalDate.now()`, `LocalDateTime.now()`, `new Date()`, `System.currentTimeMillis()` and friends anywhere else in main code. Fake time follows the legacy rules (CLOCK_FAKE_ENABLED, never in production). The BR-03 clock test moves over with `regularCloseAt` in J1; the dev clock endpoint needs the guard and the audit log, so it is J1 too.
+- **`VnTime` uses the `Asia/Ho_Chi_Minh` zone from java.time** instead of the fixed +7 offset arithmetic of `time.ts`; the results are the same (no DST since 1975) and java.time handles ISO weeks. Its tests are the legacy ones plus a few edge cases.
+
+### Tests
+
+- **Embedded PostgreSQL 17 (`io.zonky.test:embedded-postgres`), no Docker needed.** It runs on Windows dev machines without Docker and on CI; the binaries come from Maven Central, and unlike the Node package it does not need ICU 60 on Linux. The test database is created as UTF8. `TEST_DATABASE_URL` (same form as `DATABASE_URL`) uses an existing empty database instead. If a CI with Docker appears, Testcontainers is a drop-in alternative.
+- **Integration tests extend `IntegrationTest`** (whole app, MockMvc, real database, fake time allowed, jobs off).
+
+### Docker
+
+- **`docker/api.Dockerfile` is the Java image** (Temurin 25 JDK to build, JRE to run, Spring Boot layers, non-root user, curl only for the health check). Flyway migrates at startup, so it needs no entrypoint script. The legacy image is `docker/api-legacy.Dockerfile`.
+- **Compose keeps the legacy `api`** for the web and adds `api-java` behind the `java` profile, on the same database, started after the legacy API has migrated it. **Not built here** (no Docker daemon in this environment); the same layered jar was extracted and started with `JarLauncher` against PostgreSQL 17 instead.

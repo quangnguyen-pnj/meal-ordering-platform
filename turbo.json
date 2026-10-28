@@ -1,6 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["tsconfig.base.json", "eslint.config.mjs", ".env.example"],
+  "globalPassThroughEnv": [
+    "JAVA_HOME",
+    "JAVA_TOOL_OPTIONS",
+    "MAVEN_CMD",
+    "MAVEN_OPTS",
+    "TEST_DATABASE_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
