@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+vn.pnj.meal.api.config.DatabaseUrlEnvironmentPostProcessor

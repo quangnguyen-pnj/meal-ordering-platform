@@ -1,34 +1,32 @@
-# API image. Build context is the repository root:
+# Java API image (Spring Boot). Build context is the repository root:
 #   docker build -f docker/api.Dockerfile -t meal-api .
-FROM node:22-bookworm-slim AS base
-ENV PNPM_HOME=/pnpm
-ENV PATH="$PNPM_HOME:$PATH"
-# Prisma needs OpenSSL; argon2 ships a prebuilt glibc binary.
+# Flyway applies the database migrations when the API starts.
+FROM eclipse-temurin:25-jdk-noble AS build
+WORKDIR /build
+COPY apps/api/.mvn .mvn
+COPY apps/api/mvnw apps/api/pom.xml ./
+COPY apps/api/meal-rules/pom.xml meal-rules/
+COPY apps/api/meal-api/pom.xml meal-api/
+# Dependencies first, so a code change does not download them again (best effort: a miss only
+# means the package step downloads them).
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:go-offline -DexcludeReactor=true || true
+COPY apps/api/meal-rules/src meal-rules/src
+COPY apps/api/meal-api/src meal-api/src
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q -DskipTests package \
+ && java -Djarmode=tools -jar meal-api/target/meal-api.jar extract --layers --launcher --destination /app
+
+FROM eclipse-temurin:25-jre-noble AS runtime
+# curl is only for the container health check.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/* \
- && corepack enable \
- && corepack prepare pnpm@9.15.9 --activate
-WORKDIR /repo
-
-FROM base AS build
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/shared/package.json packages/shared/
-COPY apps/api/package.json apps/api/
-# apps/web is a workspace member too; pnpm only needs its manifest to honour the lockfile.
-COPY apps/web/package.json apps/web/
-RUN pnpm install --frozen-lockfile --filter "@meal/api..."
-COPY tsconfig.base.json ./
-COPY packages/shared packages/shared
-COPY apps/api apps/api
-RUN pnpm --filter @meal/shared build && pnpm --filter @meal/api build
-
-FROM base AS runtime
-ENV NODE_ENV=production
-COPY --from=build --chown=node:node /repo /repo
-COPY --chown=node:node docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
-RUN chmod +x /usr/local/bin/api-entrypoint.sh
-USER node
-WORKDIR /repo/apps/api
+ && useradd --system --uid 10001 --home-dir /app meal
+WORKDIR /app
+COPY --from=build /app/dependencies/ ./
+COPY --from=build /app/spring-boot-loader/ ./
+COPY --from=build /app/snapshot-dependencies/ ./
+COPY --from=build /app/application/ ./
+USER meal
+ENV TZ=Asia/Ho_Chi_Minh
 EXPOSE 3001
-ENTRYPOINT ["api-entrypoint.sh"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "org.springframework.boot.loader.launch.JarLauncher"]

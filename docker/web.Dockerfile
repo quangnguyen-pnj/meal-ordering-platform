@@ -10,6 +10,7 @@ FROM base AS build
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/web/package.json apps/web/
+COPY apps/api-legacy/package.json apps/api-legacy/
 COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile --filter "@meal/web..."
 COPY tsconfig.base.json ./

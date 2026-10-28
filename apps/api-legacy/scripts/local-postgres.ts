@@ -2,7 +2,7 @@
  * Runs a real PostgreSQL without Docker (embedded-postgres), for development on machines that
  * have no Docker and for the api test suite.
  *
- *   pnpm --filter @meal/api db:local                      persistent, data in <repo>/.pg-data
+ *   pnpm --filter @meal/api-legacy db:local                      persistent, data in <repo>/.pg-data
  *   tsx scripts/local-postgres.ts --temp --port 54329     throwaway (used by the jest global setup)
  *
  * Prints "READY <DATABASE_URL>" once the server accepts connections, then runs until it receives
