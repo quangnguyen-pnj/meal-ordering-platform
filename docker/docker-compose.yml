@@ -4,8 +4,10 @@
 # then open http://localhost:8080 (NGINX_PORT).
 #
 # This stack uses NODE_ENV=development so the mock Microsoft sign-in, fake time and the seed work.
-# For a real deployment set NODE_ENV=production, ENTRA_MODE=oidc, a real SESSION_SECRET and
-# SEED_ON_START=false (the api refuses to start otherwise).
+# It seeds the demo data every time the api starts (SEED_ON_START below; the seed only adds rows
+# that are missing). For a real deployment set NODE_ENV=production, ENTRA_MODE=oidc and a real
+# SESSION_SECRET in .env, and change SEED_ON_START below to 'false' in this file (the api refuses
+# to start otherwise).
 
 name: meal
 
@@ -61,7 +63,9 @@ services:
       DMP_SERVICE_EMAIL: ${DMP_SERVICE_EMAIL:-}
       DMP_SERVICE_PASSWORD: ${DMP_SERVICE_PASSWORD:-}
       DMP_COMPANY_CODE: ${DMP_COMPANY_CODE:-}
-      SEED_ON_START: ${SEED_ON_START:-true}
+      # Fixed here, not read from .env: the SEED_ON_START of .env.example is false for `pnpm dev`
+      # (local seeding is `pnpm db:seed`) and would leave this stack with no account to sign in.
+      SEED_ON_START: 'true'
       SEED_INITIAL_PIN: ${SEED_INITIAL_PIN:-123456}
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://localhost:3001/api/health']

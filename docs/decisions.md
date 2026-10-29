@@ -596,3 +596,10 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
   - **HC admin:** the factory progress was opened.
   - **Errors:** no API answer of 400 or more and no console error. ShedLock rows for close-week and reselect-deadline appeared, and the API log has no error.
 - **Not run here:** the Compose stack, since this environment has no Docker. Its `api` service now builds `docker/api.Dockerfile` from J0. In J0 the image's layered jar was started with `JarLauncher`, but the image itself has never been built here. The compose file parses.
+
+## Compose always seeds (2026-10-29)
+
+- **Problem:** following the README (`cp .env.example .env`, then `docker compose ... --env-file .env up`) gave an empty database, so no demo account could sign in. `.env.example` sets `SEED_ON_START=false` for `pnpm dev`, and Compose read that value over its own default `${SEED_ON_START:-true}`. It was the only variable whose `.env.example` value differed from the Compose default.
+- **Choice:** the `api` service sets `SEED_ON_START: 'true'` directly and no longer reads it from `.env`. The seed is idempotent (it only inserts missing rows, so changed PINs, settings and revoked roles stay as they are) and refuses to run in production, so a forgotten switch cannot put fake data into a real database: the api stops instead. A real deployment changes the line in the compose file, as its header says.
+- **Rejected:** `SEED_ON_START=true` in `.env.example` (does not fix `.env` files already copied, and makes `pnpm dev` seed on every start); a separate `COMPOSE_SEED_ON_START` variable (one more variable for a development-only stack).
+- **Checked:** with the existing `.env` (`SEED_ON_START=false`), `docker compose config` shows `SEED_ON_START: "true"` for `api`, and after recreating the api on an already seeded database the log shows `Seed complete` with the same counts (1,700 employees, 4 role assignments), `PNJP000001` signs in with the initial PIN, and the PIN `PNJP000003` had already changed is kept.
