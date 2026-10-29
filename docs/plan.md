@@ -341,9 +341,9 @@ meal-ordering-platform/
       meal-api/             vn.pnj.meal.api: auth, org, employees, menu, registrations, attendance,
                             reconciliation, delivery, reports, settings, audit, dmp, jobs, seed
         src/main/resources/db/migration/   Flyway migrations
-    api-legacy/             NestJS API of P0–P2, removed at the end of J3
+      openapi.json          the API description; apps/web/src/lib/openapi.d.ts is generated from it
   packages/
-    shared/                 used by the web only: types, enums, UI helpers
+    shared/                 used by the web only: form schemas, enums, UI helpers
   docker/                   docker-compose.yml, Dockerfiles, nginx.conf
 ```
 

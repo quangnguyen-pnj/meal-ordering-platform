@@ -1,13 +1,10 @@
+import type { ApiErrorCode, NotificationType, Role, SettingKey } from '@meal/shared';
 import type {
-  ApiErrorCode,
   LibraryRowErrorCode,
   MappingRowErrorCode,
   MappingRowField,
-  NotificationType,
   RegistrationImportErrorCode,
-  Role,
-  SettingKey,
-} from '@meal/shared';
+} from '@/lib/api-types';
 
 /**
  * Every user-facing string lives here (plan 7.1 rule 9). Routes are English; copy is Vietnamese.

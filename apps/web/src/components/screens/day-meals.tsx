@@ -1,6 +1,7 @@
 'use client';
 
-import { isoWeekdayOf, type MyDayView } from '@meal/shared';
+import { isoWeekdayOf } from '@meal/shared';
+import type { MyDayView } from '@/lib/api-types';
 import { CircleAlert } from 'lucide-react';
 import { DishName } from '@/components/dish-name';
 import { Alert } from '@/components/ui/alert';

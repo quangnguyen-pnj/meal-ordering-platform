@@ -1,6 +1,6 @@
 package vn.pnj.meal.api.menu;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import vn.pnj.meal.api.common.ApiErrorCode;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.db.Ids;
 import vn.pnj.meal.api.db.SqlTime;
+import vn.pnj.meal.api.dishes.DishTypeLabel;
 import vn.pnj.meal.api.org.OrgDirectory;
 import vn.pnj.meal.api.settings.SettingKey;
 import vn.pnj.meal.api.settings.SettingsService;
@@ -103,13 +105,11 @@ public class MenuService {
         .list();
   }
 
-  public record TypeLabel(String id, String name, String color) {}
-
   /**
    * @param displayName BR-12
    */
   public record MenuItemView(
-      String id, String dishId, String dishName, TypeLabel type, String displayName) {}
+      String id, String dishId, String dishName, DishTypeLabel type, String displayName) {}
 
   public record DessertLabel(String id, String name) {}
 
@@ -121,7 +121,7 @@ public class MenuService {
       boolean isServing,
       List<MenuItemView> items,
       List<DessertLabel> desserts,
-      MixCheck mix) {}
+      @Nullable MixCheck mix) {}
 
   /**
    * @param id null while nothing has been saved for this canteen and week
@@ -130,12 +130,12 @@ public class MenuService {
    * @param lockedDates days whose lock has passed can no longer change once published
    */
   public record MenuWeekView(
-      String id,
+      @Nullable String id,
       String canteenId,
       String canteenName,
       LocalDate weekStart,
-      String status,
-      Instant publishedAt,
+      @Schema(allowableValues = {"DRAFT", "PUBLISHED", "CLOSED", "NEW"}) String status,
+      @Nullable Instant publishedAt,
       Instant closeAt,
       boolean closeAtIsExpected,
       boolean latePublish,
@@ -215,7 +215,7 @@ public class MenuService {
                               i.id(),
                               i.dishId(),
                               i.dishName(),
-                              new TypeLabel(i.typeId(), i.typeName(), i.color()),
+                              new DishTypeLabel(i.typeId(), i.typeName(), i.color()),
                               MenuRules.mealDisplayName(i.typeName(), i.dishName())))
                   .toList();
       days.add(
@@ -807,9 +807,25 @@ public class MenuService {
   }
 
   /** What an employee sees: only a published menu of their own meal unit's canteen. */
-  @JsonInclude(JsonInclude.Include.NON_NULL)
-  public record MyMenuWeekView(
-      String state, LocalDate weekStart, String canteenName, MenuWeekView menu) {}
+  /** The employee's menu on /menu: UNASSIGNED, NOT_PUBLISHED or PUBLISHED. */
+  @Schema(oneOf = {MenuUnassigned.class, MenuNotPublished.class, MenuPublished.class})
+  public sealed interface MyMenuWeekView permits MenuUnassigned, MenuNotPublished, MenuPublished {
+    String state();
+  }
+
+  public record MenuUnassigned(
+      @Schema(allowableValues = "UNASSIGNED") String state, LocalDate weekStart)
+      implements MyMenuWeekView {}
+
+  public record MenuNotPublished(
+      @Schema(allowableValues = "NOT_PUBLISHED") String state,
+      LocalDate weekStart,
+      String canteenName)
+      implements MyMenuWeekView {}
+
+  public record MenuPublished(
+      @Schema(allowableValues = "PUBLISHED") String state, MenuWeekView menu)
+      implements MyMenuWeekView {}
 
   private record EmployeeRow(String orgUnitId, String floorOverrideId) {}
 
@@ -828,7 +844,7 @@ public class MenuService {
         Mapping.resolveEmployeeMealAssignment(
             employee.orgUnitId(), employee.floorOverrideId(), null, org.load(factoryId).index());
     if (!assignment.canRegister() || assignment.canteenId() == null) {
-      return new MyMenuWeekView("UNASSIGNED", weekStart, null, null);
+      return new MenuUnassigned("UNASSIGNED", weekStart);
     }
     CanteenRow canteen =
         jdbc.sql("SELECT id, \"factoryId\", name, active FROM \"Canteen\" WHERE id = :id")
@@ -837,10 +853,10 @@ public class MenuService {
             .single();
     MenuStore.Week week = store.find(canteen.id(), weekStart);
     if (week == null || !week.published()) {
-      return new MyMenuWeekView("NOT_PUBLISHED", weekStart, canteen.name(), null);
+      return new MenuNotPublished("NOT_PUBLISHED", weekStart, canteen.name());
     }
     MenuWeekView menu = view(factoryId, canteen, weekStart, week, false);
-    return new MyMenuWeekView("PUBLISHED", null, null, menu.servingDaysOnly());
+    return new MenuPublished("PUBLISHED", menu.servingDaysOnly());
   }
 
   /** BR-13: each dish type's usual bounds per serving day (inactive types are not checked). */

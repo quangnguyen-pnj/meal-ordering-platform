@@ -1,11 +1,13 @@
 # Phase 1 – how to demo each exit criterion
 
-"Done when" from the plan (P1), with the exact way to show each one. Commands run from the repository root. Setup and accounts are the same as [demo-p0.md](demo-p0.md); after pulling P1, apply the new migration:
+> The "Automated" references name test files of the NestJS API, which was removed in J3; their Java ports are listed in [demo-j2.md](demo-j2.md).
+
+"Done when" from the plan (P1), with the exact way to show each one. Commands run from the repository root. Setup and accounts are the same as [demo-p0.md](demo-p0.md):
 
 ```bash
 pnpm install
-pnpm db:migrate && pnpm db:seed
-pnpm dev                    # API :3001 (pg-boss jobs on), web :3000
+pnpm db:seed                # Flyway applies any new migration first
+pnpm dev                    # API :3001 (jobs on), web :3000
 ```
 
 Accounts: HC admin `PNJP000003`, employee `PNJP000001` (meal unit Tổ Nhẫn, canteen Nhà ăn Gò Vấp), unassigned employee `PNJP000006`, dept admin `PNJP000002`, system admin `PNJP000004`. All start with PIN `123456`.
@@ -77,7 +79,7 @@ psql "$DATABASE_URL" -c 'UPDATE "ForecastLine" SET quantity = 9'
 
 ## Other P1 features
 
-- **Org sync** (`/admin/org` → **Đồng bộ từ DMP**, or the pg-boss job at 02:00): with `DMP_MODE=mock` it finds nothing to change on the seed and writes a `SyncRun`, visible under **Hệ thống** (`/system`) for the system admin.
+- **Org sync** (`/admin/org` → **Đồng bộ từ DMP**, or the job at 02:00): with `DMP_MODE=mock` it finds nothing to change on the seed and writes a `SyncRun`, visible under **Hệ thống** (`/system`) for the system admin.
 - **Meal-unit flags and mapping** (`/admin/org`; the UI calls a meal unit "Đầu mối nhận cơm"):
   - Select a node and answer "Đơn vị này có là đầu mối nhận cơm không?". The "Hiện trạng" line updates at once. For example, Tổ Nhẫn reads "Đầu mối của 296 nhân viên, nhận cơm tại Tầng 2 · Nhà ăn Gò Vấp".
   - Choose a floor, canteen or cost center. "Kế thừa: … (từ …)" shows the inherited value and its source, and the hint under floor/canteen names the meal units a value reaches.

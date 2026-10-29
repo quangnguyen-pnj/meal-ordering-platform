@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrgFilterOption } from '@meal/shared';
+import type { OrgFilterOption } from '@/lib/api-types';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Label } from '@/components/ui/label';
 import { orgFilterChange, orgFilterLevels } from '@/lib/org-filter';

@@ -1,4 +1,4 @@
-import type { MenuWeekView } from '@meal/shared';
+import type { MenuWeekView } from '@/lib/api-types';
 import { describe, expect, it } from 'vitest';
 import { createMenuBuilderStore, draftGaps } from './menu-builder-store';
 

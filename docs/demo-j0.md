@@ -1,5 +1,7 @@
 # Demo – J0, Java foundation
 
+> Written while both APIs existed (J0–J2). The NestJS API and its commands (`@meal/api-legacy`, `pnpm db:migrate`) were removed in J3; the current setup is in the [README](../README.md).
+
 Each exit criterion of J0 (plan, "J0–J3 – Java migration") and how to see it. Needs a JDK 25 in `JAVA_HOME`; Maven comes with `apps/api/mvnw`.
 
 ## `mvnw verify` passes

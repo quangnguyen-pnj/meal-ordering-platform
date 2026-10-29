@@ -1,4 +1,4 @@
-import type { BannerView } from '@meal/shared';
+import type { BannerView } from '@/lib/api-types';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/app-shell/app-shell';
 import { getSession, serverGet } from '@/lib/server-api';

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  type DessertView,
-  type DishTypeView,
-  type DishView,
-  type LibraryImportView,
-} from '@meal/shared';
+import type { DessertView, DishTypeView, DishView, LibraryImportView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FolderInput } from 'lucide-react';
 import { useEffect, useState } from 'react';

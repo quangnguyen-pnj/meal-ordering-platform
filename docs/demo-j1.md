@@ -1,5 +1,7 @@
 # Demo – J1, P0 on Java
 
+> Written while both APIs existed (J0–J2). The NestJS API and its commands (`@meal/api-legacy`, `pnpm db:migrate`) were removed in J3; the current setup is in the [README](../README.md).
+
 The exit criteria of J1 (plan, "J0–J3 – Java migration") and how to see each one. Needs a JDK 25 in `JAVA_HOME`.
 
 ## The P0 exit criteria hold on the Java API

@@ -78,8 +78,8 @@ public class OrgController {
             isMealUnit, setFloor, floorId, setCanteen, canteenId, setCostCenter, costCenterId));
   }
 
-  public record AssignBody(@NotNull @Size(min = 1, max = 32) String employeeCode) {
-    public AssignBody {
+  public record DeptAdminBody(@NotNull @Size(min = 1, max = 32) String employeeCode) {
+    public DeptAdminBody {
       employeeCode = employeeCode == null ? null : employeeCode.strip();
     }
   }
@@ -87,14 +87,15 @@ public class OrgController {
   @RequirePermission(action = Action.ORG_MANAGE, scope = ScopeType.ORG_UNIT_PARAM, param = "id")
   @PostMapping("/units/{id}/dept-admins")
   @ResponseStatus(HttpStatus.CREATED)
-  OrgService.Assigned assignDeptAdmin(
-      @PathVariable String id, @Valid @RequestBody AssignBody body, RequestPrincipal p) {
+  OrgService.DeptAdminAssigned assignDeptAdmin(
+      @PathVariable String id, @Valid @RequestBody DeptAdminBody body, RequestPrincipal p) {
     return org.assignDeptAdmin(p.employeeId(), p.factoryId(), id, body.employeeCode());
   }
 
   @RequirePermission(action = Action.ORG_MANAGE, scope = ScopeType.FACTORY)
   @PostMapping("/dept-admins/{assignmentId}/revoke")
-  OrgService.Revoked revokeDeptAdmin(@PathVariable String assignmentId, RequestPrincipal p) {
+  OrgService.DeptAdminRevoked revokeDeptAdmin(
+      @PathVariable String assignmentId, RequestPrincipal p) {
     return org.revokeDeptAdmin(p.employeeId(), p.factoryId(), assignmentId);
   }
 

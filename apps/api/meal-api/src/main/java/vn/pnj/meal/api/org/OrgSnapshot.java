@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import vn.pnj.meal.rules.access.ListScope;
 import vn.pnj.meal.rules.org.OrgIndex;
 import vn.pnj.meal.rules.org.OrgNode;
@@ -76,7 +77,7 @@ public final class OrgSnapshot {
 
   /** Khối / Trung tâm / Phòng ban filter option (shape of {@code OrgFilterOption}). */
   public record FilterOption(
-      String id, String name, String parentId, int level, String levelName) {}
+      String id, String name, @Nullable String parentId, int level, String levelName) {}
 
   /**
    * Org nodes a caller may filter by: active nodes inside the caller's list scope, in tree order. A

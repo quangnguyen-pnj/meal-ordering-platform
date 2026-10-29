@@ -129,21 +129,21 @@ public class SystemController {
             .toList());
   }
 
-  public record AssignBody(
+  public record RoleAssignBody(
       @NotNull @Size(min = 1, max = 32) String employeeCode,
       @NotNull @Pattern(regexp = "HC_ADMIN|SYS_ADMIN") String role) {
-    public AssignBody {
+    public RoleAssignBody {
       employeeCode = employeeCode == null ? null : employeeCode.trim();
     }
   }
 
-  public record Assigned(String id, boolean created) {}
+  public record RoleAssigned(String id, boolean created) {}
 
   @RequirePermission(action = Action.ROLES_ASSIGN_PRIVILEGED, scope = ScopeType.SYSTEM)
   @PostMapping("/roles")
   @ResponseStatus(HttpStatus.CREATED)
   @Transactional
-  Assigned assign(@Valid @RequestBody AssignBody body, RequestPrincipal principal) {
+  RoleAssigned assign(@Valid @RequestBody RoleAssignBody body, RequestPrincipal principal) {
     Employee employee = employees.findByEmployeeCode(body.employeeCode()).orElse(null);
     if (employee == null || !employee.isActive()) {
       throw ApiException.invalid(
@@ -156,7 +156,7 @@ public class SystemController {
             .filter(r -> r.getRole() == role)
             .findFirst();
     if (existing.isPresent()) {
-      return new Assigned(existing.get().getId(), false);
+      return new RoleAssigned(existing.get().getId(), false);
     }
     RoleAssignment row =
         roles.save(
@@ -169,22 +169,22 @@ public class SystemController {
     audit.log(
         AuditService.Entry.of(principal.employeeId(), "role.assigned", "Employee", employee.getId())
             .withAfter(Map.of("role", role.name(), "assignmentId", row.getId())));
-    return new Assigned(row.getId(), true);
+    return new RoleAssigned(row.getId(), true);
   }
 
-  public record Revoked(boolean revoked) {}
+  public record RoleRevoked(boolean revoked) {}
 
   @RequirePermission(action = Action.ROLES_ASSIGN_PRIVILEGED, scope = ScopeType.SYSTEM)
   @PostMapping("/roles/{id}/revoke")
   @Transactional
-  Revoked revoke(@PathVariable String id, RequestPrincipal principal) {
+  RoleRevoked revoke(@PathVariable String id, RequestPrincipal principal) {
     RoleAssignment row =
         roles
             .findById(id)
             .filter(r -> PRIVILEGED.contains(r.getRole()))
             .orElseThrow(() -> ApiException.notFound("Not found"));
     if (row.getRevokedAt() != null) {
-      return new Revoked(false);
+      return new RoleRevoked(false);
     }
     if (row.getRole() == AssignableRole.SYS_ADMIN
         && roles.countByRoleAndRevokedAtIsNull(AssignableRole.SYS_ADMIN) <= 1) {
@@ -195,6 +195,6 @@ public class SystemController {
         AuditService.Entry.of(
                 principal.employeeId(), "role.revoked", "Employee", row.getEmployeeId())
             .withBefore(Map.of("role", row.getRole().name(), "assignmentId", id)));
-    return new Revoked(true);
+    return new RoleRevoked(true);
   }
 }

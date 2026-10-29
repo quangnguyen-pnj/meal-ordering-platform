@@ -1,6 +1,6 @@
 'use client';
 
-import type { RegistrationGridView, RegistrationUnitOption } from '@meal/shared';
+import type { RegistrationGridView, RegistrationUnitOption } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Label } from '@/components/ui/label';

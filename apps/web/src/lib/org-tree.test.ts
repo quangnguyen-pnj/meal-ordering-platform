@@ -1,4 +1,4 @@
-import type { OrgUnitView } from '@meal/shared';
+import type { OrgUnitView } from '@/lib/api-types';
 import { describe, expect, it } from 'vitest';
 import {
   headcountByMealUnit,

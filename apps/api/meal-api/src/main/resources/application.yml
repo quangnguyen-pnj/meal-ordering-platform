@@ -46,6 +46,8 @@ springdoc:
   api-docs:
     enabled: ${API_DOCS_ENABLED:false}
     path: /api/openapi.json
+  # Sorted keys keep apps/api/openapi.json (the web's types are generated from it) stable.
+  writer-with-order-by-keys: true
 
 server:
   port: ${API_PORT:3001}

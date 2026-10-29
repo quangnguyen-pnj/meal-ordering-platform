@@ -1,4 +1,4 @@
-import type { RegistrationGridView, SelectionLine } from '@meal/shared';
+import type { RegistrationGridView, SelectionLine } from '@/lib/api-types';
 
 /** Cell text by employee code, then menu item id. Empty means 0, like a blank paper cell. */
 export type GridValues = Record<string, Record<string, string>>;

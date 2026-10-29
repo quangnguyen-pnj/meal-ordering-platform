@@ -1,4 +1,4 @@
-import type { DishTypeLabel } from '@meal/shared';
+import type { DishTypeLabel } from '@/lib/api-types';
 import { cn } from '@/lib/utils';
 
 /**

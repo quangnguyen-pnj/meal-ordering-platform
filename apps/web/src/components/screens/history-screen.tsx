@@ -1,6 +1,7 @@
 'use client';
 
-import { addDays, type HistoryView } from '@meal/shared';
+import { addDays } from '@meal/shared';
+import type { HistoryView } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';

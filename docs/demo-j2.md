@@ -1,5 +1,7 @@
 # Demo – J2, P1 on Java
 
+> Written while both APIs existed. Since J3 the Java API serves every screen, runs the jobs in Compose, and the current setup is in the [README](../README.md).
+
 The exit criteria of J2 (plan, "J0–J3 – Java migration") and how to see each one. Needs a JDK 25 in `JAVA_HOME`. Setup is the same as [demo-j1.md](demo-j1.md).
 
 ```bash

@@ -1,6 +1,6 @@
 'use client';
 
-import type { MyDayView } from '@meal/shared';
+import type { MyDayView } from '@/lib/api-types';
 import { DishName } from '@/components/dish-name';
 import {
   Table,

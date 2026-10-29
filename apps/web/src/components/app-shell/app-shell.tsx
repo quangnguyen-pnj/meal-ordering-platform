@@ -1,6 +1,6 @@
 'use client';
 
-import type { BannerView, SessionUser } from '@meal/shared';
+import type { BannerView, SessionUser } from '@/lib/api-types';
 import { LogOut, Menu } from 'lucide-react';
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';

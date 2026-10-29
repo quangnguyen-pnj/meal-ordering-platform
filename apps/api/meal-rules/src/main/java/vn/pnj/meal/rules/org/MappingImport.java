@@ -55,11 +55,15 @@ public final class MappingImport {
     DUPLICATE_TARGET
   }
 
+  /** The columns an error can name. */
+  public static final List<String> FIELDS =
+      List.of("type", "code", "floorCode", "canteenCode", "costCenterCode");
+
   /**
    * @param field {@code type}, {@code code}, {@code floorCode}, {@code canteenCode} or {@code
    *     costCenterCode}
    */
-  public record RowError(int rowNumber, String field, ErrorCode code, String value) {}
+  public record MappingImportError(int rowNumber, String field, ErrorCode code, String value) {}
 
   /** Codes that exist and may be used. Inactive master data is not in these sets (BR-62). */
   public record Lookups(
@@ -70,7 +74,7 @@ public final class MappingImport {
       Set<String> costCenterCodes) {}
 
   /** Either every row, or every row error. */
-  public record Result(List<Row> rows, List<RowError> errors) {
+  public record Result(List<Row> rows, List<MappingImportError> errors) {
     public boolean ok() {
       return errors.isEmpty();
     }
@@ -81,7 +85,7 @@ public final class MappingImport {
   }
 
   public static Result validate(List<RawRow> raw, Lookups lookups) {
-    List<RowError> errors = new ArrayList<>();
+    List<MappingImportError> errors = new ArrayList<>();
     List<Row> rows = new ArrayList<>();
     Set<String> seen = new HashSet<>();
 
@@ -96,25 +100,27 @@ public final class MappingImport {
       boolean employee = type.equals("EMPLOYEE");
 
       if (!org && !employee) {
-        errors.add(new RowError(r.rowNumber(), "type", ErrorCode.TYPE_INVALID, r.type()));
+        errors.add(new MappingImportError(r.rowNumber(), "type", ErrorCode.TYPE_INVALID, r.type()));
       }
       if (code.isEmpty()) {
-        errors.add(new RowError(r.rowNumber(), "code", ErrorCode.CODE_REQUIRED, r.code()));
+        errors.add(
+            new MappingImportError(r.rowNumber(), "code", ErrorCode.CODE_REQUIRED, r.code()));
       } else if (org && !lookups.orgCodes().contains(code)) {
-        errors.add(new RowError(r.rowNumber(), "code", ErrorCode.ORG_UNKNOWN, code));
+        errors.add(new MappingImportError(r.rowNumber(), "code", ErrorCode.ORG_UNKNOWN, code));
       } else if (employee && !lookups.employeeCodes().contains(code)) {
-        errors.add(new RowError(r.rowNumber(), "code", ErrorCode.EMPLOYEE_UNKNOWN, code));
+        errors.add(new MappingImportError(r.rowNumber(), "code", ErrorCode.EMPLOYEE_UNKNOWN, code));
       }
 
       if (floorCode != null && !lookups.floorCodes().contains(floorCode)) {
-        errors.add(new RowError(r.rowNumber(), "floorCode", ErrorCode.FLOOR_UNKNOWN, floorCode));
+        errors.add(
+            new MappingImportError(r.rowNumber(), "floorCode", ErrorCode.FLOOR_UNKNOWN, floorCode));
       }
       if (employee) {
         // BR-63: the canteen comes from the meal unit and the cost center from the org tree; only
         // the pick-up floor is set per employee.
         if (canteenCode != null) {
           errors.add(
-              new RowError(
+              new MappingImportError(
                   r.rowNumber(),
                   "canteenCode",
                   ErrorCode.EMPLOYEE_CANTEEN_OR_COST_CENTER,
@@ -122,7 +128,7 @@ public final class MappingImport {
         }
         if (costCenterCode != null) {
           errors.add(
-              new RowError(
+              new MappingImportError(
                   r.rowNumber(),
                   "costCenterCode",
                   ErrorCode.EMPLOYEE_CANTEEN_OR_COST_CENTER,
@@ -131,17 +137,18 @@ public final class MappingImport {
       } else {
         if (canteenCode != null && !lookups.canteenCodes().contains(canteenCode)) {
           errors.add(
-              new RowError(r.rowNumber(), "canteenCode", ErrorCode.CANTEEN_UNKNOWN, canteenCode));
+              new MappingImportError(
+                  r.rowNumber(), "canteenCode", ErrorCode.CANTEEN_UNKNOWN, canteenCode));
         }
         if (costCenterCode != null && !lookups.costCenterCodes().contains(costCenterCode)) {
           errors.add(
-              new RowError(
+              new MappingImportError(
                   r.rowNumber(), "costCenterCode", ErrorCode.COST_CENTER_UNKNOWN, costCenterCode));
         }
       }
 
       if (!seen.add(type + ":" + code) && !code.isEmpty()) {
-        errors.add(new RowError(r.rowNumber(), "code", ErrorCode.DUPLICATE_TARGET, code));
+        errors.add(new MappingImportError(r.rowNumber(), "code", ErrorCode.DUPLICATE_TARGET, code));
       }
 
       if (errors.size() == before) {

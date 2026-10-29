@@ -36,7 +36,7 @@ public class MenuController {
   }
 
   /** A calendar date {@code YYYY-MM-DD} that exists (no 2027-02-30); 400 otherwise. */
-  static LocalDate date(String value, String path) {
+  public static LocalDate date(String value, String path) {
     try {
       return VnTime.parseDate(value);
     } catch (IllegalArgumentException e) {

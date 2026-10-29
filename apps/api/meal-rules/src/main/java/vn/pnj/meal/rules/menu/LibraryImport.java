@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Excel import of one canteen's dish library (product owner, 2026-10-23). A row is a main dish
@@ -40,7 +41,7 @@ public final class LibraryImport {
   /**
    * @param typeCode main dishes only
    */
-  public record Row(int rowNumber, Kind kind, String typeCode, String name) {}
+  public record Row(int rowNumber, Kind kind, @Nullable String typeCode, String name) {}
 
   public enum ErrorCode {
     KIND_INVALID,
@@ -51,10 +52,13 @@ public final class LibraryImport {
     DUPLICATE_IN_FILE
   }
 
+  /** The columns an error can name. */
+  public static final List<String> FIELDS = List.of("kind", "typeCode", "name");
+
   /**
-   * @param field {@code kind}, {@code typeCode} or {@code name}
+   * @param field one of {@link #FIELDS}
    */
-  public record RowError(int rowNumber, String field, ErrorCode code, String value) {}
+  public record LibraryImportError(int rowNumber, String field, ErrorCode code, String value) {}
 
   /**
    * @param typeCodes codes of active dish types
@@ -65,7 +69,8 @@ public final class LibraryImport {
       Set<String> typeCodes, Set<String> existingDishes, Set<String> existingDesserts) {}
 
   /** Either the rows to add and the rows already there, or every row error. */
-  public record Result(List<Row> toCreate, List<Row> alreadyInLibrary, List<RowError> errors) {
+  public record Result(
+      List<Row> toCreate, List<Row> alreadyInLibrary, List<LibraryImportError> errors) {
     public boolean ok() {
       return errors.isEmpty();
     }
@@ -76,7 +81,7 @@ public final class LibraryImport {
   }
 
   public static Result validate(List<RawRow> raw, Lookups lookups) {
-    List<RowError> errors = new ArrayList<>();
+    List<LibraryImportError> errors = new ArrayList<>();
     List<Row> rows = new ArrayList<>();
     Set<String> seen = new HashSet<>();
     for (RawRow r : raw) {
@@ -85,18 +90,23 @@ public final class LibraryImport {
       String typeCode = r.typeCode().strip().toUpperCase(Locale.ROOT);
       int before = errors.size();
       if (kind == null) {
-        errors.add(new RowError(r.rowNumber(), "kind", ErrorCode.KIND_INVALID, r.kind()));
+        errors.add(new LibraryImportError(r.rowNumber(), "kind", ErrorCode.KIND_INVALID, r.kind()));
       }
       if (name.isEmpty()) {
-        errors.add(new RowError(r.rowNumber(), "name", ErrorCode.NAME_REQUIRED, r.name()));
+        errors.add(
+            new LibraryImportError(r.rowNumber(), "name", ErrorCode.NAME_REQUIRED, r.name()));
       } else if (name.length() > MAX_NAME_LENGTH) {
-        errors.add(new RowError(r.rowNumber(), "name", ErrorCode.NAME_TOO_LONG, r.name()));
+        errors.add(
+            new LibraryImportError(r.rowNumber(), "name", ErrorCode.NAME_TOO_LONG, r.name()));
       }
       if (kind == Kind.MAIN) {
         if (typeCode.isEmpty()) {
-          errors.add(new RowError(r.rowNumber(), "typeCode", ErrorCode.TYPE_REQUIRED, ""));
+          errors.add(
+              new LibraryImportError(r.rowNumber(), "typeCode", ErrorCode.TYPE_REQUIRED, ""));
         } else if (!lookups.typeCodes().contains(typeCode)) {
-          errors.add(new RowError(r.rowNumber(), "typeCode", ErrorCode.TYPE_UNKNOWN, r.typeCode()));
+          errors.add(
+              new LibraryImportError(
+                  r.rowNumber(), "typeCode", ErrorCode.TYPE_UNKNOWN, r.typeCode()));
         }
       }
       if (errors.size() > before || kind == null) {
@@ -107,7 +117,8 @@ public final class LibraryImport {
               ? "M:" + dishKey(typeCode, name)
               : "D:" + MenuRules.libraryNameKey(name);
       if (!seen.add(key)) {
-        errors.add(new RowError(r.rowNumber(), "name", ErrorCode.DUPLICATE_IN_FILE, r.name()));
+        errors.add(
+            new LibraryImportError(r.rowNumber(), "name", ErrorCode.DUPLICATE_IN_FILE, r.name()));
         continue;
       }
       rows.add(new Row(r.rowNumber(), kind, kind == Kind.MAIN ? typeCode : null, name));

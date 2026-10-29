@@ -1,4 +1,4 @@
-import type { RegistrationGridView } from '@meal/shared';
+import type { RegistrationGridView } from '@/lib/api-types';
 import { describe, expect, it } from 'vitest';
 import {
   columnTotals,

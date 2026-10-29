@@ -11,7 +11,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/next-env.d.ts',
       '**/*.config.js',
-      'apps/api-legacy/src/generated/**',
+      // Generated from apps/api/openapi.json (pnpm --filter @meal/web api:types).
+      'apps/web/src/lib/openapi.d.ts',
     ],
   },
   js.configs.recommended,

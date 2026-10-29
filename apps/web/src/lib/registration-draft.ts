@@ -1,4 +1,4 @@
-import type { DishTypeLabel, MyDayView, MyWeekSave, SelectionLine } from '@meal/shared';
+import type { DishTypeLabel, MyDayView, MyWeekSave, SelectionLine } from '@/lib/api-types';
 
 /** Quantities the employee is editing: date → menu item → quantity. */
 export type Draft = Record<string, Record<string, number>>;

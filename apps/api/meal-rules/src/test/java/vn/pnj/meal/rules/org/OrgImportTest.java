@@ -9,10 +9,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import vn.pnj.meal.rules.org.DmpTree.ErrorCode;
+import vn.pnj.meal.rules.org.MappingImport.MappingImportError;
 import vn.pnj.meal.rules.org.MappingImport.RawRow;
 import vn.pnj.meal.rules.org.MappingImport.Result;
 import vn.pnj.meal.rules.org.MappingImport.Row;
-import vn.pnj.meal.rules.org.MappingImport.RowError;
 import vn.pnj.meal.rules.org.MappingImport.TargetType;
 
 class OrgImportTest {
@@ -112,8 +112,8 @@ class OrgImportTest {
       assertThat(r.rows()).isEmpty();
       assertThat(r.errors())
           .containsExactly(
-              new RowError(3, "floorCode", MappingImport.ErrorCode.FLOOR_UNKNOWN, "T9"),
-              new RowError(4, "code", MappingImport.ErrorCode.ORG_UNKNOWN, "NOPE"));
+              new MappingImportError(3, "floorCode", MappingImport.ErrorCode.FLOOR_UNKNOWN, "T9"),
+              new MappingImportError(4, "code", MappingImport.ErrorCode.ORG_UNKNOWN, "NOPE"));
     }
 
     @Test

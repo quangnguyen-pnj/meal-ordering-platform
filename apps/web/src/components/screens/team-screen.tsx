@@ -1,6 +1,6 @@
 'use client';
 
-import type { TeamDayView } from '@meal/shared';
+import type { TeamDayView } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';
