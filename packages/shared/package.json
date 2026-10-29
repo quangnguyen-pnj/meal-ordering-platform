@@ -2,7 +2,7 @@
   "name": "@meal/shared",
   "version": "0.0.0",
   "private": true,
-  "description": "Zod schemas, enums and pure business-rule functions shared by api and web",
+  "description": "Zod schemas, enums and the rule functions the web uses (the API is Java, apps/api)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

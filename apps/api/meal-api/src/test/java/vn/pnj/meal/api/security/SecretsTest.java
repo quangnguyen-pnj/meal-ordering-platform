@@ -54,7 +54,16 @@ class SecretsTest extends IntegrationTest {
           "/api/admin/desserts?canteenId=ct_gv&includeArchived=true",
           "/api/admin/menu/canteens",
           "/api/admin/menu/weeks?canteenId=ct_gv&weekStart=2027-03-01",
-          "/api/menu/my-week");
+          "/api/menu/my-week",
+          "/api/admin/registrations/org-units",
+          "/api/admin/registrations/not-registered?weekStart=2026-10-26",
+          "/api/admin/registrations/units",
+          "/api/admin/registrations/progress?weekStart=2026-10-26",
+          "/api/admin/registrations/units/ou_XCT-A1-1/grid?weekStart=2026-10-26",
+          "/api/team",
+          "/api/registrations/me/week?weekStart=2026-10-26",
+          "/api/registrations/me/day",
+          "/api/registrations/me/history");
 
   @ParameterizedTest(name = "{0}: no PIN hash, token hash or configured secret in any read")
   @ValueSource(strings = {Demo.HC_ADMIN, Demo.SYS_ADMIN, Demo.DEPT_ADMIN_PRODUCTION})

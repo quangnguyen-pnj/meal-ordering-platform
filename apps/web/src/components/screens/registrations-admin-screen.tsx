@@ -1,14 +1,14 @@
 'use client';
 
-import {
-  addDays,
-  type GridSaveResult,
-  type NotRegisteredView,
-  type OrgFilterOption,
-  type RegistrationGridView,
-  type RegistrationImportView,
-  type RegistrationProgressView,
-} from '@meal/shared';
+import { addDays } from '@meal/shared';
+import type {
+  GridSaveResult,
+  NotRegisteredView,
+  OrgFilterOption,
+  RegistrationGridView,
+  RegistrationImportView,
+  RegistrationProgressView,
+} from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, FolderInput, Info, Lock, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';

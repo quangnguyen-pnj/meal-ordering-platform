@@ -15,12 +15,12 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:generate": "pnpm --filter @meal/api-legacy db:generate",
-    "db:migrate": "pnpm --filter @meal/api-legacy db:migrate",
-    "db:seed": "pnpm --filter @meal/api-legacy db:seed"
+    "db:local": "node scripts/local-postgres.mjs",
+    "db:seed": "pnpm --filter @meal/api db:seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
+    "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.0",
     "prettier": "^3.6.0",
@@ -30,12 +30,12 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@prisma/client",
-      "@prisma/engines",
-      "argon2",
+      "@embedded-postgres/darwin-arm64",
+      "@embedded-postgres/darwin-x64",
+      "@embedded-postgres/linux-arm64",
+      "@embedded-postgres/linux-x64",
+      "@embedded-postgres/windows-x64",
       "esbuild",
-      "prisma",
       "sharp",
       "unrs-resolver"
     ]

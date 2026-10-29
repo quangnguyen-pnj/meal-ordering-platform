@@ -1,5 +1,7 @@
 # Phase 0 – how to demo each exit criterion
 
+> The "Automated" references name test files of the NestJS API, which was removed in J3; their Java ports are listed in [demo-j1.md](demo-j1.md).
+
 "Done when" from the plan, with the exact way to show each one. Commands run from the repository root.
 
 ## Setup
@@ -14,9 +16,8 @@ cp .env.example .env
 In `.env`, point `DATABASE_URL` at the local database (the example value already does: `localhost:5433`, user `meal`).
 
 ```bash
-pnpm --filter @meal/api db:local      # terminal 1: real PostgreSQL in .pg-data, stays running
-pnpm db:migrate                       # terminal 2
-pnpm db:seed
+pnpm db:local                         # terminal 1: real PostgreSQL in .pg-data, stays running
+pnpm db:seed                          # terminal 2: Flyway migrations, then the demo data
 pnpm dev                              # API on :3001, web on :3000
 ```
 

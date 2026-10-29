@@ -1,12 +1,12 @@
 'use client';
 
+import type { OrgUnitUpdate } from '@meal/shared';
 import type {
   EmployeeMappingView,
   MappingImportView,
   MasterItemView,
   OrgUnitView,
-  OrgUnitUpdate,
-} from '@meal/shared';
+} from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';

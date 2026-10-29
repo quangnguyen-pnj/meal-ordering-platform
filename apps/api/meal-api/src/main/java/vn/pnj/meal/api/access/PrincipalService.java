@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import vn.pnj.meal.api.db.Enums.AuthMethod;
@@ -102,10 +103,10 @@ public class PrincipalService {
       String id,
       String employeeCode,
       String name,
-      String email,
+      @Nullable String email,
       List<Role> roles,
       String factoryId,
-      String mealUnitId,
+      @Nullable String mealUnitId,
       List<String> deptAdminOrgUnitIds,
       boolean pinMustChange) {}
 

@@ -4,4 +4,6 @@ dist
 coverage
 pnpm-lock.yaml
 docs/plan.md
-apps/api-legacy/prisma/migrations
+# Generated: the API description and the web types made from it.
+apps/api/openapi.json
+apps/web/src/lib/openapi.d.ts

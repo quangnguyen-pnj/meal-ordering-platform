@@ -1,10 +1,12 @@
 # Phase 2 – how to demo each exit criterion
 
+> The "Automated" references name test files of the NestJS API, which was removed in J3; their Java ports are listed in [demo-j3.md](demo-j3.md).
+
 The "Done when" items of plan P2, and exactly how to show each one. Commands run from the repository root. Setup and accounts are as in [demo-p0.md](demo-p0.md) and [demo-p1.md](demo-p1.md). P2 adds no migration.
 
 ```bash
 pnpm install
-pnpm db:migrate && pnpm db:seed
+pnpm db:seed
 pnpm dev                    # API :3001 (jobs on, incl. close-week every minute), web :3000
 ```
 
@@ -13,16 +15,16 @@ Accounts (PIN `123456`, change at first sign-in): employee `PNJP000001` (team Nh
 Automated proof of everything below:
 
 ```bash
-pnpm --filter @meal/shared test        # src/rules/registration.test.ts (BR-20 table, BR-22..26, BR-36)
 pnpm --filter @meal/web test           # registration-draft / grid-draft (grid parsing)
-pnpm --filter @meal/api test           # test/registration.e2e-spec.ts (the walk below, with fake time)
+pnpm --filter @meal/api test           # RegistrationRulesTest (BR-20 table, BR-22..25, BR-36) and
+                                       # RegistrationTest (the walk below, with fake time)
 ```
 
 ## 1. The walk with fake time
 
 The plan's criterion: register on Tuesday, free edits, forecast snapshot at Thursday 23:59, then one employee adds a meal and another with no forecast registers for Monday at 07:59, full lock at 08:00 on day D, and both show as differences from the forecast.
 
-`apps/api/test/registration.e2e-spec.ts` → "P2 exit criterion: register, free edits, forecast at closeAt, BR-23 changes, lock at 08:00" does exactly this for week N = 2027-10-04 (closeAt Friday 2027-10-01 00:00, shown as Thursday 23:59):
+`apps/api/meal-api/src/test/java/vn/pnj/meal/api/registrations/RegistrationTest.java` (orders 20–35) does exactly this for week N = 2027-10-04 (closeAt Friday 2027-10-01 00:00, shown as Thursday 23:59):
 
 | Fake time (Vietnam) | Step                                                                     | Expected                                                               |
 | ------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |

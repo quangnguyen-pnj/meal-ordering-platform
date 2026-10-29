@@ -1,4 +1,4 @@
-import type { MyDayView } from '@meal/shared';
+import type { MyDayView } from '@/lib/api-types';
 import { describe, expect, it } from 'vitest';
 import {
   changedDates,

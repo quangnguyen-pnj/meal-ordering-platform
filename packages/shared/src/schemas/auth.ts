@@ -21,9 +21,6 @@ export const ChangePinSchema = z
   });
 export type ChangePinInput = z.infer<typeof ChangePinSchema>;
 
-export const ResetPinResultSchema = z.object({ temporaryPin: PinSchema });
-export type ResetPinResult = z.infer<typeof ResetPinResultSchema>;
-
 export const SessionUserSchema = z.object({
   id: z.string(),
   employeeCode: z.string(),

@@ -1,6 +1,6 @@
 'use client';
 
-import type { BannerView } from '@meal/shared';
+import type { BannerView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';

@@ -1,4 +1,4 @@
-import type { OrgFilterOption } from '@meal/shared';
+import type { OrgFilterOption } from '@/lib/api-types';
 import { describe, expect, it } from 'vitest';
 import { orgFilterChange, orgFilterLevels } from './org-filter';
 

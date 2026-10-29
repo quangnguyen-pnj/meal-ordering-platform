@@ -13,6 +13,11 @@
   <description>Pure business-rule functions (BR-xx). No Spring, no database, no wall clock.</description>
 
   <dependencies>
+    <!-- Annotations only: marks the components the API may send as null (OpenAPI, J3). -->
+    <dependency>
+      <groupId>org.jspecify</groupId>
+      <artifactId>jspecify</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

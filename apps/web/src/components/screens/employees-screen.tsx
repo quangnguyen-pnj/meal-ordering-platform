@@ -5,7 +5,7 @@ import type {
   MasterItemView,
   OrgFilterOption,
   ResetPinResult,
-} from '@meal/shared';
+} from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, KeyRound, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';

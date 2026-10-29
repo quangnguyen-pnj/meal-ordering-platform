@@ -1,5 +1,6 @@
 package vn.pnj.meal.api.org;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +25,8 @@ import vn.pnj.meal.api.common.Xlsx;
 import vn.pnj.meal.api.db.Ids;
 import vn.pnj.meal.api.db.SqlTime;
 import vn.pnj.meal.rules.org.MappingImport;
+import vn.pnj.meal.rules.org.MappingImport.MappingImportError;
 import vn.pnj.meal.rules.org.MappingImport.Row;
-import vn.pnj.meal.rules.org.MappingImport.RowError;
 import vn.pnj.meal.rules.org.MappingImport.TargetType;
 
 /** BR-64: mapping export and the validated, all-or-nothing import. */
@@ -157,7 +159,8 @@ public class MappingImportService {
         .toList();
   }
 
-  public record Codes(String floorCode, String canteenCode, String costCenterCode) {}
+  public record Codes(
+      @Nullable String floorCode, @Nullable String canteenCode, @Nullable String costCenterCode) {}
 
   public record Change(
       int rowNumber, TargetType type, String code, String name, Codes before, Codes after) {}
@@ -165,12 +168,12 @@ public class MappingImportService {
   public record MappingImportView(
       String id,
       String fileName,
-      String status,
+      @Schema(allowableValues = {"PREVIEW", "REJECTED", "APPLIED"}) String status,
       int rowCount,
       int errorCount,
-      List<RowError> errors,
+      List<MappingImportError> errors,
       List<Change> changes,
-      Instant appliedAt) {}
+      @Nullable Instant appliedAt) {}
 
   /**
    * BR-64: validates every row and stores the upload. One invalid row rejects the whole file
@@ -254,7 +257,7 @@ public class MappingImportService {
         row.status(),
         row.rowCount(),
         row.errorCount(),
-        json.readValue(row.errors(), new TypeReference<List<RowError>>() {}),
+        json.readValue(row.errors(), new TypeReference<List<MappingImportError>>() {}),
         changes,
         row.appliedAt());
   }

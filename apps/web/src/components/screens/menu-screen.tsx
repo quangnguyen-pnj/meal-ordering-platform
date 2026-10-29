@@ -17,16 +17,15 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import {
-  checkMenuMix,
-  isoWeekdayOf,
-  type DessertView,
-  type DishTypeLabel,
-  type DishTypeView,
-  type DishView,
-  type MenuSaveResult,
-  type MenuWeekView,
-} from '@meal/shared';
+import { checkMenuMix, isoWeekdayOf } from '@meal/shared';
+import type {
+  DessertView,
+  DishTypeLabel,
+  DishTypeView,
+  DishView,
+  MenuSaveResult,
+  MenuWeekView,
+} from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown,

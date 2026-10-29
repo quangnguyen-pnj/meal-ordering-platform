@@ -1,4 +1,4 @@
-import type { MyDayView, MyRegistrationWeekView } from '@meal/shared';
+import type { MyDayView, MyRegistrationWeekView } from '@/lib/api-types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -57,23 +57,25 @@ const show = (view: MyRegistrationWeekView) => {
 };
 
 describe('WeekRegistrationScreen tabs', () => {
-  it('BR-07: before closeAt only "Dự trù tuần" exists and holds the steppers', async () => {
+  it('BR-07: before closeAt only "Đăng ký dự trù" exists and holds the steppers', async () => {
     show(week(false));
-    expect(await screen.findByRole('tab', { name: 'Dự trù tuần' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Thực tế' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Đăng ký dự trù' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Đăng ký thực tế' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Thêm 1 suất [Mặn] Cơm gà' })).toHaveLength(2);
   });
 
-  it('BR-23: after closeAt "Thực tế" opens first, with the forecast and difference per dish', async () => {
+  it('BR-23: after closeAt "Đăng ký thực tế" opens first, with the forecast and difference per dish', async () => {
     show(week(true));
-    expect(await screen.findByRole('tab', { name: 'Thực tế', selected: true })).toBeVisible();
+    expect(
+      await screen.findByRole('tab', { name: 'Đăng ký thực tế', selected: true }),
+    ).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Thêm 1 suất [Mặn] Cơm gà' })).toHaveLength(2);
     expect(screen.getByText('(+1)')).toBeInTheDocument();
   });
 
-  it('BR-07: after closeAt "Dự trù tuần" is a read-only table of the snapshot', async () => {
+  it('BR-07: after closeAt "Đăng ký dự trù" is a read-only table of the snapshot', async () => {
     show(week(true));
-    await userEvent.click(await screen.findByRole('tab', { name: 'Dự trù tuần' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Đăng ký dự trù' }));
     const table = screen.getByRole('table');
     expect(table).toHaveTextContent('Cơm gà');
     expect(screen.getAllByRole('row').at(-1)).toHaveTextContent(/Tổng\s*1\s*1\s*2/);

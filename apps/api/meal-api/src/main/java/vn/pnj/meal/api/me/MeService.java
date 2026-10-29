@@ -1,12 +1,14 @@
 package vn.pnj.meal.api.me;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,11 +46,11 @@ public class MeService {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record BannerView(
       String id,
-      String severity,
-      String kind,
+      @Schema(allowableValues = {"info", "warning", "error"}) String severity,
+      @Schema(allowableValues = {"MENU_NOT_PUBLISHED", "NOTIFICATION"}) String kind,
       Object params,
-      String notificationId,
-      String notificationType) {}
+      @Nullable String notificationId,
+      @Nullable String notificationType) {}
 
   /**
    * Banners for the shared layout (plan section 4): BR-06 "menu not published" for HC admins,

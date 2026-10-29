@@ -1,6 +1,10 @@
 package vn.pnj.meal.api.employees;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
+import vn.pnj.meal.rules.org.Mapping;
 import vn.pnj.meal.rules.org.Mapping.CostCenterSource;
 import vn.pnj.meal.rules.org.Mapping.FloorSource;
 import vn.pnj.meal.rules.org.Mapping.MealStatus;
@@ -16,20 +20,22 @@ import vn.pnj.meal.rules.org.Mapping.MealStatus;
 public record EmployeeMappingView(
     String employeeCode,
     String name,
-    String status,
+    @Schema(allowableValues = {"ACTIVE", "LEFT"}) String status,
     String orgUnitId,
     String orgPath,
-    String mealUnitId,
-    String mealUnitName,
+    @Nullable String mealUnitId,
+    @Nullable String mealUnitName,
     MealStatus mealStatus,
-    List<String> missing,
-    String floorId,
-    String floorName,
-    FloorSource floorSource,
-    String floorOverrideId,
-    String canteenId,
-    String canteenName,
-    String costCenterId,
-    String costCenterName,
-    CostCenterSource costCenterSource,
+    @ArraySchema(
+            schema = @Schema(allowableValues = {Mapping.MISSING_FLOOR, Mapping.MISSING_CANTEEN}))
+        List<String> missing,
+    @Nullable String floorId,
+    @Nullable String floorName,
+    @Nullable FloorSource floorSource,
+    @Nullable String floorOverrideId,
+    @Nullable String canteenId,
+    @Nullable String canteenName,
+    @Nullable String costCenterId,
+    @Nullable String costCenterName,
+    @Nullable CostCenterSource costCenterSource,
     List<String> roles) {}

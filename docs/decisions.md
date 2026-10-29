@@ -524,3 +524,75 @@ Every connection now runs `SET TIME ZONE 'UTC'` (`spring.datasource.hikari.conne
   - **Data flow:** dishes, a dessert and a published week were created through the web's own `/api` proxy. A mapping export re-imports as a preview with no changes, and a manual sync changes nothing on the seed.
   - **Jobs:** ShedLock rows for close-week and reselect-deadline appeared within a minute.
   - **Errors:** the only failing calls were `/api/registrations/me/day` from `/today`, which is J3. No 5xx and no error in the API log.
+
+## Java migration – J3, P2 on Java and switch-over (2026-10-29)
+
+Registration now runs on Java, so the web uses the Java API alone. The NestJS API, Prisma and the API-only parts of `packages/shared` are gone. The web's API types are generated from the Java API's OpenAPI description.
+
+### Scope of J3
+
+- **Endpoints, in their legacy shape:**
+  - `/api/registrations/me/{week,day,days/{date},history}`.
+  - `/api/team` and `/api/team/units/{orgUnitId}`.
+  - `/api/admin/registrations/*`: units, progress, not-registered list and its org filter, the bulk grid and its day save, the Excel template and import, and extra meals.
+  - The print page (`/admin/print`) uses the grid, so it needs no route of its own.
+- **Rules in meal-rules:**
+  - The day selection (BR-20) and the employee and admin windows (BR-21 to BR-25).
+  - The forecast comparison (BR-23) and the registration import (`RegistrationImport`).
+  - The P1 checkpoints (BR-07, BR-36) were already ported in J2.
+- **Switch-over:**
+  - The Compose `api` service is the Java API: jobs on, seeded on start, and `FLYWAY_BASELINE_ON_MIGRATE` so a volume the legacy API made still starts.
+  - nginx is unchanged, since the Java API uses the same port and the same `/api` paths.
+  - `pnpm dev` starts the Java API and the web; `pnpm db:seed` runs the Java seed.
+- **Removed:**
+  - `apps/api-legacy` (the NestJS API, its Prisma schema and migrations, the seed and the pg-boss jobs), its Dockerfile and entrypoint.
+  - From `packages/shared`: the response types (now generated), the Zod request schemas only the API used, and the rules only the API ran: mapping, the three imports, registration, org sync, PIN lock, SSO email, closeAt and the menu edit plan.
+  - Shared keeps what the web runs: the form schemas, roles, error and notification codes, settings, the permission matrix, the time helpers, `lastAcceptedMinute`, and the menu mix and publishing gaps.
+
+### Choices
+
+- **Registration uses `JdbcClient`, ported one to one from the legacy store.**
+  - A write takes the week row `FOR SHARE`, and the snapshot's conditional update takes it exclusively. So a change lands either in the forecast or after it, never half in (BR-07, BR-23).
+  - Rows are never deleted: a removed meal keeps its row with quantity 0.
+- **Quantities are read as doubles.**
+  - So 1.5 is reported per line as `QUANTITY_NOT_INTEGER` (BR-20), as Zod did, instead of failing the whole body.
+  - An extra meal's quantity is a double too: Jackson would otherwise truncate 1.5 to 1 in an `Integer` field.
+- **The three answers whose shape depends on a state are sealed interfaces with one record per state:** `/week`, `/today` and the employee's `/menu`. The JSON is unchanged, and the description says `A | B | C` with a literal `state`, so the web narrows on it as before.
+- **The OpenAPI description now says exactly what the JSON holds** (`RecordSchemaConverter`):
+  - Every component of a response record is required.
+  - A component marked `@Nullable` (JSpecify, now also in meal-rules) is `T | null`, or optional in a `@JsonInclude(NON_NULL)` record.
+  - A string with fixed values carries `@Schema(allowableValues)`.
+  - The strings meal-rules sets (import error columns) and the banner parameters are described in `OpenApiConfig`, because meal-rules has no OpenAPI annotations.
+  - Request bodies are left to their validation annotations.
+  - The principal and the list scope no longer show up as query parameters.
+- **Schema names are simple class names, so two classes with one name would merge.**
+  - J1/J2 had eight such clashes (three `RowError`s among them). They were renamed: `LibraryImportError`, `MappingImportError`, `RegistrationImportError`, `RoleAssigned`, `DeptAdminAssigned`, one `DishTypeLabel`, and so on.
+  - `OpenApiTest` fails on a new clash.
+- **Two committed, generated files carry the contract:**
+  - `apps/api/openapi.json` (sorted keys); `OpenApiTest` fails when it differs from what the API serves.
+  - `apps/web/src/lib/openapi.d.ts` (openapi-typescript 7.13.0); a web test fails when it differs from what `openapi.json` generates.
+  - `src/lib/api-types.ts` gives the generated types the names the screens used, and fails to compile if the web's error codes drift from the API's.
+  - Before the web switched, a temporary type check compared every shared view type the web used with its generated twin, both ways, until there was no difference.
+- **`pnpm db:local` (PostgreSQL without Docker) moved to the repository root** (`scripts/local-postgres.mjs`). The `@embedded-postgres/*` install scripts are allowed, because they link the bundled ICU libraries. Like any PostgreSQL, it refuses to run as root.
+- **Old databases:** the `pgboss` schema left by the legacy jobs is unused; nothing reads it.
+
+### Fixed on the way
+
+`week-registration-screen.test.tsx` still looked for the tab names from before the copy change in 691047a ("Dự trù tuần", "Thực tế"), so its three tests failed on `main`. They now use the current copy.
+
+### Tests
+
+- **365 Java tests** (121 rules, 244 API), all passing in `mvnw verify` with the Spotless check. The web has 89 tests, shared has 25.
+- **Ported suites:**
+  - `registration.e2e-spec.ts` → `RegistrationTest` (32 tests): the P2 exit walk with fake time, the 50 × 5 grid, row-level rejections, progress and the not-registered list, self-healing snapshots, BR-14, BR-25, BR-27, BR-36, the org filter, the Excel import and every 403.
+  - The P2 rule tests of `packages/shared` → `RegistrationRulesTest` and `RegistrationImportTest`.
+  - The registration reads of `security.e2e-spec.ts` → `SecretsTest`.
+  - Every legacy suite now has a Java port: auth, rbac, seed, security and admin (J1, J2), org and menu (J2), registration (J3).
+- **Checked with the real web app:**
+  - **Setup:** the Java API alone (jobs on, seeded on start) behind `next dev`.
+  - **Data flow:** the HC admin published the coming week through the web's `/api` proxy.
+  - **Employee:** `/week` was filled with the steppers and saved, with the toast showing 3 meals; `/today`, `/history` and `/team` (296 colleagues) were opened.
+  - **Dept admin:** `/admin/registrations` (progress, the not-registered list, the grid tab) and `/admin/print` were opened. A day of 5 rows was saved through the grid API, and the Excel template downloaded.
+  - **HC admin:** the factory progress was opened.
+  - **Errors:** no API answer of 400 or more and no console error. ShedLock rows for close-week and reselect-deadline appeared, and the API log has no error.
+- **Not run here:** the Compose stack, since this environment has no Docker. Its `api` service now builds `docker/api.Dockerfile` from J0. In J0 the image's layered jar was started with `JarLauncher`, but the image itself has never been built here. The compose file parses.

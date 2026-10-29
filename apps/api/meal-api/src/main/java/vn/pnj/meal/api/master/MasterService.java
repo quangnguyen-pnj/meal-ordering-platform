@@ -1,10 +1,12 @@
 package vn.pnj.meal.api.master;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -58,8 +60,8 @@ public class MasterService {
       String code,
       String name,
       boolean active,
-      Integer sortOrder,
-      String source,
+      @Nullable Integer sortOrder,
+      @Nullable @Schema(allowableValues = {"DMP", "MANUAL"}) String source,
       int usageCount) {}
 
   @Transactional(readOnly = true)

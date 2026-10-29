@@ -1,5 +1,7 @@
 package vn.pnj.meal.api.dishes;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -68,8 +71,8 @@ public class DishesService {
       String name,
       String color,
       int sortOrder,
-      Integer minPerDay,
-      Integer maxPerDay,
+      @Nullable Integer minPerDay,
+      @Nullable Integer maxPerDay,
       boolean active,
       int dishCount) {}
 
@@ -220,8 +223,6 @@ public class DishesService {
 
   // --- Libraries --------------------------------------------------------------------------
 
-  public record TypeLabel(String id, String name, String color) {}
-
   /**
    * @param displayName BR-12
    */
@@ -230,12 +231,13 @@ public class DishesService {
       String canteenId,
       String name,
       String typeId,
-      TypeLabel type,
-      List<String> sessions,
+      DishTypeLabel type,
+      @ArraySchema(schema = @Schema(allowableValues = "LUNCH")) List<String> sessions,
       String displayName,
-      Instant archivedAt) {}
+      @Nullable Instant archivedAt) {}
 
-  public record DessertView(String id, String canteenId, String name, Instant archivedAt) {}
+  public record DessertView(
+      String id, String canteenId, String name, @Nullable Instant archivedAt) {}
 
   private static final String DISH_SELECT =
       """
@@ -253,7 +255,7 @@ public class DishesService {
         rs.getString("canteenId"),
         name,
         rs.getString("typeId"),
-        new TypeLabel(rs.getString("typeId"), typeName, rs.getString("color")),
+        new DishTypeLabel(rs.getString("typeId"), typeName, rs.getString("color")),
         List.of((String[]) sessions.getArray()),
         MenuRules.mealDisplayName(typeName, name),
         SqlTime.instant(rs, "archivedAt"));
@@ -503,9 +505,9 @@ public class DishesService {
   // --- Excel import -----------------------------------------------------------------------
 
   public record LibraryImportView(
-      String status,
+      @Schema(allowableValues = {"PREVIEW", "APPLIED", "REJECTED"}) String status,
       int rowCount,
-      List<LibraryImport.RowError> errors,
+      List<LibraryImport.LibraryImportError> errors,
       List<LibraryImport.Row> toCreate,
       int alreadyInLibrary) {}
 

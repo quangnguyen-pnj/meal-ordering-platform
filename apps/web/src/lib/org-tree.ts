@@ -1,4 +1,4 @@
-import type { OrgUnitView } from '@meal/shared';
+import type { OrgUnitView } from '@/lib/api-types';
 
 /**
  * Read-only views of the org tree for /admin/org. The rules themselves (BR-60 nearest meal unit,

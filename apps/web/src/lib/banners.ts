@@ -1,4 +1,5 @@
-import type { BannerView, NotificationType } from '@meal/shared';
+import type { NotificationType } from '@meal/shared';
+import type { BannerView } from '@/lib/api-types';
 import type { Banner } from '@/components/app-shell/banner-area';
 import { formatDate } from '@/lib/utils';
 import { t, vi } from '@/messages';

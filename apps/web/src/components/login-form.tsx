@@ -1,7 +1,8 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PinLoginSchema, type PinLoginInput, type SessionUser } from '@meal/shared';
+import { PinLoginSchema, type PinLoginInput } from '@meal/shared';
+import type { SessionUser } from '@/lib/api-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';

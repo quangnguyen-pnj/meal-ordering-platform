@@ -1,4 +1,5 @@
-import { menuWeekGaps, type MenuDayGap, type MenuWeekView } from '@meal/shared';
+import { menuWeekGaps, type MenuDayGap } from '@meal/shared';
+import type { MenuWeekView } from '@/lib/api-types';
 import { createStore } from 'zustand/vanilla';
 
 export interface DraftItem {

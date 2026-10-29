@@ -1,6 +1,6 @@
 'use client';
 
-import type { MyDayRegistrationView, SaveRegistrationResult } from '@meal/shared';
+import type { MyDayRegistrationView, SaveRegistrationResult } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';

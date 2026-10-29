@@ -1,4 +1,5 @@
-import { SessionUserSchema, type SessionUser } from '@meal/shared';
+import { SessionUserSchema } from '@meal/shared';
+import type { SessionUser } from '@/lib/api-types';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 

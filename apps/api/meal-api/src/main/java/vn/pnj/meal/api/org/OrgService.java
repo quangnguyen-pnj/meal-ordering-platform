@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,12 +47,14 @@ public class OrgService {
     this.clock = clock;
   }
 
-  public record Own(String floorId, String canteenId, String costCenterId) {}
+  public record Own(
+      @Nullable String floorId, @Nullable String canteenId, @Nullable String costCenterId) {}
 
   /**
    * @param sourceNodeId node that supplies the value; differs from the node itself when inherited
    */
-  public record ResolvedValueView(String id, String sourceNodeId, boolean inherited) {
+  public record ResolvedValueView(
+      @Nullable String id, @Nullable String sourceNodeId, boolean inherited) {
     static ResolvedValueView of(Resolved r) {
       return new ResolvedValueView(r.value(), r.sourceNodeId(), r.inherited());
     }
@@ -73,13 +76,13 @@ public class OrgService {
       String name,
       int level,
       String dmpLevelName,
-      String parentId,
+      @Nullable String parentId,
       boolean active,
       boolean isMealUnit,
       Own own,
       ResolvedView resolved,
-      String mealUnitId,
-      Boolean mealUnitValid,
+      @Nullable String mealUnitId,
+      @Nullable Boolean mealUnitValid,
       int directHeadcount,
       List<DeptAdminView> deptAdmins) {}
 
@@ -277,7 +280,7 @@ public class OrgService {
         .toList();
   }
 
-  public record Assigned(String id, boolean created) {}
+  public record DeptAdminAssigned(String id, boolean created) {}
 
   private record UnitRef(String factoryId, boolean active) {}
 
@@ -285,7 +288,7 @@ public class OrgService {
 
   /** Plan section 3: HC and system admins assign dept admins to org nodes (and their children). */
   @Transactional
-  public Assigned assignDeptAdmin(
+  public DeptAdminAssigned assignDeptAdmin(
       String actorId, String factoryId, String unitId, String employeeCode) {
     UnitRef unit =
         jdbc.sql("SELECT \"factoryId\", active FROM \"OrgUnit\" WHERE id = :id")
@@ -320,7 +323,7 @@ public class OrgService {
             .query(String.class)
             .optional();
     if (existing.isPresent()) {
-      return new Assigned(existing.get(), false);
+      return new DeptAdminAssigned(existing.get(), false);
     }
     var now = clock.now();
     String id = Ids.newId(now.toEpochMilli());
@@ -342,16 +345,16 @@ public class OrgService {
     audit.log(
         AuditService.Entry.of(actorId, "role.assigned", "Employee", employee.id())
             .withAfter(after));
-    return new Assigned(id, true);
+    return new DeptAdminAssigned(id, true);
   }
 
-  public record Revoked(boolean revoked) {}
+  public record DeptAdminRevoked(boolean revoked) {}
 
   private record AssignmentRow(
       String factoryId, String role, String employeeId, String orgUnitId, boolean revoked) {}
 
   @Transactional
-  public Revoked revokeDeptAdmin(String actorId, String factoryId, String assignmentId) {
+  public DeptAdminRevoked revokeDeptAdmin(String actorId, String factoryId, String assignmentId) {
     AssignmentRow row =
         jdbc.sql(
                 """
@@ -365,7 +368,7 @@ public class OrgService {
             .filter(r -> r.factoryId().equals(factoryId) && r.role().equals("DEPT_ADMIN"))
             .orElseThrow(() -> ApiException.notFound("Assignment not found"));
     if (row.revoked()) {
-      return new Revoked(false);
+      return new DeptAdminRevoked(false);
     }
     jdbc.sql("UPDATE \"RoleAssignment\" SET \"revokedAt\" = :now WHERE id = :id")
         .param("now", SqlTime.utc(clock.now()))
@@ -378,6 +381,6 @@ public class OrgService {
     audit.log(
         AuditService.Entry.of(actorId, "role.revoked", "Employee", row.employeeId())
             .withBefore(before));
-    return new Revoked(true);
+    return new DeptAdminRevoked(true);
   }
 }

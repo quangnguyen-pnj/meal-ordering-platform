@@ -1,4 +1,4 @@
-import type { OrgFilterOption } from '@meal/shared';
+import type { OrgFilterOption } from '@/lib/api-types';
 
 /** Khối, then Trung tâm / Phòng ban, then Bộ phận: deeper levels are reached through search. */
 export const ORG_FILTER_DEPTH = 3;

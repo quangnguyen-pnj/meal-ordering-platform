@@ -1,6 +1,6 @@
 'use client';
 
-import type { MasterItemView } from '@meal/shared';
+import type { MasterItemView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';

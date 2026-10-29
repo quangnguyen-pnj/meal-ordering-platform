@@ -1,11 +1,7 @@
 'use client';
 
-import {
-  SETTING_DEFINITIONS,
-  type SettingKey,
-  type SettingView,
-  type WeekdayTime,
-} from '@meal/shared';
+import { SETTING_DEFINITIONS, type SettingKey, type WeekdayTime } from '@meal/shared';
+import type { SettingView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -88,7 +89,11 @@ public class SettingsService {
     return List.copyOf(days);
   }
 
-  public record SettingView(String key, JsonNode value, JsonNode defaultValue, Instant updatedAt) {}
+  /**
+   * @param value any JSON (a JsonNode), typed Object so the API description says "any value"
+   */
+  public record SettingView(
+      String key, Object value, Object defaultValue, @Nullable Instant updatedAt) {}
 
   /** Every plan 6.4 key with its effective value and default, for /admin/settings. */
   public List<SettingView> list(String factoryId) {

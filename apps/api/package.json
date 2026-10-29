@@ -10,6 +10,8 @@
     "test": "node scripts/mvn.mjs -q verify",
     "format": "node scripts/mvn.mjs -q spotless:apply",
     "start:dev": "node scripts/mvn.mjs -q -DskipTests install -pl meal-rules && node scripts/mvn.mjs -pl meal-api spring-boot:run",
-    "db:seed": "node scripts/mvn.mjs -q -DskipTests install -pl meal-rules && node scripts/mvn.mjs -q -pl meal-api spring-boot:run -Dspring-boot.run.arguments=seed"
+    "db:seed": "node scripts/mvn.mjs -q -DskipTests install -pl meal-rules && node scripts/mvn.mjs -q -pl meal-api spring-boot:run -Dspring-boot.run.arguments=seed",
+    "openapi": "node scripts/mvn.mjs -q -pl meal-api -am test -Dtest=OpenApiTest -Dsurefire.failIfNoSpecifiedTests=false -Dopenapi.write=true",
+    "dev": "node scripts/mvn.mjs -q -DskipTests install -pl meal-rules && node scripts/mvn.mjs -pl meal-api spring-boot:run"
   }
 }

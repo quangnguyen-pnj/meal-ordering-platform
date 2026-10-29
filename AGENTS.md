@@ -14,7 +14,7 @@ Source of truth: `docs/plan.md` (MVP Plan v1.2, aligned with BRQ-MEAL-001 v1.0).
 10. When the spec is unclear: log it in `docs/open-questions.md`, take the safest option already in the plan, mark a `TODO(BR-xx)`; never invent new rules.
 11. Closing a phase: lint, typecheck and tests pass; seed runs; `docs/decisions.md` is updated; write how to demo each exit criterion (`docs/demo-pN.md`).
 12. Never commit secrets; `.env.example` lists every variable.
-13. Java migration (plan J0–J3): `apps/api` (Java) is where API work happens. Until J3 ends, `apps/api-legacy` (NestJS) only gets fixes the web needs right now, mirrored in Java in the same change; new database changes are Flyway migrations in `apps/api/meal-api/src/main/resources/db/migration`, never Prisma ones. Keep the HTTP contract (routes, bodies, error codes, cookies) identical, so the web keeps working.
+13. The API is Java (`apps/api`; the NestJS API was removed in J3). Database changes are Flyway migrations in `apps/api/meal-api/src/main/resources/db/migration`. The web's API types come from the API: after changing a request or response, run `pnpm --filter @meal/api openapi` and `pnpm --filter @meal/web api:types` and commit both generated files (tests fail while they are stale). A response record component that can be null is marked `@Nullable` (JSpecify); a string with fixed values gets `@Schema(allowableValues = ...)`.
 14. Security is part of every change: before closing a phase or change request, go through `docs/security.md` for what you touched (no PIN or secret in a URL, a response, a log or the audit; HTTPS in production; scope checks on ids). Add every new finding to that file with the test that guards it.
 
 ## Commands
@@ -26,6 +26,9 @@ pnpm install
 pnpm lint && pnpm typecheck && pnpm test   # all via turbo, Java included
 cd apps/api && ./mvnw verify               # the Java API alone (Spotless check, tests)
 cd apps/api && ./mvnw spotless:apply       # format Java code
-pnpm --filter @meal/api db:seed            # Java seed (same data as the legacy seed)
-pnpm db:generate && pnpm db:migrate && pnpm db:seed   # legacy schema and seed, until J3
+pnpm db:local                              # PostgreSQL without Docker on :5433 (keep running)
+pnpm db:seed                               # Flyway migrations + demo data
+pnpm dev                                   # Java API :3001 and web :3000
+pnpm --filter @meal/api openapi            # after an API change: rewrite apps/api/openapi.json
+pnpm --filter @meal/web api:types          # then regenerate apps/web/src/lib/openapi.d.ts
 ```

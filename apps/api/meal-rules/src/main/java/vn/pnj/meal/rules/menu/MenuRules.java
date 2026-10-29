@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
+import org.jspecify.annotations.Nullable;
 
 /** Weekly menu rules (BR-08, BR-10 to BR-14) and the publishing rule of 2026-10-23. */
 public final class MenuRules {
@@ -49,7 +50,8 @@ public final class MenuRules {
    */
   public record MixRule(String typeId, String typeName, Integer minPerDay, Integer maxPerDay) {}
 
-  public record MixIssue(String typeId, String typeName, int actual, Integer min, Integer max) {}
+  public record MixIssue(
+      String typeId, String typeName, int actual, @Nullable Integer min, @Nullable Integer max) {}
 
   /**
    * @param counts dishes per type id, in the order the types first appear

@@ -75,6 +75,31 @@ public final class Xlsx {
     }
   }
 
+  /**
+   * Every stored row of the first sheet as the text of its cells (up to its last cell), for
+   * templates whose columns are not fixed. Empty when the workbook has no sheet.
+   */
+  public static List<DataRow> readAllRows(byte[] file) {
+    try (XSSFWorkbook workbook = open(file)) {
+      if (workbook.getNumberOfSheets() == 0) {
+        return List.of();
+      }
+      DataFormatter formatter = new DataFormatter();
+      FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+      List<DataRow> rows = new ArrayList<>();
+      for (Row row : workbook.getSheetAt(0)) {
+        List<String> cells = new ArrayList<>();
+        for (int column = 1; column <= Math.max(row.getLastCellNum(), 0); column++) {
+          cells.add(text(row, column, formatter, evaluator));
+        }
+        rows.add(new DataRow(row.getRowNum() + 1, List.copyOf(cells)));
+      }
+      return rows;
+    } catch (IOException e) {
+      throw fileError("Not a readable .xlsx file", "FILE_UNREADABLE");
+    }
+  }
+
   private static XSSFWorkbook open(byte[] file) {
     try {
       return new XSSFWorkbook(new ByteArrayInputStream(file));
