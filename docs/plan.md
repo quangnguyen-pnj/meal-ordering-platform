@@ -1,6 +1,13 @@
 # MVP Plan – PNJP Meal Ordering System
 
-Oct 19, 2026 · @Quang · v1.2, aligned with BRQ-MEAL-001 v1.0
+Oct 19, 2026 · @Quang · v1.3, aligned with BRQ-MEAL-001 v1.0
+
+**Changes in v1.3 (Oct 30, 2026): presence confirmed in DMP**
+
+- Production managers confirm in DMP that an employee is at work (forgot to check in, or arrived late), by ticking a box; the arrival time does not matter. DMP takes data from the time-clock system every 5 minutes, and the meal system reads the confirmation with attendance (BR-30).
+- A DMP confirmation that arrives before finalization counts as present and restores the meals automatically, even for an arrival after 08:10 (BR-32). One that arrives after finalization adds nothing; it shows as a case to review and the HC admin decides on an adjustment (BR-41, BR-46).
+- Confirming presence in the meal system (BR-33) stays as a fallback, and its reason becomes optional. Who confirmed and when is still audited.
+- How DMP exposes the confirmation in `/api/attendance` is not known yet (Q27).
 
 **Changes in v1.2 (Oct 28, 2026): backend on Java**
 
@@ -124,10 +131,10 @@ BR-20 examples with a menu of Mặn Cá kho, Mặn Thịt kho, Chay, Cháo:
 
 ### 2.4 Attendance and cancellation on day D
 
-- **BR-30** The system pulls attendance from DMP every 5 minutes from 07:00 until finalization. Present = at least one record with a check-in on day D no later than 08:10.
+- **BR-30** The system pulls attendance from DMP every 5 minutes from 07:00 until finalization. Present = at least one record with a check-in on day D no later than 08:10, or a manager's presence confirmation for day D in DMP, whatever the arrival time.
 - **BR-31** At 08:10, employees with meals who are not present become "Provisionally cancelled" for all their meals in that session.
-- **BR-32** Between 08:10 and finalization, if a record with check-in ≤ 08:10 arrives late, the meals are restored automatically. A check-in after 08:10 does not restore; the employee contacts an admin.
-- **BR-33** A dept or HC admin confirms presence (forgot to check in, checked in after 08:10) until finalization, with a required reason; the meals are restored.
+- **BR-32** Between 08:10 and finalization, if a record with check-in ≤ 08:10 arrives late, the meals are restored automatically. A check-in after 08:10 does not restore on its own; the employee asks their manager to confirm presence in DMP, or an admin (BR-33). A manager's DMP confirmation that arrives before finalization restores the meals automatically, with no reason. One that arrives after finalization never adds meals: it is a case to review (BR-41) and the HC admin may record an adjustment under BR-46.
+- **BR-33** A dept or HC admin confirms presence (forgot to check in, checked in after 08:10) until finalization, with an optional reason; the meals are restored. This is the fallback when the DMP confirmation (BR-32) is late or missing.
 - **BR-34** Safety check: if the latest sync failed, or fewer than 50% of employees with meals are present, the system does not cancel in bulk, keeps all meals and warns the HC admin. The HC admin re-runs the sync or cancels manually.
 - **BR-35** Leave only shows a "Leave request" flag (full day, morning or afternoon); it never cancels meals. Half-day leave resolves through BR-30: morning leave loses lunch, afternoon leave keeps it.
 - **BR-36** Employees who leave the company per DMP lose all meals from their end date. New hires are registered by dept admins under BR-25.
@@ -135,7 +142,7 @@ BR-20 examples with a menu of Mặn Cá kho, Mặn Thịt kho, Chay, Cháo:
 ### 2.5 Reconciliation and finalization
 
 - **BR-40** The reconciliation screen for day D shows total forecast, total actual, difference and number of cases to review; plus a per-meal table of forecast, actual, difference and status Matched or Mismatched.
-- **BR-41** Cases to review: provisionally cancelled or cancelled for absence; self-reported not eating or reduced; added or increased by the employee after closeAt, including employees without a forecast; dish changed from forecast; extra; presence confirmed by an admin; on leave but still has meals. Each row shows code, name, unit, forecast meal, actual meal and case type.
+- **BR-41** Cases to review: provisionally cancelled or cancelled for absence; self-reported not eating or reduced; added or increased by the employee after closeAt, including employees without a forecast; dish changed from forecast; extra; presence confirmed by an admin or by a manager in DMP; DMP presence confirmation that arrived after finalization; on leave but still has meals. Each row shows code, name, unit, forecast meal, actual meal and case type.
 - **BR-42** Warn when a meal's actual count deviates more than 10% from its forecast.
 - **BR-43** At 08:30 the HC admin presses "Finalize": provisional cancellations become cancellations, the system stores a final-count snapshot by unit × meal and locks the day. Normal edits are blocked after finalization; only HC admin adjustments under BR-46 remain. If not finalized by 08:45, the HC admin is reminded.
 - **BR-44** Final Excel file: rows are meal units grouped by canteen and floor, with floor columns; columns are meals, cells are counts, with a total row and a total column; plus a box-label sheet with one label per unit showing unit, floor and counts. The weekly forecast file uses the same layout, one sheet per day.
@@ -177,7 +184,7 @@ Four roles stack on one employee account: admins still order their own meals lik
 | View colleagues' meals today | View, own unit | Units | Factory | – |
 | Register and edit on behalf before the lock; print paper forms | – | Units | Factory | – |
 | Add extra meals after 08:00 until finalization (with reason) | – | Units | Factory | – |
-| Confirm presence; edit from 08:00 to finalization (with reason) | – | Units | Factory | – |
+| Confirm presence (reason optional); edit from 08:00 to finalization (with reason) | – | Units | Factory | – |
 | Not-registered list, exceptions list | – | Units | Factory | – |
 | Dish library; build, publish, edit menu | – | – | ✓ | – |
 | View reconciliation | – | Units | Factory | – |
@@ -197,7 +204,7 @@ Four roles stack on one employee account: admins still order their own meals lik
 
 - Permissions are checked as a (role, action, scope) triple by one authorization component of the API (Spring Security, an annotation on each endpoint), not as scattered checks inside handlers.
 - Every list query by a dept admin is filtered by scope; requests for employees outside scope return 403.
-- Any action after a lock requires a reason and writes to the audit log (BR-70).
+- Any action after a lock requires a reason and writes to the audit log (BR-70). The one exception is confirming presence (BR-33), whose reason is optional; it is still audited.
 
 ## 4. UI flows
 
@@ -215,7 +222,7 @@ The UI is desktop-first for office staff, but dept-admin screens must work well 
 | /week | Weekly registration | Employee | One card per day, a quantity stepper per meal from 0 with no cap; closeAt deadline banner (23:59 Thursday); Same as last week and Apply to whole week buttons; after closeAt each day stays editable until its own 08:00 and shows its difference from the forecast (BR-23) |
 | /team | My unit | Employee | Colleagues in the same unit today: name, meal, status; search by name or code |
 | /history | History | Employee | Past days: forecast, actual, status |
-| /admin/today | Today (admin) | Dept admin, HC admin | Default filter: today, lunch, the user's units; search by name or code; inline edit while allowed; confirm presence through a reason dialog; Exceptions tab |
+| /admin/today | Today (admin) | Dept admin, HC admin | Default filter: today, lunch, the user's units; search by name or code; inline edit while allowed; confirm presence through a dialog with an optional reason; Exceptions tab |
 | /admin/registrations | Weekly registration (admin) | Dept admin, HC admin | Progress by unit; not-registered list; bulk-entry grid |
 | /admin/print | Print forms | Dept admin, HC admin | Pick week and unit; one table per day, rows are employees, columns are meals, blank cells for counts; printed with browser print CSS |
 | /admin/dishes | Dish library | HC admin | Main dishes and Desserts tabs; add, edit, archive; filter by type |
@@ -252,7 +259,7 @@ The UI is desktop-first for office staff, but dept-admin screens must work well 
 1. From 07:00, the system syncs attendance every 5 minutes.
 2. Until 08:00, employees add meals, change dishes or report not eating; workers tell their team's tablet holder.
 3. At 08:10, meals of employees not yet present become provisionally cancelled.
-4. Dept admins work the exceptions list: confirm presence, edit meals with a reason.
+4. Production managers confirm presence in DMP for employees who forgot to check in or arrived late; the next sync restores their meals. Dept admins work the exceptions list: confirm presence if DMP has not, edit meals with a reason.
 5. At 08:30, the HC admin reviews reconciliation, presses Finalize, exports Excel and sends it to the caterer.
 6. If meals are still needed or must be removed after finalization, the HC admin checks with the caterer, records an adjustment before 10:30 (BR-46) and sends the supplementary file.
 
@@ -276,7 +283,7 @@ The system only reads data from DMP through its existing REST API, by scheduled 
 | Service token | POST /api/auth/login | email, password of the LDAP service account | On startup, on token expiry or on a 401 | JWT without refresh token; the account needs an unscoped role (it, hr or planner) |
 | Employees | GET /api/hr-employees | page, size ≤ 500, sort=employeeId,asc | Daily at 02:00 and on manual trigger | Returns a Spring Page (content, totalElements), no wrapper. Store only employeeId, name, email, unit codes, cost center code if present, leaveStatus, startWDate; drop birth date, phone number, gender |
 | Org structure | GET /api/hierarchy | none | Daily at 02:00 | Returns the full tree, unpaged; fallback /api/dropdown/cctc/\*. Map DMP levels to levels 1–6 (BR-61); check whether nodes carry a cost center code |
-| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in |
+| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in. Also read the manager's presence confirmation (BR-30, BR-32); its field is not known yet (Q27) |
 | Leave | GET /api/daily-forecast | fromDate, toDate as ISO; hasLeave=true; companyCode; page; pageSize | Minute 30 of every hour, window today to 14 days ahead | Use restStatus, leaveTypeName, leaveDayType (FULL, AM, PM); flags only, per BR-35 |
 | Overtime | Not used |  |  | Out of MVP. DMP has 3 overtime sources, none official, none with an approval status |
 
@@ -289,7 +296,7 @@ The system only reads data from DMP through its existing REST API, by scheduled 
 
 **Adapter rules.**
 
-- One DmpClient interface with two implementations, HttpDmpClient and MockDmpClient, selected by DMP\_MODE=http|mock. The mock reads scenarios from a seed file: on time, late, forgot to check in, morning leave, afternoon leave, API error, API returning too little data.
+- One DmpClient interface with two implementations, HttpDmpClient and MockDmpClient, selected by DMP\_MODE=http|mock. The mock reads scenarios from a seed file: on time, late, forgot to check in, confirmed by a manager in DMP (before and after finalization), morning leave, afternoon leave, API error, API returning too little data.
 - Fetch pages sequentially, size at most 500, 10-second timeout, 3 retries with backoff. No unscheduled calls in the 07:30–08:30 window unless an admin presses re-run.
 - Every sync writes a SyncRun: type, start, end, record count, error. Data is written only when the whole run succeeds, upserted by employee code and date.
 - The employee code is employeeId in the employee and attendance APIs and employeeCode in daily-forecast; same value, normalized to employeeCode in this system.
@@ -370,7 +377,7 @@ meal-ordering-platform/
 | MenuDayDessert | menuDayId, dessertId |  |
 | Registration | employeeId, menuItemId, date, session, quantity, source, isExtra, extraReason, status | Unique on (employeeId, menuItemId); status: ACTIVE, NEEDS\_RESELECT, CANCELLED |
 | ForecastLine | menuWeekId, employeeId, date, session, menuItemId, quantity, mealUnitId, floorId, canteenId, costCenterId | Immutable forecast snapshot with the mapping in effect at closeAt (BR-07, BR-64) |
-| DailyPresence | employeeId, date, firstCheckInAt, state, confirmedById, confirmReason | state: UNKNOWN, PRESENT, PROVISIONAL\_ABSENT, ABSENT |
+| DailyPresence | employeeId, date, firstCheckInAt, dmpConfirmedAt, state, confirmedById, confirmReason | state: UNKNOWN, PRESENT, PROVISIONAL\_ABSENT, ABSENT; dmpConfirmedAt is the first sync that saw a manager's confirmation in DMP (BR-32); confirmReason may be null (BR-33) |
 | LeaveFlag | employeeId, date, dayType, leaveTypeName, syncedAt | dayType: FULL, AM, PM |
 | DayClose | factoryId, date, session, status, finalizedById, finalizedAt | status: OPEN, FINALIZED |
 | FinalEmployeeLine | dayCloseId, employeeId, menuItemId, quantity, mealUnitId, floorId, canteenId, costCenterId | Per-employee snapshot at finalization; source for cost by cost center |
@@ -430,7 +437,7 @@ The MVP is split into 8 phases, done in order from P0 to P7, with the Java migra
 3. Never read the wall clock in business code (Instant.now(), LocalDate.now(), new Date(), System.currentTimeMillis() and the like): use ClockService in the api and pass now into rule functions. Read every deadline from Setting; never hardcode.
 4. Store timestamps in UTC; convert to Asia/Ho\_Chi\_Minh in rules and UI. Store serving days as date.
 5. Check permissions in the guard as (role, action, scope). Every admin endpoint has a 403 test for out-of-scope access.
-6. Every change after a lock requires a reason and writes an AuditLog entry.
+6. Every change after a lock requires a reason and writes an AuditLog entry. Presence confirmation (BR-33) is the one exception: the reason is optional, the audit entry is not.
 7. Never delete business data; use statuses or archivedAt. ForecastLine, FinalEmployeeLine and FinalCount are write-once; changes after finalization go through Adjustment (BR-46).
 8. Call DMP only through DmpClient. Dev and tests use DMP\_MODE=mock; never call the real DMP in tests; never call generate-data.
 9. UI copy is Vietnamese, kept in one messages file for easy editing.
@@ -523,10 +530,10 @@ The API of P0–P2 is rewritten in Java. The HTTP contract (routes, bodies, erro
 - [ ] HttpDmpClient: service token, /api/attendance, /api/daily-forecast for leave, date-time parsers.
 - [ ] poll-attendance, provisional-cancel and sync-leave jobs; DailyPresence and LeaveFlag tables.
 - [ ] Rules BR-30 to BR-35 in meal-rules, tested against every mock scenario.
-- [ ] /admin/today: default filters, inline edits, presence confirmation, exceptions tab; /today shows attendance status.
+- [ ] /admin/today: default filters, inline edits, presence confirmation (optional reason), exceptions tab; /today shows attendance status.
 - [ ] Sync status, re-run button, banner on failure.
 
-**Done when:** with mock data, on-time employees keep meals; no check-in becomes provisionally cancelled at 08:10; a 08:05 check-in arriving at 08:20 restores automatically; a 08:15 check-in does not; an API error or under 50% present causes no cancellation and shows a warning; morning leave loses lunch, afternoon leave keeps it. Once a service account exists, call the real DMP and compare record counts with DMP.
+**Done when:** with mock data, on-time employees keep meals; no check-in becomes provisionally cancelled at 08:10; a 08:05 check-in arriving at 08:20 restores automatically; a 08:15 check-in does not; a manager's DMP confirmation arriving before finalization restores, whatever the arrival time, and one arriving after finalization only shows as a case to review; an API error or under 50% present causes no cancellation and shows a warning; morning leave loses lunch, afternoon leave keeps it. Once a service account exists, call the real DMP and compare record counts with DMP.
 
 ### P4 – Reconciliation, finalization, export
 
@@ -591,6 +598,7 @@ The plan uses 13 assumptions (A4 withdrawn in v1.1) so agents are never blocked;
 - [ ] Administration dept provides the canteen, floor and cost-center lists and the initial mapping file — before P7.
 - [ ] DMP team provides a read-only LDAP service account with an unscoped role — before P3.
 - [ ] DMP team states the delay for attendance records reaching hr\_attendance — before P3.
+- [ ] DMP team states how a manager's presence confirmation appears in /api/attendance (field, time, can it be withdrawn) — before P3 (Q27).
 - [ ] DMP team confirms the leave table holds only approved requests, and the meaning of leaveStatus values — before P3.
 - [ ] Caterer's meal unit price — before P6.
 - [ ] IT creates the Entra ID app registration with an intranet redirect URI, and confirms HR emails match Entra UPNs — before P7 (mock until then).

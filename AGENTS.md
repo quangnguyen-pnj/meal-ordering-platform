@@ -1,13 +1,13 @@
 # Agent rules – PNJP Meal Ordering System
 
-Source of truth: `docs/plan.md` (MVP Plan v1.2, aligned with BRQ-MEAL-001 v1.0).
+Source of truth: `docs/plan.md` (MVP Plan v1.3, aligned with BRQ-MEAL-001 v1.0).
 
 1. Read `docs/plan.md` before each phase. Do exactly one phase per run; never start work belonging to a later phase.
 2. Business rules are pure Java functions in `apps/api/meal-rules` (no Spring, no database); test names cite the BR code with `@DisplayName`, e.g. `"BR-23: an employee with no forecast can add a meal at 07:59 on day D"`.
 3. Never read the wall clock in business code (`Instant.now()`, `LocalDate.now()`, `new Date()`, `System.currentTimeMillis()`…): use `ClockService` in the api and pass `now` into rule functions. Read every deadline from `Setting`; never hardcode. (ArchUnit enforces this in Java, ESLint in TypeScript.)
 4. Store timestamps in UTC; convert to Asia/Ho_Chi_Minh in rules and UI. Store serving days as `date`.
 5. Check permissions in the guard as (role, action, scope). Every admin endpoint has a 403 test for out-of-scope access.
-6. Every change after a lock requires a reason and writes an `AuditLog` entry.
+6. Every change after a lock requires a reason and writes an `AuditLog` entry. Presence confirmation (BR-33) is the one exception: the reason is optional, the audit entry is not.
 7. Never delete business data; use statuses or `archivedAt`. `ForecastLine`, `FinalEmployeeLine` and `FinalCount` are write-once; changes after finalization go through `Adjustment` (BR-46).
 8. Call DMP only through `DmpClient`. Dev and tests use `DMP_MODE=mock`; never call the real DMP in tests; never call `generate-data`.
 9. UI copy is Vietnamese, kept in one messages file (`apps/web/src/messages/vi.ts`) for easy editing.
