@@ -396,7 +396,7 @@ class AttendanceTest extends IntegrationTest {
   @Test
   @Order(9)
   @DisplayName("BR-35: afternoon leave keeps lunch; flags DMP no longer returns are removed")
-  void afternoonLeave() {
+  void afternoonLeave() throws Exception {
     AttendanceService pm = service("afternoon-leave");
     String day = "2029-03-13";
     setVnTime(day, "06:30");
@@ -414,6 +414,16 @@ class AttendanceTest extends IntegrationTest {
     tickAt(pm, day, "07:30");
     tickAt(pm, day, "08:10");
     assertThat(state(AFFECTED, day)).isEqualTo("PRESENT");
+    // Q28: afternoon leave keeps lunch, so it is no case to review.
+    Cookie hc = signInReady(Demo.HC_ADMIN);
+    String view = read(hc, "/api/admin/today?date=" + day);
+    assertThat(
+            JsonPath.<List<String>>read(
+                view, "$.rows[?(@.employeeCode == 'PNJP000010')].leave.dayType"))
+        .containsExactly("PM");
+    assertThat(
+            JsonPath.<List<String>>read(view, "$.rows[?(@.employeeCode == 'PNJP000010')].cases[*]"))
+        .doesNotContain("ON_LEAVE_WITH_MEALS");
 
     service("on-time").syncLeave(factoryId, null);
     assertThat(

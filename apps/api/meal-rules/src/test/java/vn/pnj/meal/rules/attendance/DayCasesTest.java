@@ -19,11 +19,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import vn.pnj.meal.rules.attendance.AttendanceRules.PresenceState;
 import vn.pnj.meal.rules.attendance.DayCases.Input;
+import vn.pnj.meal.rules.attendance.DayCases.LeaveDayType;
 
 class DayCasesTest {
   private static Input in(
       Map<String, Integer> forecast, Map<String, Integer> actual, PresenceState presence) {
-    return new Input(forecast, actual, presence, true, false, false, false, false);
+    return new Input(forecast, actual, presence, true, false, false, null, false);
   }
 
   @Test
@@ -65,7 +66,9 @@ class DayCasesTest {
   @Test
   @DisplayName("BR-41: extra, admin confirmation, DMP confirmation and leave with meals")
   void flags() {
-    Input input = new Input(Map.of("a", 1), Map.of("a", 1), PRESENT, false, true, true, true, true);
+    Input input =
+        new Input(
+            Map.of("a", 1), Map.of("a", 1), PRESENT, false, true, true, LeaveDayType.AM, true);
     assertThat(DayCases.casesFor(input))
         .containsExactly(
             EXTRA, PRESENCE_CONFIRMED_BY_ADMIN, PRESENCE_CONFIRMED_IN_DMP, ON_LEAVE_WITH_MEALS);
@@ -75,7 +78,22 @@ class DayCasesTest {
   @DisplayName("BR-41: a DMP confirmation is no case when the employee also checked in in time")
   void confirmedAndCheckedIn() {
     Input input =
-        new Input(Map.of("a", 1), Map.of("a", 1), PRESENT, true, true, false, false, false);
+        new Input(Map.of("a", 1), Map.of("a", 1), PRESENT, true, true, false, null, false);
     assertThat(DayCases.casesFor(input)).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "BR-41 / Q28: full-day and morning leave with lunch are cases; afternoon leave is not")
+  void leave() {
+    for (LeaveDayType leave : LeaveDayType.values()) {
+      Input input =
+          new Input(Map.of("a", 1), Map.of("a", 1), PRESENT, true, false, false, leave, false);
+      if (leave == LeaveDayType.PM) {
+        assertThat(DayCases.casesFor(input)).isEmpty();
+      } else {
+        assertThat(DayCases.casesFor(input)).containsExactly(ON_LEAVE_WITH_MEALS);
+      }
+    }
   }
 }
