@@ -533,7 +533,7 @@ The API of P0–P2 is rewritten in Java. The HTTP contract (routes, bodies, erro
 - [ ] /admin/today: default filters, inline edits, presence confirmation (optional reason), exceptions tab; /today shows attendance status.
 - [ ] Sync status, re-run button, banner on failure.
 
-**Done when:** with mock data, on-time employees keep meals; no check-in becomes provisionally cancelled at 08:10; a 08:05 check-in arriving at 08:20 restores automatically; a 08:15 check-in does not; a manager's DMP confirmation arriving before finalization restores, whatever the arrival time, and one arriving after finalization only shows as a case to review; an API error or under 50% present causes no cancellation and shows a warning; morning leave loses lunch, afternoon leave keeps it. Once a service account exists, call the real DMP and compare record counts with DMP.
+**Done when:** with mock data, on-time employees keep meals; no check-in becomes provisionally cancelled at 08:10; a 08:05 check-in arriving at 08:20 restores automatically; a 08:15 check-in does not; a manager's DMP confirmation arriving before finalization restores, whatever the arrival time; an API error or under 50% present causes no cancellation and shows a warning; morning leave loses lunch, afternoon leave keeps it. Once a service account exists, call the real DMP and compare record counts with DMP.
 
 ### P4 – Reconciliation, finalization, export
 
@@ -542,7 +542,7 @@ The API of P0–P2 is rewritten in Java. The HTTP contract (routes, bodies, erro
 - [ ] Adjustments after finalization (BR-46): HC admin only, deadline from Setting, required reason and caterer tick, supplementary Excel file; FinalEmployeeLine snapshot at finalization.
 - [ ] Excel export of the final file, the weekly forecast file and the box-label sheet (BR-44).
 
-**Done when:** file totals equal FinalCount totals and the reconciliation screen; every normal edit API for a finalized day is rejected; an HC admin adjustment before 10:30 is accepted, leaves FinalCount unchanged and changes the effective count; an adjustment after 10:30 or by a dept admin is rejected; files open in Excel with correct Vietnamese text.
+**Done when:** file totals equal FinalCount totals and the reconciliation screen; a manager's DMP confirmation arriving after finalization adds nothing and only shows as a case to review (BR-32, moved from P3, which has no finalization); every normal edit API for a finalized day is rejected; an HC admin adjustment before 10:30 is accepted, leaves FinalCount unchanged and changes the effective count; an adjustment after 10:30 or by a dept admin is rejected; files open in Excel with correct Vietnamese text.
 
 ### P5 – Delivery
 

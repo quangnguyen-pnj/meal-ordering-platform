@@ -5,8 +5,7 @@ public class DmpException extends RuntimeException {
   public enum Kind {
     API_ERROR,
     AUTH,
-    TIMEOUT,
-    NOT_IMPLEMENTED
+    TIMEOUT
   }
 
   private final Kind kind;

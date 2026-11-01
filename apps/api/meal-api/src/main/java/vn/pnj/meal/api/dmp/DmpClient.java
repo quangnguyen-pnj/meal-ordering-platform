@@ -31,9 +31,18 @@ public interface DmpClient {
       LocalDate endDate) {}
 
   /**
-   * @param checkInAt DMP local time read as Vietnam time (assumption A7), as a UTC instant
+   * One attendance row of a day.
+   *
+   * @param checkInAt DMP local time read as Vietnam time (assumption A7), as a UTC instant; null
+   *     when the row carries no check-in (a manager's confirmation alone)
+   * @param managerConfirmed BR-30 / BR-32 (v1.3): a production manager ticked "present" in DMP; how
+   *     DMP exposes it is open question Q27
    */
-  record AttendanceRecord(String employeeCode, Instant checkInAt) {}
+  record AttendanceRecord(String employeeCode, Instant checkInAt, boolean managerConfirmed) {
+    public AttendanceRecord(String employeeCode, Instant checkInAt) {
+      this(employeeCode, checkInAt, false);
+    }
+  }
 
   enum LeaveDayType {
     FULL,

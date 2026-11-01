@@ -54,7 +54,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'admin',
     action: 'presence.confirm',
     phase: 'P3',
-    available: false,
+    available: true,
   },
   {
     href: '/admin/registrations',

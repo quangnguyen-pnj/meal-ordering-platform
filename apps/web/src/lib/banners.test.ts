@@ -72,4 +72,31 @@ describe('banners', () => {
     ]);
     expect(b!.action).toEqual({ href: '/week', label: 'Chọn lại món' });
   });
+
+  it('BR-34: a failed attendance sync and a held cutoff point the HC admin to /admin/today', () => {
+    const [failed, held] = toBanners([
+      {
+        id: 'attendance-sync-failed:2027-03-01',
+        severity: 'error',
+        kind: 'ATTENDANCE_SYNC_FAILED',
+        params: { date: '2027-03-01', at: '2027-03-01T01:05:00Z' },
+      },
+      {
+        id: 'attendance-cutoff-held:2027-03-01',
+        severity: 'warning',
+        kind: 'ATTENDANCE_CUTOFF_HELD',
+        params: {
+          date: '2027-03-01',
+          outcome: 'HELD_TOO_FEW_PRESENT',
+          withMeals: 74,
+          presentWithMeals: 34,
+        },
+      },
+    ]);
+    expect(failed!.message).toBe(
+      'Lấy dữ liệu chấm công ngày 01/03/2027 từ DMP thất bại lúc 08:05. Hệ thống chưa hủy suất ăn nào; hãy chạy lại đồng bộ.',
+    );
+    expect(failed!.action).toEqual({ href: '/admin/today', label: 'Mở Hôm nay (quản trị)' });
+    expect(held!.message).toContain('chỉ 34/74 người có suất ăn đã chấm công');
+  });
 });

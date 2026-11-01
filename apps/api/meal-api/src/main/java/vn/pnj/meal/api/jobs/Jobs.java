@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.me.MeService;
 import vn.pnj.meal.api.org.OrgSyncService;
 import vn.pnj.meal.api.registrations.ForecastService;
@@ -25,12 +26,19 @@ public class Jobs {
   private final OrgSyncService orgSync;
   private final MeService me;
   private final ForecastService forecast;
+  private final AttendanceService attendance;
 
-  public Jobs(JdbcClient jdbc, OrgSyncService orgSync, MeService me, ForecastService forecast) {
+  public Jobs(
+      JdbcClient jdbc,
+      OrgSyncService orgSync,
+      MeService me,
+      ForecastService forecast,
+      AttendanceService attendance) {
     this.jdbc = jdbc;
     this.orgSync = orgSync;
     this.me = me;
     this.forecast = forecast;
+    this.attendance = attendance;
   }
 
   private List<String> factories() {
@@ -100,5 +108,31 @@ public class Jobs {
       log.info("reselect-deadline: {} registration(s) cancelled", cancelled);
     }
     return cancelled;
+  }
+
+  /**
+   * BR-30 / BR-31: poll-attendance and provisional-cancel. The start time, the interval and the
+   * cutoff are settings, so the job runs every minute and does whatever is due; serving days only.
+   */
+  @Scheduled(cron = "15 * * * * *", zone = TZ)
+  @SchedulerLock(name = "poll-attendance", lockAtMostFor = "PT5M", lockAtLeastFor = "PT20S")
+  public void pollAttendanceJob() {
+    pollAttendance();
+  }
+
+  public void pollAttendance() {
+    for (String factoryId : factories()) {
+      attendance.tick(factoryId);
+    }
+  }
+
+  /** BR-35: leave flags from today to 14 days ahead, at minute 30 of every hour. */
+  @Scheduled(cron = "0 30 * * * *", zone = TZ)
+  @SchedulerLock(name = "sync-leave", lockAtMostFor = "PT10M")
+  public void syncLeave() {
+    for (String factoryId : factories()) {
+      AttendanceService.LeaveResult result = attendance.syncLeave(factoryId, null);
+      log.info("sync-leave {}: {} ({} flags)", factoryId, result.status(), result.flags());
+    }
   }
 }

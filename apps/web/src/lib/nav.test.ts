@@ -77,6 +77,7 @@ describe('role-based navigation (plan section 3 matrix)', () => {
       '/week',
       '/team',
       '/history',
+      '/admin/today',
       '/admin/registrations',
       '/admin/print',
       '/admin/dishes',

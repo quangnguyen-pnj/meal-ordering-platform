@@ -2,11 +2,13 @@ package vn.pnj.meal.api.dmp;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import vn.pnj.meal.api.seed.SeedEmployees;
@@ -21,8 +23,19 @@ import vn.pnj.meal.rules.VnTime;
 public class MockDmpClient implements DmpClient {
   private final String scenarioName;
   private final JsonNode scenario;
+  private final Supplier<Instant> now;
 
+  /** Every row is visible at once ({@code arrivesAt} is ignored). */
   public MockDmpClient(String scenarioName, JsonMapper json) {
+    this(scenarioName, json, null);
+  }
+
+  /**
+   * @param now the API clock ({@code ClockService::now}), so rows with {@code arrivesAt} appear
+   *     only from that time of day D, fake time included; null shows every row
+   */
+  public MockDmpClient(String scenarioName, JsonMapper json, Supplier<Instant> now) {
+    this.now = now;
     JsonNode scenarios = loadScenarios(json);
     if (!scenarios.has(scenarioName)) {
       List<String> names = new ArrayList<>(scenarios.propertyNames());
@@ -102,14 +115,23 @@ public class MockDmpClient implements DmpClient {
     for (String code : codes.subList(0, Math.min(limit, codes.size()))) {
       JsonNode override = firstMatching(scenario.path("overrides"), code);
       String time;
+      boolean confirmed = false;
       if (override != null) {
         JsonNode checkIn = override.get("checkIn");
         time = checkIn == null || checkIn.isNull() ? null : checkIn.asString();
+        confirmed = override.path("managerConfirmed").asBoolean(false);
+        if (!arrived(override, date)) {
+          continue;
+        }
       } else {
         time = defaultCheckIn;
       }
-      if (time != null) {
-        records.add(new AttendanceRecord(code, VnTime.vnToUtc(date, VnTime.parseTimeOfDay(time))));
+      if (time != null || confirmed) {
+        records.add(
+            new AttendanceRecord(
+                code,
+                time == null ? null : VnTime.vnToUtc(date, VnTime.parseTimeOfDay(time)),
+                confirmed));
       }
     }
     return records;
@@ -134,6 +156,15 @@ public class MockDmpClient implements DmpClient {
       }
     }
     return records;
+  }
+
+  /** {@code arrivesAt}: DMP only has the row from that time of day D. */
+  private boolean arrived(JsonNode override, LocalDate date) {
+    JsonNode arrivesAt = override.get("arrivesAt");
+    if (now == null || arrivesAt == null || arrivesAt.isNull()) {
+      return true;
+    }
+    return !now.get().isBefore(VnTime.vnToUtc(date, VnTime.parseTimeOfDay(arrivesAt.asString())));
   }
 
   private void failIfScenarioErrors() {
