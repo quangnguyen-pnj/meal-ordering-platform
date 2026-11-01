@@ -34,7 +34,7 @@ public final class DayCases {
     PRESENCE_CONFIRMED_BY_ADMIN,
     /** BR-32: a manager confirmed presence in DMP, without a check-in in time. */
     PRESENCE_CONFIRMED_IN_DMP,
-    /** BR-35: a leave flag while the employee still has meals. */
+    /** BR-35: a full-day or morning leave while the employee still has lunch (Q28). */
     ON_LEAVE_WITH_MEALS
   }
 
@@ -43,6 +43,7 @@ public final class DayCases {
    *     nothing is a difference yet, BR-07)
    * @param actual active quantities by menu item (before presence is applied)
    * @param checkedInInTime BR-30: a check-in no later than the cutoff
+   * @param leave the day's leave flag, null when none
    */
   public record Input(
       Map<String, Integer> forecast,
@@ -51,8 +52,23 @@ public final class DayCases {
       boolean checkedInInTime,
       boolean confirmedInDmp,
       boolean confirmedByAdmin,
-      boolean onLeave,
+      LeaveDayType leave,
       boolean hasExtra) {}
+
+  /** A leave flag as DMP gives it: full day, morning or afternoon (BR-35). */
+  public enum LeaveDayType {
+    FULL,
+    AM,
+    PM
+  }
+
+  /**
+   * BR-41 / Q28 (product owner, 2026-11-01): only full-day and morning leave make "on leave but
+   * still has meals" a case. Afternoon leave keeps lunch (BR-35), so it is not one.
+   */
+  public static boolean leavesOutLunch(LeaveDayType leave) {
+    return leave == LeaveDayType.FULL || leave == LeaveDayType.AM;
+  }
 
   public static List<CaseType> casesFor(Input in) {
     List<CaseType> cases = new ArrayList<>();
@@ -87,8 +103,7 @@ public final class DayCases {
     if (in.confirmedInDmp() && !in.checkedInInTime()) {
       cases.add(CaseType.PRESENCE_CONFIRMED_IN_DMP);
     }
-    // TODO(BR-41): every leave flag counts, afternoon leave included (open question Q28).
-    if (in.onLeave() && hasMeals) {
+    if (leavesOutLunch(in.leave()) && hasMeals) {
       cases.add(CaseType.ON_LEAVE_WITH_MEALS);
     }
     return List.copyOf(cases);

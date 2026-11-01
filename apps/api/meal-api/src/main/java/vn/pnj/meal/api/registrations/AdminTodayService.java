@@ -195,7 +195,7 @@ public class AdminTodayService {
                   inTime,
                   p.dmpConfirmedAt() != null,
                   p.confirmedByAdmin(),
-                  flag != null,
+                  flag == null ? null : DayCases.LeaveDayType.valueOf(flag.dayType()),
                   regs.stream().anyMatch(r -> r.isExtra() && r.activeMeal())));
       int actualTotal = RegistrationStore.sum(actual);
       int forecastTotal = RegistrationStore.sum(fc);

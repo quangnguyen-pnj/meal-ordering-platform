@@ -1,6 +1,6 @@
 # Agent rules – PNJP Meal Ordering System
 
-Source of truth: `docs/plan.md` (MVP Plan v1.3, aligned with BRQ-MEAL-001 v1.0).
+Source of truth: `docs/plan.md` (MVP Plan v1.4, aligned with BRQ-MEAL-001 v1.0).
 
 1. Read `docs/plan.md` before each phase. Do exactly one phase per run; never start work belonging to a later phase.
 2. Business rules are pure Java functions in `apps/api/meal-rules` (no Spring, no database); test names cite the BR code with `@DisplayName`, e.g. `"BR-23: an employee with no forecast can add a meal at 07:59 on day D"`.

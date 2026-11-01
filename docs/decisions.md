@@ -616,7 +616,7 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - `AttendanceRules`: `checkInInTime` / `isPresent` (BR-30, v1.3: a check-in by the cutoff, or a manager's DMP confirmation whatever the time), `earliestCheckIn`, `afterSync` (BR-32: present per DMP becomes `PRESENT`; nothing else changes, so a check-in after 08:10 never restores and a sync never takes presence back; `ABSENT` is final), `cancelledAtCutoff` (BR-31), `mealsCount`, `safetyCheck` (BR-34), and the schedule checks `isPollDue`, `isCutoffDue`, `canConfirmPresence`. Every time comes in as an argument; the cutoff, poll start, interval and threshold are settings.
 - **The cutoff is the last accepted minute** (08:10:59 counts), like `registration.close` (Q30).
-- `DayCases.casesFor` (BR-41) gives the cases of one employee's day: provisionally cancelled, not eating, reduced, added (also without a forecast), dish changed, extra, presence confirmed by an admin, confirmed in DMP without a check-in in time, on leave with meals. No difference cases before the forecast is taken. Every leave flag counts (Q28).
+- `DayCases.casesFor` (BR-41) gives the cases of one employee's day: provisionally cancelled, not eating, reduced, added (also without a forecast), dish changed, extra, presence confirmed by an admin, confirmed in DMP without a check-in in time, full-day or morning leave with meals. No difference cases before the forecast is taken. Only full-day and morning leave count as "on leave with meals"; afternoon leave keeps lunch (Q28, product owner 2026-11-01).
 
 ### Data (Flyway V5)
 
@@ -658,3 +658,9 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - `AttendanceRulesTest`, `DayCasesTest` (BR display names); `MockDmpClientTest`, `HttpDmpClientTest` (attendance and leave against a local fake DMP); `AttendanceTest` walks the exit criteria with fake time and one scenario per serving day, plus admin confirmation, edits after the lock, scope and 403s. `SecretsTest` reads `/api/admin/today`.
 - The test database is shared by every test class, so `AttendanceTest` cancels its registrations at the end; otherwise the BR-36 leaver count of `RegistrationTest` saw them.
+
+## Spec change v1.4: attendance after a held cutoff and after finalization (2026-11-01)
+
+- **Q29 (product owner):** after a held cutoff (BR-34) only the HC admin's re-run cancels. This is what P3 already does (`AttendanceService.runCutoff` re-evaluates only with `reevaluate`); polls keep recording and restoring meanwhile.
+- **After finalization (product owner):** the poll and the HC admin's re-run go on until `close.adjustmentDeadline` (10:30) but only record; nothing is restored and late DMP confirmations or check-ins are cases to review. No sync runs for the day after the deadline. Built in P4, with finalization; until then the P3 bound (end of day D, Q31) stays.
+- **Q28 (product owner):** only full-day and morning leave count as "on leave with meals".
