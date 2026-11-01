@@ -658,3 +658,9 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - `AttendanceRulesTest`, `DayCasesTest` (BR display names); `MockDmpClientTest`, `HttpDmpClientTest` (attendance and leave against a local fake DMP); `AttendanceTest` walks the exit criteria with fake time and one scenario per serving day, plus admin confirmation, edits after the lock, scope and 403s. `SecretsTest` reads `/api/admin/today`.
 - The test database is shared by every test class, so `AttendanceTest` cancels its registrations at the end; otherwise the BR-36 leaver count of `RegistrationTest` saw them.
+
+## Spec change v1.4: attendance after a held cutoff and after finalization (2026-11-01)
+
+- **Q29 (product owner):** after a held cutoff (BR-34) only the HC admin's re-run cancels. This is what P3 already does (`AttendanceService.runCutoff` re-evaluates only with `reevaluate`); polls keep recording and restoring meanwhile.
+- **After finalization (product owner):** the poll and the HC admin's re-run go on until `close.adjustmentDeadline` (10:30) but only record; nothing is restored and late DMP confirmations or check-ins are cases to review. No sync runs for the day after the deadline. Built in P4, with finalization; until then the P3 bound (end of day D, Q31) stays.
+- **Q28 (product owner):** only full-day and morning leave count as "on leave with meals".

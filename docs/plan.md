@@ -1,6 +1,12 @@
 # MVP Plan – PNJP Meal Ordering System
 
-Oct 19, 2026 · @Quang · v1.3, aligned with BRQ-MEAL-001 v1.0
+Oct 19, 2026 · @Quang · v1.4, aligned with BRQ-MEAL-001 v1.0
+
+**Changes in v1.4 (Nov 1, 2026): attendance after a held cutoff and after finalization**
+
+- After a held cutoff (BR-34), only the HC admin's re-run cancels; a later automatic sync that succeeds never cancels by itself (Q29).
+- After finalization, attendance is still read until `close.adjustmentDeadline` (10:30), automatically and by the HC admin's re-run, but only to record: nothing is restored, and a DMP confirmation or check-in that arrives then is a case to review (BR-30, BR-32). From the deadline on, no sync runs for that day.
+- "On leave but still has meals" covers full-day and morning leave only (BR-41, Q28).
 
 **Changes in v1.3 (Oct 30, 2026): presence confirmed in DMP**
 
@@ -131,11 +137,11 @@ BR-20 examples with a menu of Mặn Cá kho, Mặn Thịt kho, Chay, Cháo:
 
 ### 2.4 Attendance and cancellation on day D
 
-- **BR-30** The system pulls attendance from DMP every 5 minutes from 07:00 until finalization. Present = at least one record with a check-in on day D no later than 08:10, or a manager's presence confirmation for day D in DMP, whatever the arrival time.
+- **BR-30** The system pulls attendance from DMP every 5 minutes from 07:00 until finalization, then only to record until `close.adjustmentDeadline` (BR-32). Present = at least one record with a check-in on day D no later than 08:10, or a manager's presence confirmation for day D in DMP, whatever the arrival time.
 - **BR-31** At 08:10, employees with meals who are not present become "Provisionally cancelled" for all their meals in that session.
-- **BR-32** Between 08:10 and finalization, if a record with check-in ≤ 08:10 arrives late, the meals are restored automatically. A check-in after 08:10 does not restore on its own; the employee asks their manager to confirm presence in DMP, or an admin (BR-33). A manager's DMP confirmation that arrives before finalization restores the meals automatically, with no reason. One that arrives after finalization never adds meals: it is a case to review (BR-41) and the HC admin may record an adjustment under BR-46.
+- **BR-32** Between 08:10 and finalization, if a record with check-in ≤ 08:10 arrives late, the meals are restored automatically. A check-in after 08:10 does not restore on its own; the employee asks their manager to confirm presence in DMP, or an admin (BR-33). A manager's DMP confirmation that arrives before finalization restores the meals automatically, with no reason. One that arrives after finalization never adds meals: syncs keep reading DMP until `close.adjustmentDeadline` (10:30), automatically and by the HC admin's re-run, only to record; such a late confirmation is a case to review (BR-41) and the HC admin may record an adjustment under BR-46. No sync runs for the day after that deadline.
 - **BR-33** A dept or HC admin confirms presence (forgot to check in, checked in after 08:10) until finalization, with an optional reason; the meals are restored. This is the fallback when the DMP confirmation (BR-32) is late or missing.
-- **BR-34** Safety check: if the latest sync failed, or fewer than 50% of employees with meals are present, the system does not cancel in bulk, keeps all meals and warns the HC admin. The HC admin re-runs the sync or cancels manually.
+- **BR-34** Safety check: if the latest sync failed, or fewer than 50% of employees with meals are present, the system does not cancel in bulk, keeps all meals and warns the HC admin. The HC admin re-runs the sync or cancels manually; a later automatic sync never cancels by itself (Q29).
 - **BR-35** Leave only shows a "Leave request" flag (full day, morning or afternoon); it never cancels meals. Half-day leave resolves through BR-30: morning leave loses lunch, afternoon leave keeps it.
 - **BR-36** Employees who leave the company per DMP lose all meals from their end date. New hires are registered by dept admins under BR-25.
 
@@ -283,7 +289,7 @@ The system only reads data from DMP through its existing REST API, by scheduled 
 | Service token | POST /api/auth/login | email, password of the LDAP service account | On startup, on token expiry or on a 401 | JWT without refresh token; the account needs an unscoped role (it, hr or planner) |
 | Employees | GET /api/hr-employees | page, size ≤ 500, sort=employeeId,asc | Daily at 02:00 and on manual trigger | Returns a Spring Page (content, totalElements), no wrapper. Store only employeeId, name, email, unit codes, cost center code if present, leaveStatus, startWDate; drop birth date, phone number, gender |
 | Org structure | GET /api/hierarchy | none | Daily at 02:00 | Returns the full tree, unpaged; fallback /api/dropdown/cctc/\*. Map DMP levels to levels 1–6 (BR-61); check whether nodes carry a cost center code |
-| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in. Also read the manager's presence confirmation (BR-30, BR-32); its field is not known yet (Q27) |
+| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization, then record-only until `close.adjustmentDeadline` | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in. Also read the manager's presence confirmation (BR-30, BR-32); its field is not known yet (Q27) |
 | Leave | GET /api/daily-forecast | fromDate, toDate as ISO; hasLeave=true; companyCode; page; pageSize | Minute 30 of every hour, window today to 14 days ahead | Use restStatus, leaveTypeName, leaveDayType (FULL, AM, PM); flags only, per BR-35 |
 | Overtime | Not used |  |  | Out of MVP. DMP has 3 overtime sources, none official, none with an approval status |
 
@@ -419,7 +425,7 @@ Every job is idempotent per (factory, date). If a job is missed, the first reque
 | --- | --- | --- |
 | sync-org-employees | Daily at 02:00 | Sync org tree and employees; recompute meal units and inherited floor, canteen, cost center (BR-60, BR-62, BR-63); cancel meals of leavers (BR-36) |
 | sync-leave | Minute 30 of every hour | Leave flags from today to 14 days ahead |
-| poll-attendance | Every 5 minutes from 07:00 to finalization, serving days | Update DailyPresence; auto-restore per BR-32 |
+| poll-attendance | Every 5 minutes from 07:00 to finalization, then record-only until `close.adjustmentDeadline`, serving days | Update DailyPresence; auto-restore per BR-32 before finalization only |
 | provisional-cancel | 08:10 on serving days | BR-31 with the BR-34 safety check |
 | close-week | At each week's closeAt | ForecastLine snapshot (BR-07) |
 | menu-publish-warning | Monday 12:00, then hourly until published | BR-06 |
@@ -538,6 +544,7 @@ The API of P0–P2 is rewritten in Java. The HTTP contract (routes, bodies, erro
 ### P4 – Reconciliation, finalization, export
 
 - [ ] Compute actual counts, compare with forecast, exceptions list (BR-41), per-meal deviation warning (BR-42).
+- [ ] Attendance after finalization (BR-30, BR-32, v1.4): polling and the HC admin's re-run go on until `close.adjustmentDeadline` but only record (no restore); late DMP confirmations and check-ins show as cases to review; no sync after the deadline.
 - [ ] /admin/reconciliation and the Finalize button (BR-43): provisional cancellations become cancellations, FinalCount stored, day locked; close-reminder job.
 - [ ] Adjustments after finalization (BR-46): HC admin only, deadline from Setting, required reason and caterer tick, supplementary Excel file; FinalEmployeeLine snapshot at finalization.
 - [ ] Excel export of the final file, the weekly forecast file and the box-label sheet (BR-44).
