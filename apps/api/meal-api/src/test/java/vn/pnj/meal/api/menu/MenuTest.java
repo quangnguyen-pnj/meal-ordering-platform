@@ -915,17 +915,24 @@ class MenuTest extends IntegrationTest {
 
   @Test
   @Order(60)
-  @DisplayName("BR-10: the template lists the active dish-type codes")
+  @DisplayName(
+      "BR-10: the template lists the active dish-type codes on the right of the same sheet; only"
+          + " \"Nhóm\" is a drop-down")
   void template() throws Exception {
     MockHttpServletResponse res =
         send(hc, HttpMethod.GET, "/api/admin/dish-library/template", null);
     assertThat(res.getStatus()).isEqualTo(200);
     assertThat(res.getHeader("Content-Disposition")).contains("mau-thu-vien-mon.xlsx");
     byte[] file = res.getContentAsByteArray();
-    assertThat(TestXlsx.read(file, 0, 1).getFirst()).containsExactly(HEADER.getFirst());
-    List<String> codes = TestXlsx.read(file, 1, 1).stream().skip(1).map(List::getFirst).toList();
+    List<List<String>> sheet = TestXlsx.read(file, 0, 1, 4, 5, 6);
+    assertThat(sheet.getFirst())
+        .containsExactly(HEADER.getFirst(), "", "Bảng tra: mã loại món", "Tên loại món");
+    List<String> codes =
+        sheet.stream().skip(1).map(r -> r.get(2)).filter(c -> !c.isEmpty()).toList();
     assertThat(codes).contains("MAN", "CHAY", "CHAO");
+    assertThat(sheet).allSatisfy(r -> assertThat(r.get(1)).isEmpty());
     try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(file))) {
+      assertThat(wb.getNumberOfSheets()).isEqualTo(1);
       List<String> lists = new ArrayList<>();
       for (DataValidation v : wb.getSheetAt(0).getDataValidations()) {
         var range = v.getRegions().getCellRangeAddress(0);
@@ -935,11 +942,11 @@ class MenuTest extends IntegrationTest {
                 : v.getValidationConstraint().getFormula1();
         lists.add(range.formatAsString() + " " + formula);
       }
-      assertThat(lists)
-          .containsExactlyInAnyOrder(
-              "A2:A2001 Món chính,Tráng miệng",
-              "B2:B2001 'Loại món'!$A$2:$A$" + (codes.size() + 1));
+      assertThat(lists).containsExactly("A2:A2001 Món chính,Tráng miệng");
     }
+    // The lookup rows have nothing in A–C, so uploading the template reads only its two examples.
+    String preview = uploadLibraryOk(file, false);
+    assertThat(JsonPath.<Integer>read(preview, "$.rowCount")).isEqualTo(2);
   }
 
   @Test

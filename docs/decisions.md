@@ -249,7 +249,8 @@ A list of fixes and features from the product owner, with the answers to the que
 ### Excel imports
 
 - **Dish library:** template download, then upload with `apply=false` (preview) or `apply=true`. A row is "Món chính" with a dish-type code, or "Tráng miệng". One bad row rejects the file; rows already in the library are skipped, so the same file twice adds nothing. Applied in one transaction with one audit entry (`dishLibrary.imported`).
-  - The template's "Nhóm" and "Mã loại món" cells are Excel drop-downs on rows 2–2001 (the import limit). "Nhóm" lists the two groups; "Mã loại món" points at the codes on the "Loại món" sheet and accepts blank (desserts have no type). This only helps the user; the server still validates every row, because the drop-down can be bypassed by pasting or by other spreadsheet apps.
+  - The template's "Nhóm" cells are an Excel drop-down of the two groups on rows 2–2001 (the import limit). This only helps the user; the server still validates every row, because the drop-down can be bypassed by pasting or by other spreadsheet apps.
+  - "Mã loại món" is free text (product owner, 2026-11-02; it was a drop-down pointing at a second "Loại món" sheet). The template is now one sheet: the active codes and names sit in columns E–F of "Thư viện món" as a lookup, after an empty column D. The parser reads only A–C, so lookup rows are never imported; the server checks each code (`TYPE_REQUIRED`, `TYPE_UNKNOWN`).
 - **A unit's week of registrations** (the product owner's meaning of "danh sách đăng ký suất ăn"): the template is the bulk grid as a file (row 1 for people, hidden row 2 with `<date>|<menuItemId>` keys, current quantities filled in), only days still open for on-behalf entry. Upload validates the whole file (`validateRegistrationImport`); applying saves every changed day through the grid's own save, now able to take several days in one transaction (`saveGridDays`), so BR-20, BR-21 and the per-day audit apply unchanged. Same scope as the grid (`registration.onBehalf` on the unit).
 
 ### Removed
@@ -481,7 +482,7 @@ The P1 part of the API now runs on Java with the same HTTP contract: org structu
 - **Excel uses Apache POI 5.5.1.**
   - 6.0.0 was released on 2026-10-19, too recently to adopt.
   - Cells are read as Excel shows them (`DataFormatter`), like ExcelJS's `cell.text`.
-  - The library template keeps its two drop-down lists.
+  - The library template keeps its "Nhóm" drop-down list.
   - Exports write text cells only.
 - **Jobs run on `@Scheduled` + ShedLock.**
   - The schedules are the legacy ones, in Vietnam time: sync at 02:00, the menu warning hourly, close-week every minute, reselect-deadline every minute at :30.
