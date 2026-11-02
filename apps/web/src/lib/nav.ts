@@ -1,7 +1,7 @@
 import { PERMISSION_MATRIX, type Action, type Role } from '@meal/shared';
 import type { MessageKey } from '@/messages';
 
-export type NavGroup = 'mine' | 'admin';
+export type NavGroup = 'mine' | 'admin' | 'masterdata';
 
 export interface NavItem {
   href: string;
@@ -16,6 +16,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
+  // MINE
   {
     href: '/today',
     labelKey: 'nav.items.today',
@@ -48,6 +49,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     phase: 'P2',
     available: true,
   },
+
+  // ADMIN
   {
     href: '/admin/today',
     labelKey: 'nav.items.adminToday',
@@ -70,22 +73,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'admin',
     action: 'registration.onBehalf',
     phase: 'P2',
-    available: true,
-  },
-  {
-    href: '/admin/dishes',
-    labelKey: 'nav.items.dishes',
-    group: 'admin',
-    action: 'dishes.manage',
-    phase: 'P1',
-    available: true,
-  },
-  {
-    href: '/admin/menu',
-    labelKey: 'nav.items.menu',
-    group: 'admin',
-    action: 'menu.manage',
-    phase: 'P1',
     available: true,
   },
   {
@@ -113,38 +100,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     available: false,
   },
   {
-    href: '/admin/master',
-    labelKey: 'nav.items.master',
-    group: 'admin',
-    action: 'org.manage',
-    phase: 'P1',
-    available: true,
-  },
-  {
-    href: '/admin/org',
-    labelKey: 'nav.items.org',
-    group: 'admin',
-    action: 'org.manage',
-    phase: 'P1',
-    available: true,
-  },
-  {
-    href: '/admin/employees',
-    labelKey: 'nav.items.employees',
-    group: 'admin',
-    action: 'pin.reset',
-    phase: 'P1',
-    available: true,
-  },
-  {
-    href: '/admin/settings',
-    labelKey: 'nav.items.settings',
-    group: 'admin',
-    action: 'settings.manage',
-    phase: 'P1',
-    available: true,
-  },
-  {
     href: '/admin/audit',
     labelKey: 'nav.items.audit',
     group: 'admin',
@@ -157,6 +112,56 @@ export const NAV_ITEMS: readonly NavItem[] = [
     labelKey: 'nav.items.system',
     group: 'admin',
     action: 'integration.configure',
+    phase: 'P1',
+    available: true,
+  },
+
+  // MASTER DATA
+  {
+    href: '/admin/dishes',
+    labelKey: 'nav.items.dishes',
+    group: 'masterdata',
+    action: 'dishes.manage',
+    phase: 'P1',
+    available: true,
+  },
+  {
+    href: '/admin/menu',
+    labelKey: 'nav.items.menu',
+    group: 'masterdata',
+    action: 'menu.manage',
+    phase: 'P1',
+    available: true,
+  },
+  {
+    href: '/admin/master',
+    labelKey: 'nav.items.master',
+    group: 'masterdata',
+    action: 'org.manage',
+    phase: 'P1',
+    available: true,
+  },
+  {
+    href: '/admin/org',
+    labelKey: 'nav.items.org',
+    group: 'masterdata',
+    action: 'org.manage',
+    phase: 'P1',
+    available: true,
+  },
+  {
+    href: '/admin/employees',
+    labelKey: 'nav.items.employees',
+    group: 'masterdata',
+    action: 'pin.reset',
+    phase: 'P1',
+    available: true,
+  },
+  {
+    href: '/admin/settings',
+    labelKey: 'nav.items.settings',
+    group: 'masterdata',
+    action: 'settings.manage',
     phase: 'P1',
     available: true,
   },
@@ -177,6 +182,7 @@ export function visibleNav(roles: readonly Role[]): Record<NavGroup, NavItem[]> 
   return {
     mine: visible.filter((i) => i.group === 'mine'),
     admin: visible.filter((i) => i.group === 'admin'),
+    masterdata: visible.filter((i) => i.group === 'masterdata'),
   };
 }
 
