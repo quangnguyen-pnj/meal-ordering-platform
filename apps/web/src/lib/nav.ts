@@ -1,4 +1,25 @@
 import { PERMISSION_MATRIX, type Action, type Role } from '@meal/shared';
+import {
+  BarChart3,
+  BookOpen,
+  Building2,
+  CalendarCheck,
+  CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
+  Database,
+  History,
+  Printer,
+  Scale,
+  Server,
+  Settings,
+  ShieldCheck,
+  Truck,
+  UserCog,
+  Users,
+  UtensilsCrossed,
+  type LucideIcon,
+} from 'lucide-react';
 import type { MessageKey } from '@/messages';
 
 export type NavGroup = 'mine' | 'admin' | 'masterdata';
@@ -6,6 +27,7 @@ export type NavGroup = 'mine' | 'admin' | 'masterdata';
 export interface NavItem {
   href: string;
   labelKey: MessageKey;
+  icon: LucideIcon;
   group: NavGroup;
   /** Matrix action that decides visibility (plan section 3). The API still enforces it. */
   action: Action;
@@ -19,6 +41,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // MINE
   {
     href: '/today',
+    icon: CalendarCheck,
     labelKey: 'nav.items.today',
     group: 'mine',
     action: 'menu.registerOwn',
@@ -27,6 +50,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/week',
+    icon: CalendarDays,
     labelKey: 'nav.items.week',
     group: 'mine',
     action: 'menu.registerOwn',
@@ -35,6 +59,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/team',
+    icon: Users,
     labelKey: 'nav.items.team',
     group: 'mine',
     action: 'team.view',
@@ -43,6 +68,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/history',
+    icon: History,
     labelKey: 'nav.items.history',
     group: 'mine',
     action: 'menu.registerOwn',
@@ -53,6 +79,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // ADMIN
   {
     href: '/admin/today',
+    icon: ClipboardCheck,
     labelKey: 'nav.items.adminToday',
     group: 'admin',
     action: 'presence.confirm',
@@ -61,6 +88,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/registrations',
+    icon: ClipboardList,
     labelKey: 'nav.items.registrations',
     group: 'admin',
     action: 'registration.onBehalf',
@@ -69,6 +97,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/print',
+    icon: Printer,
     labelKey: 'nav.items.print',
     group: 'admin',
     action: 'registration.onBehalf',
@@ -77,6 +106,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/reconciliation',
+    icon: Scale,
     labelKey: 'nav.items.reconciliation',
     group: 'admin',
     action: 'reconciliation.view',
@@ -85,6 +115,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/delivery',
+    icon: Truck,
     labelKey: 'nav.items.delivery',
     group: 'admin',
     action: 'delivery.confirmUnit',
@@ -93,6 +124,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/reports',
+    icon: BarChart3,
     labelKey: 'nav.items.reports',
     group: 'admin',
     action: 'reports.view',
@@ -101,6 +133,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/audit',
+    icon: ShieldCheck,
     labelKey: 'nav.items.audit',
     group: 'admin',
     action: 'audit.view',
@@ -109,6 +142,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/system',
+    icon: Server,
     labelKey: 'nav.items.system',
     group: 'admin',
     action: 'integration.configure',
@@ -119,6 +153,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // MASTER DATA
   {
     href: '/admin/dishes',
+    icon: UtensilsCrossed,
     labelKey: 'nav.items.dishes',
     group: 'masterdata',
     action: 'dishes.manage',
@@ -127,6 +162,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/menu',
+    icon: BookOpen,
     labelKey: 'nav.items.menu',
     group: 'masterdata',
     action: 'menu.manage',
@@ -135,6 +171,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/master',
+    icon: Database,
     labelKey: 'nav.items.master',
     group: 'masterdata',
     action: 'org.manage',
@@ -143,6 +180,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/org',
+    icon: Building2,
     labelKey: 'nav.items.org',
     group: 'masterdata',
     action: 'org.manage',
@@ -151,6 +189,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/employees',
+    icon: UserCog,
     labelKey: 'nav.items.employees',
     group: 'masterdata',
     action: 'pin.reset',
@@ -159,6 +198,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/admin/settings',
+    icon: Settings,
     labelKey: 'nav.items.settings',
     group: 'masterdata',
     action: 'settings.manage',
