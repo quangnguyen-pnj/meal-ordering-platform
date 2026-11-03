@@ -42,6 +42,7 @@ function NavLink({
             aria-disabled="true"
             className={cn(itemClass, 'cursor-default text-muted-foreground/70')}
           >
+            <item.icon className="h-4 w-4 shrink-0" aria-hidden />
             {t(item.labelKey)}
             <Badge variant="outline" className="ml-auto text-[0.6875rem] font-normal">
               {t('nav.comingSoon')}
@@ -65,6 +66,7 @@ function NavLink({
         active && 'bg-accent font-medium text-accent-foreground',
       )}
     >
+      <item.icon className="h-4 w-4 shrink-0" aria-hidden />
       {t(item.labelKey)}
       <PendingMark />
     </Link>
