@@ -290,7 +290,7 @@ function TreeTab() {
           <div
             role="group"
             aria-label={t('org.viewLabel')}
-            className="flex rounded-md border p-0.5"
+            className="flex rounded-md border p-0.5 gap-1"
           >
             {(['tree', 'mealUnits'] as const).map((v) => (
               <Button
