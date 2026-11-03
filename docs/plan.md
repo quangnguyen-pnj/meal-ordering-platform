@@ -85,8 +85,10 @@ The top row runs once per served week; the bottom row repeats on every serving d
 - **BR-01** The menu for week N can be built from 00:00 Friday of week N-2, right after week N-1's registration closes; in practice it may slip to Monday–Tuesday of week N-1.
 - **BR-02** Registration for week N opens as soon as its menu is published. Employees never see an unpublished menu.
 - **BR-03** Registration closes at the end of Thursday of week N-1 (closeAt). The UI shows 23:59; closeAt is stored as 00:00 Friday, exclusive, so a save at 23:59:59 is accepted. A menu published late but before this time does not extend the close.
-- **BR-04** If the menu is still unpublished at the regular closeAt, closeAt = publish time + 24 hours, computed at publish.
-- **BR-05** If closeAt under BR-04 falls after 08:00 of a serving day, that day still locks at its own 08:00.
+- **BR-04** (changed by the product owner, 2026-11-03) If the menu is still unpublished at the regular closeAt:
+  - Published before 00:00 Monday of week N: the HC admin picks closeAt when publishing, after the publish time and no later than 00:00 Monday of week N. The screen suggests publish time + `registration.latePublishHours` (24 hours), capped at that limit.
+  - Published from 00:00 Monday of week N (inside its own week): there is no forecast. closeAt = publish time and the forecast snapshot is taken at publish, empty, so every registration of that week counts as actual (BR-23) and each day still locks at its own 08:00.
+- **BR-05** If closeAt falls after 08:00 of a serving day (a menu published inside week N), that day still locks at its own 08:00.
 - **BR-06** From 12:00 Monday of week N-1, if week N's menu is unpublished, the system warns the HC admin on every screen until it is published.
 - **BR-07** At closeAt the system stores an immutable forecast snapshot and enables the weekly forecast export. Registrations stay editable per day under BR-23; every later change is measured against this snapshot. Nothing is deleted; "reset" only means the UI rolls over to the next week.
 - **BR-08** Serving days default to Monday–Friday. The HC admin turns Saturday on per week and marks holidays as "not served".

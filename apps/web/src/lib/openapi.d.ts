@@ -1689,8 +1689,11 @@ export interface components {
             closeAtIsExpected: boolean;
             days: components["schemas"]["MenuDayView"][];
             id: string | null;
-            latePublish: boolean;
+            /** Format: date-time */
+            latestCloseAt: string;
             lockedDates: string[];
+            /** @enum {string} */
+            publishWindow: "ON_TIME" | "LATE" | "IN_WEEK";
             /** Format: date-time */
             publishedAt: string | null;
             /** @enum {string} */
@@ -1813,6 +1816,17 @@ export interface components {
         ProgressView: {
             units: components["schemas"]["ProgressUnit"][];
             /** Format: date */
+            weekStart: string;
+        };
+        PublishBody: {
+            /** Format: date-time */
+            closeAt: string | null;
+        };
+        PublishWeekBody: {
+            canteenId: string;
+            /** Format: date-time */
+            closeAt?: string;
+            days: components["schemas"]["DayBody"][];
             weekStart: string;
         };
         Read: {
@@ -2007,6 +2021,7 @@ export interface components {
             closeAt: string;
             days: components["schemas"]["MyDayView"][];
             forecastTaken: boolean;
+            noForecast: boolean;
             /** @enum {string} */
             state: "PUBLISHED";
             /** Format: int32 */
@@ -2673,7 +2688,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WeekBody"];
+                "application/json": components["schemas"]["PublishWeekBody"];
             };
         };
         responses: {
@@ -2697,7 +2712,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

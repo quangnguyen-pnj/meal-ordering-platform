@@ -28,9 +28,11 @@ import vn.pnj.meal.api.db.Ids;
 import vn.pnj.meal.api.db.SqlTime;
 import vn.pnj.meal.api.dishes.DishTypeLabel;
 import vn.pnj.meal.api.org.OrgDirectory;
+import vn.pnj.meal.api.registrations.ForecastService;
 import vn.pnj.meal.api.settings.SettingKey;
 import vn.pnj.meal.api.settings.SettingsService;
 import vn.pnj.meal.rules.deadline.Deadlines;
+import vn.pnj.meal.rules.deadline.Deadlines.PublishWindow;
 import vn.pnj.meal.rules.deadline.WeekdayTime;
 import vn.pnj.meal.rules.menu.MenuRules;
 import vn.pnj.meal.rules.menu.MenuRules.DayCounts;
@@ -55,6 +57,7 @@ public class MenuService {
   private final AuditService audit;
   private final ClockService clock;
   private final OrgDirectory org;
+  private final ForecastService forecast;
 
   public MenuService(
       JdbcClient jdbc,
@@ -64,7 +67,8 @@ public class MenuService {
       SettingsService settings,
       AuditService audit,
       ClockService clock,
-      OrgDirectory org) {
+      OrgDirectory org,
+      ForecastService forecast) {
     this.jdbc = jdbc;
     this.tx = tx;
     this.json = json;
@@ -73,6 +77,7 @@ public class MenuService {
     this.audit = audit;
     this.clock = clock;
     this.org = org;
+    this.forecast = forecast;
   }
 
   /** 409 listing every serving day that lacks a main dish or a dessert (publishing rule). */
@@ -126,7 +131,11 @@ public class MenuService {
   /**
    * @param id null while nothing has been saved for this canteen and week
    * @param status DRAFT, PUBLISHED, CLOSED, or NEW when nothing is saved
-   * @param closeAt stored once published; otherwise what publishing now would give (BR-03, BR-04)
+   * @param closeAt stored once published; otherwise what publishing now would give (BR-03, BR-04),
+   *     for a LATE publish the suggestion the HC admin may change
+   * @param publishWindow when the menu was (or would now be) published: ON_TIME, LATE (the HC admin
+   *     picks closeAt) or IN_WEEK (no forecast)
+   * @param latestCloseAt BR-04: the latest closeAt the HC admin may pick (00:00 Monday of the week)
    * @param lockedDates days whose lock has passed can no longer change once published
    */
   public record MenuWeekView(
@@ -138,7 +147,8 @@ public class MenuService {
       @Nullable Instant publishedAt,
       Instant closeAt,
       boolean closeAtIsExpected,
-      boolean latePublish,
+      @Schema(allowableValues = {"ON_TIME", "LATE", "IN_WEEK"}) String publishWindow,
+      Instant latestCloseAt,
       List<LocalDate> lockedDates,
       List<MenuDayView> days) {
 
@@ -152,7 +162,8 @@ public class MenuService {
           publishedAt,
           closeAt,
           closeAtIsExpected,
-          latePublish,
+          publishWindow,
+          latestCloseAt,
           lockedDates,
           days.stream().filter(MenuDayView::isServing).toList());
     }
@@ -236,20 +247,19 @@ public class MenuService {
 
     Instant closeAt;
     boolean expected;
-    boolean latePublish;
+    PublishWindow window;
     if (published && week.closeAt() != null) {
       closeAt = week.closeAt();
       expected = false;
-      latePublish =
-          week.publishedAt() != null
-              && Deadlines.computeCloseAt(
-                      weekStart, week.publishedAt(), closeRule, latePublishHours)
-                  .latePublish();
+      window =
+          week.publishedAt() == null
+              ? PublishWindow.ON_TIME
+              : Deadlines.publishWindow(weekStart, week.publishedAt(), closeRule);
     } else {
       Deadlines.CloseAt r = Deadlines.computeCloseAt(weekStart, now, closeRule, latePublishHours);
       closeAt = r.closeAt();
       expected = true;
-      latePublish = r.latePublish();
+      window = r.window();
     }
 
     return new MenuWeekView(
@@ -261,7 +271,8 @@ public class MenuService {
         week == null ? null : week.publishedAt(),
         closeAt,
         expected,
-        latePublish,
+        window.name(),
+        Deadlines.weekStartAt(weekStart),
         published
             ? dates.stream().filter(d -> !Deadlines.dayLockAt(d, lockTime).isAfter(now)).toList()
             : List.of(),
@@ -724,8 +735,14 @@ public class MenuService {
     return byId;
   }
 
-  /** BR-02 / BR-03 / BR-04: publishing opens registration and fixes closeAt. Audited. */
-  public MenuWeekView publish(String actorId, String factoryId, String weekId) {
+  /**
+   * BR-02 / BR-03 / BR-04: publishing opens registration and fixes closeAt. Audited.
+   *
+   * @param chosenCloseAt BR-04: required for a LATE publish, where the HC admin picks closeAt;
+   *     ignored otherwise
+   */
+  public MenuWeekView publish(
+      String actorId, String factoryId, String weekId, @Nullable Instant chosenCloseAt) {
     MenuStore.Week week = store.byId(weekId);
     if (week == null || !week.factoryId().equals(factoryId)) {
       throw ApiException.notFound("Menu week not found");
@@ -751,6 +768,17 @@ public class MenuService {
             now,
             settings.getWeekdayTime(factoryId, SettingKey.REGISTRATION_CLOSE),
             settings.getInt(factoryId, SettingKey.REGISTRATION_LATE_PUBLISH_HOURS));
+    Instant closeAt = result.closeAt();
+    if (result.window() == PublishWindow.LATE) {
+      if (chosenCloseAt == null
+          || !Deadlines.isValidLateCloseAt(week.weekStart(), now, chosenCloseAt)) {
+        throw ApiException.invalid(
+            "A late publish needs a closeAt after now and no later than 00:00 Monday of the week",
+            List.of(Map.of("path", "closeAt", "message", "lateCloseAt")));
+      }
+      closeAt = chosenCloseAt;
+    }
+    Instant fixedCloseAt = closeAt;
     tx.executeWithoutResult(
         status -> {
           // Conditional update: two concurrent publishes cannot both succeed.
@@ -763,7 +791,7 @@ public class MenuService {
                       """)
                   .param("now", SqlTime.utc(now))
                   .param("actorId", actorId)
-                  .param("closeAt", SqlTime.utc(result.closeAt()))
+                  .param("closeAt", SqlTime.utc(fixedCloseAt))
                   .param("id", weekId)
                   .update();
           if (updated == 0) {
@@ -772,11 +800,17 @@ public class MenuService {
           Map<String, Object> after = new LinkedHashMap<>();
           after.put("canteenId", week.canteenId());
           after.put("weekStart", week.weekStart().toString());
-          after.put("closeAt", result.closeAt());
-          after.put("latePublish", result.latePublish());
+          after.put("closeAt", fixedCloseAt);
+          after.put("publishWindow", result.window().name());
           audit.log(
               AuditService.Entry.of(actorId, "menu.published", "MenuWeek", weekId)
                   .withAfter(after));
+          if (result.window() == PublishWindow.IN_WEEK) {
+            // Published inside its own week: no forecast. The empty snapshot is taken in the same
+            // transaction, so no registration can land in it and every meal counts as actual
+            // (BR-07, BR-23).
+            forecast.ensureClosed(weekId);
+          }
         });
     return adminWeek(factoryId, week.canteenId(), week.weekStart());
   }
@@ -787,7 +821,8 @@ public class MenuService {
    * dish and a dessert; that is checked on the submitted days before anything is written, and again
    * by {@link #publish} on the stored week.
    */
-  public MenuWeekView saveAndPublish(String actorId, String factoryId, WeekInput input) {
+  public MenuWeekView saveAndPublish(
+      String actorId, String factoryId, WeekInput input, @Nullable Instant chosenCloseAt) {
     List<DayGaps> gaps =
         MenuRules.menuWeekGaps(
             input.days().stream()
@@ -803,7 +838,7 @@ public class MenuService {
     if (!Objects.equals(saved.menu().status(), "DRAFT") || saved.menu().id() == null) {
       throw ApiException.invalidState("Menu week is already published", null);
     }
-    return publish(actorId, factoryId, saved.menu().id());
+    return publish(actorId, factoryId, saved.menu().id(), chosenCloseAt);
   }
 
   /** What an employee sees: only a published menu of their own meal unit's canteen. */

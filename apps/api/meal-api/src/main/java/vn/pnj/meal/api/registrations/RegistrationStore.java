@@ -96,6 +96,7 @@ public class RegistrationStore {
       String canteenName,
       LocalDate weekStart,
       boolean published,
+      Instant publishedAt,
       Instant closeAt,
       Instant closedAt,
       List<LoadedDay> days) {
@@ -115,6 +116,7 @@ public class RegistrationStore {
       String canteenId,
       String canteenName,
       String status,
+      Instant publishedAt,
       Instant closeAt,
       Instant closedAt) {}
 
@@ -126,7 +128,7 @@ public class RegistrationStore {
         jdbc.sql(
                 """
                 SELECT w.id, w."factoryId", w."canteenId", c.name AS "canteenName",
-                       w.status::text, w."closeAt", w."closedAt"
+                       w.status::text, w."publishedAt", w."closeAt", w."closedAt"
                 FROM "MenuWeek" w JOIN "Canteen" c ON c.id = w."canteenId"
                 WHERE w."canteenId" = :canteenId AND w."weekStart" = :weekStart
                 """)
@@ -140,6 +142,7 @@ public class RegistrationStore {
                         rs.getString("canteenId"),
                         rs.getString("canteenName"),
                         rs.getString("status"),
+                        SqlTime.instant(rs, "publishedAt"),
                         SqlTime.instant(rs, "closeAt"),
                         SqlTime.instant(rs, "closedAt")))
             .optional()
@@ -233,6 +236,7 @@ public class RegistrationStore {
         head.canteenName(),
         weekStart,
         !head.status().equals("DRAFT") && head.closeAt() != null,
+        head.publishedAt(),
         head.closeAt(),
         head.closedAt(),
         days);

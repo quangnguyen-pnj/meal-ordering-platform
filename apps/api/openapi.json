@@ -785,7 +785,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/WeekBody"
+                "$ref" : "#/components/schemas/PublishWeekBody"
               }
             }
           },
@@ -817,6 +817,15 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishBody"
+              }
+            }
+          }
+        },
         "responses" : {
           "200" : {
             "content" : {
@@ -4049,8 +4058,9 @@
           "id" : {
             "type" : [ "string", "null" ]
           },
-          "latePublish" : {
-            "type" : "boolean"
+          "latestCloseAt" : {
+            "type" : "string",
+            "format" : "date-time"
           },
           "lockedDates" : {
             "type" : "array",
@@ -4058,6 +4068,10 @@
               "type" : "string",
               "format" : "date"
             }
+          },
+          "publishWindow" : {
+            "type" : "string",
+            "enum" : [ "ON_TIME", "LATE", "IN_WEEK" ]
           },
           "publishedAt" : {
             "type" : [ "string", "null" ],
@@ -4072,7 +4086,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latePublish", "lockedDates", "publishedAt", "status", "weekStart" ]
+        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latestCloseAt", "lockedDates", "publishWindow", "publishedAt", "status", "weekStart" ]
       },
       "MixCheck" : {
         "type" : "object",
@@ -4430,6 +4444,42 @@
           }
         },
         "required" : [ "units", "weekStart" ]
+      },
+      "PublishBody" : {
+        "type" : "object",
+        "properties" : {
+          "closeAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "closeAt" ]
+      },
+      "PublishWeekBody" : {
+        "type" : "object",
+        "properties" : {
+          "canteenId" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 1
+          },
+          "closeAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DayBody"
+            },
+            "maxItems" : 7,
+            "minItems" : 1
+          },
+          "weekStart" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "canteenId", "days", "weekStart" ]
       },
       "Read" : {
         "type" : "object",
@@ -5016,6 +5066,9 @@
           "forecastTaken" : {
             "type" : "boolean"
           },
+          "noForecast" : {
+            "type" : "boolean"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "PUBLISHED" ]
@@ -5029,7 +5082,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "state", "totalMeals", "weekStart" ]
+        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
       },
       "WeekSaveBody" : {
         "type" : "object",

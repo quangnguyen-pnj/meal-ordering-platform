@@ -604,3 +604,15 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Choice:** the `api` service sets `SEED_ON_START: 'true'` directly and no longer reads it from `.env`. The seed is idempotent (it only inserts missing rows, so changed PINs, settings and revoked roles stay as they are) and refuses to run in production, so a forgotten switch cannot put fake data into a real database: the api stops instead. A real deployment changes the line in the compose file, as its header says.
 - **Rejected:** `SEED_ON_START=true` in `.env.example` (does not fix `.env` files already copied, and makes `pnpm dev` seed on every start); a separate `COMPOSE_SEED_ON_START` variable (one more variable for a development-only stack).
 - **Checked:** with the existing `.env` (`SEED_ON_START=false`), `docker compose config` shows `SEED_ON_START: "true"` for `api`, and after recreating the api on an already seeded database the log shows `Seed complete` with the same counts (1,700 employees, 4 role assignments), `PNJP000001` signs in with the initial PIN, and the PIN `PNJP000003` had already changed is kept.
+
+## Late and in-week menu publishing (2026-11-03)
+
+- **Request (product owner):** a menu published inside its own week (e.g. week 45's menu published during week 45) must not count as a forecast; every registration of that week is an actual one. A menu published late but before the week starts (Friday to Sunday of week N-1) gets the closeAt the HC admin picks, instead of always publish + 24 hours.
+- **Rules (`Deadlines.publishWindow`, BR-04 in the plan):**
+  - `ON_TIME`, before the regular closeAt: unchanged (BR-03).
+  - `LATE`, from the regular closeAt to 00:00 Monday of week N: the publish request must carry `closeAt`, after the publish time and no later than 00:00 Monday (exclusive, so the last save is Sunday 23:59:59); otherwise 400 on `closeAt`. The builder suggests publish + `registration.latePublishHours`, capped at that limit; the setting is now only the suggestion.
+  - `IN_WEEK`, from 00:00 Monday of week N: closeAt = publish time, and the empty forecast snapshot is taken in the publish transaction (`ForecastService.ensureClosed`), so no registration can land in it. The week is `CLOSED` at once; the forecast export shows 0 and reconciliation runs as usual (every meal is a difference from the forecast). A `closeAt` in the request is ignored.
+- **API:** `MenuWeekView.latePublish` is replaced by `publishWindow` (ON_TIME, LATE, IN_WEEK) and `latestCloseAt`. Both publish endpoints take an optional `closeAt`. `MyRegistrationWeekView` gains `noForecast`, so `/week` keeps the "Đăng ký dự trù" tab with an empty table and says why.
+- **The menu-publish audit** records `publishWindow` instead of `latePublish`.
+- **Not retroactive:** weeks already published keep their stored closeAt and snapshot.
+- **Rejected:** keeping the 24-hour window for in-week publishes (registrations made in it would count as forecast, which is what the request rules out); treating Friday–Sunday publishes as in-week (the product owner chose 00:00 Monday as the boundary).
