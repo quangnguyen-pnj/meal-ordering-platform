@@ -363,6 +363,9 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
 
   const error = save.error ?? publish.error;
   const statusVariant = published ? 'success' : view.status === 'DRAFT' ? 'warning' : 'outline';
+  // A menu published inside its own week is CLOSED at once with an empty snapshot (BR-04), so
+  // "Đã chốt dự trù" would be misleading: one badge says it is published with no forecast.
+  const publishedInWeek = published && view.publishWindow === 'IN_WEEK';
 
   return (
     <DndContext
@@ -378,7 +381,9 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
-          <Badge variant={statusVariant}>{vi.menu.status[view.status]}</Badge>
+          <Badge variant={statusVariant}>
+            {publishedInWeek ? t('menu.publishedNoForecast') : vi.menu.status[view.status]}
+          </Badge>
           {/* A past week has no closeAt to show (BR-04). */}
           <span className={cn('text-sm', !published && view.weekOver && 'hidden')}>
             {view.publishWindow === 'IN_WEEK'
@@ -392,7 +397,8 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
           {view.publishWindow === 'LATE' && (published || canPublish) ? (
             <Badge variant="warning">{t('menu.latePublish')}</Badge>
           ) : null}
-          {view.publishWindow === 'IN_WEEK' && (published || canPublish) ? (
+          {/* Before publishing only: warns that this publish will have no forecast. */}
+          {view.publishWindow === 'IN_WEEK' && canPublish ? (
             <Badge variant="warning">{t('menu.inWeekBadge')}</Badge>
           ) : null}
         </div>

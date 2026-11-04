@@ -242,6 +242,7 @@ export const vi = {
       'Đã qua hạn đăng ký thường lệ. Chọn hạn đăng ký dự trù, muộn nhất đến hết {latest}.',
     lateCloseLabel: 'Hạn đăng ký dự trù (đến hết)',
     inWeekBadge: 'Công bố trong tuần',
+    publishedNoForecast: 'Đã công bố · không dự trù',
     weekOver:
       'Tuần đã qua: mọi ngày phục vụ đều đã khóa nên không công bố được thực đơn. Bạn vẫn lưu nháp được để tham khảo.',
     inWeekPublish:
