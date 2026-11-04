@@ -182,7 +182,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="hidden items-center justify-end gap-3 px-4 py-2 md:flex md:px-6 print:hidden">
+        <div className="sticky top-0 z-20 hidden items-center justify-end gap-3 bg-background px-4 py-2 md:flex md:px-6 print:hidden">
           <UserBlock user={user} onSignOut={signOut} />
         </div>
         <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8 print:p-0">
