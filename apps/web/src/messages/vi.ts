@@ -573,7 +573,8 @@ export const vi = {
     syncDone:
       'Đồng bộ xong: {units} đơn vị, {employees} nhân viên ({created} mới, {updated} cập nhật).',
     exportTitle: 'Xuất mapping hiện tại',
-    exportHint: 'Tệp dùng đúng mẫu nhập. Ô trống nghĩa là kế thừa từ cấp trên.',
+    exportHint:
+      'Tệp dùng đúng mẫu nhập. Ô trống nghĩa là kế thừa từ cấp trên. Tên đơn vị (chỉ đọc) nằm ở sheet "Danh mục", từ cột G.',
     importTitle: 'Nhập mapping từ Excel',
     importHint:
       'Mỗi dòng ghi đầy đủ mapping của một đơn vị (ORG) hoặc một nhân viên (EMPLOYEE, chỉ tầng nhận cơm). Một dòng sai thì cả tệp bị từ chối.',

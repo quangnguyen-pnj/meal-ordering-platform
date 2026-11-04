@@ -84,6 +84,7 @@ Choices made while building, where the plan (`docs/plan.md`, MVP Plan v1.1) was 
 - `planMenuDayEdit` (BR-11, BR-14): a saved day is a list of `{ id?, dishId }`. An existing id with a new dish is a replacement, a missing id is a removal, and the same dish twice on a day is rejected.
 - `buildDmpTree` / `mapDmpLevel` (BR-61): the level is the depth from the root (assumption A14). Any duplicate code, unknown parent, cycle or 7th level rejects the whole tree.
 - `validateMappingRows` (BR-64): a row states the complete mapping of its target, and a blank cell means "inherit". Exporting and re-importing the same file therefore changes nothing; a test proves the round trip. Employee rows may only set the cost center (BR-63).
+- Mapping template (BR-64): the Mapping sheet has only the importable columns (Loại, Mã, Mã tầng, Mã nhà ăn, Mã trung tâm chi phí). Unit names are read-only, so the export lists them on the "Danh mục" sheet as a second table from column G (Mã đơn vị, Tên). Import checks the whole header row, so a file in the older layout with a name column in C is rejected (`TEMPLATE_MISMATCH`) instead of being read one column off.
 
 ### API
 
