@@ -31,12 +31,13 @@ const day = (date: string, quantity: number, forecast: number | null): MyDayView
   extra: false,
 });
 
-const week = (forecastTaken: boolean): MyRegistrationWeekView => ({
+const week = (forecastTaken: boolean, noForecast = false): MyRegistrationWeekView => ({
   state: 'PUBLISHED',
   weekStart: '2026-11-02',
   canteenName: 'Nhà ăn A',
   closeAt: '2026-10-29T17:00:00.000Z',
   forecastTaken,
+  noForecast,
   days: [
     day('2026-11-02', 2, forecastTaken ? 1 : null),
     day('2026-11-03', 1, forecastTaken ? 1 : null),
@@ -80,5 +81,15 @@ describe('WeekRegistrationScreen tabs', () => {
     expect(table).toHaveTextContent('Cơm gà');
     expect(screen.getAllByRole('row').at(-1)).toHaveTextContent(/Tổng\s*1\s*1\s*2/);
     expect(screen.queryByRole('button', { name: /Thêm 1 suất/ })).not.toBeInTheDocument();
+  });
+
+  it('BR-04: a menu published inside its week keeps "Đăng ký dự trù" and says there is no forecast', async () => {
+    show(week(true, true));
+    expect(
+      await screen.findByText(/công bố trong tuần nên không có dự trù\. Mỗi ngày/),
+    ).toBeVisible();
+    await userEvent.click(await screen.findByRole('tab', { name: 'Đăng ký dự trù' }));
+    expect(screen.getByText(/được công bố trong tuần nên không có dự trù/)).toBeVisible();
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });

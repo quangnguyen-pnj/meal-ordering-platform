@@ -70,7 +70,7 @@ import {
   type DraftDay,
   type MenuBuilderStore,
 } from '@/lib/menu-builder-store';
-import { cn, formatCloseAt, formatDate } from '@/lib/utils';
+import { closeAtToVnInput, cn, formatCloseAt, formatDate, vnInputToCloseAt } from '@/lib/utils';
 import { t, vi } from '@/messages';
 
 /**
@@ -228,6 +228,14 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
     if (week.data) store.getState().load(week.data);
   }, [week.data, store]);
 
+  // BR-04: after the regular close the HC admin picks the closeAt, as the last accepted minute in
+  // Vietnam time; it starts at the suggestion (publish + registration.latePublishHours).
+  const [lateCloseInput, setLateCloseInput] = useState('');
+  useEffect(() => {
+    if (week.data?.publishWindow === 'LATE') setLateCloseInput(closeAtToVnInput(week.data.closeAt));
+  }, [week.data]);
+  const lateCloseAt = vnInputToCloseAt(lateCloseInput);
+
   // Names for every dish shown, including archived ones still on the menu.
   const dishById = useMemo(() => {
     const map = new Map<string, DishLabel>();
@@ -246,6 +254,8 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
   const view = week.data;
   const published = view !== undefined && view.status !== 'NEW' && view.status !== 'DRAFT';
   const locked = new Set(view?.lockedDates ?? []);
+  // BR-04: a week whose serving days have all locked can no longer be published.
+  const canPublish = view !== undefined && !published && !view.weekOver;
 
   const save = useMutation({
     mutationFn: () =>
@@ -279,6 +289,7 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
         canteenId,
         weekStart,
         days: store.getState().days.filter((d) => !locked.has(d.date)),
+        closeAt: view?.publishWindow === 'LATE' ? (lateCloseAt ?? undefined) : undefined,
       }),
     onSuccess: (res) => {
       qc.setQueryData(weekKey, res);
@@ -332,7 +343,13 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
           <span className="block">{t('menu.publishConfirm')}</span>
           {dirty ? <span className="mt-2 block">{t('menu.publishWithChanges')}</span> : null}
           <strong className="mt-2 block text-foreground">
-            {t('menu.closeAt', { time: formatCloseAt(view.closeAt) })}
+            {view.publishWindow === 'IN_WEEK'
+              ? t('menu.inWeekPublish')
+              : t('menu.closeAt', {
+                  time: formatCloseAt(
+                    view.publishWindow === 'LATE' && lateCloseAt ? lateCloseAt : view.closeAt,
+                  ),
+                })}
           </strong>
         </>
       ),
@@ -362,14 +379,25 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
           <Badge variant={statusVariant}>{vi.menu.status[view.status]}</Badge>
-          <span className="text-sm">
-            {view.closeAtIsExpected
-              ? t('menu.expectedCloseAt', { time: formatCloseAt(view.closeAt) })
-              : t('menu.closeAt', { time: formatCloseAt(view.closeAt) })}
+          {/* A past week has no closeAt to show (BR-04). */}
+          <span className={cn('text-sm', !published && view.weekOver && 'hidden')}>
+            {view.publishWindow === 'IN_WEEK'
+              ? t('menu.inWeekPublish')
+              : view.closeAtIsExpected
+                ? view.publishWindow === 'LATE'
+                  ? t('menu.lateCloseHint', { latest: formatCloseAt(view.latestCloseAt) })
+                  : t('menu.expectedCloseAt', { time: formatCloseAt(view.closeAt) })
+                : t('menu.closeAt', { time: formatCloseAt(view.closeAt) })}
           </span>
-          {view.latePublish ? <Badge variant="warning">{t('menu.latePublish')}</Badge> : null}
+          {view.publishWindow === 'LATE' && (published || canPublish) ? (
+            <Badge variant="warning">{t('menu.latePublish')}</Badge>
+          ) : null}
+          {view.publishWindow === 'IN_WEEK' && (published || canPublish) ? (
+            <Badge variant="warning">{t('menu.inWeekBadge')}</Badge>
+          ) : null}
         </div>
         {published ? <Alert>{t('menu.publishedEditHint')}</Alert> : null}
+        {!canPublish && !published ? <Alert variant="warning">{t('menu.weekOver')}</Alert> : null}
 
         <div className="grid gap-5 lg:grid-cols-[18rem_1fr]">
           <Library dishes={dishes.data?.items ?? []} desserts={desserts.data?.items ?? []} />
@@ -453,16 +481,34 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
                 ? t('menu.saveChanges')
                 : t('menu.saveDraft')}
           </Button>
-          {!published ? (
+          {canPublish && view.publishWindow === 'LATE' ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="menu-late-close">{t('menu.lateCloseLabel')}</Label>
+              <Input
+                id="menu-late-close"
+                type="datetime-local"
+                className="w-56"
+                max={closeAtToVnInput(view.latestCloseAt)}
+                value={lateCloseInput}
+                onChange={(e) => setLateCloseInput(e.target.value)}
+              />
+            </div>
+          ) : null}
+          {canPublish ? (
             <Button
-              disabled={publish.isPending || save.isPending || gaps.length > 0}
+              disabled={
+                publish.isPending ||
+                save.isPending ||
+                gaps.length > 0 ||
+                (view.publishWindow === 'LATE' && !lateCloseAt)
+              }
               aria-describedby={gaps.length > 0 ? 'publish-hint' : undefined}
               onClick={askPublish}
             >
               {publish.isPending ? t('menu.publishing') : t('menu.publish')}
             </Button>
           ) : null}
-          {!published && gaps.length > 0 ? (
+          {canPublish && gaps.length > 0 ? (
             <div id="publish-hint" className="basis-full text-sm text-muted-foreground">
               <p>{t('menu.publishBlocked')}</p>
               <ul className="mt-1 list-disc pl-5">

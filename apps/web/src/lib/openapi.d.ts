@@ -1146,7 +1146,7 @@ export interface components {
     schemas: {
         ApiErrorBody: {
             /** @enum {string} */
-            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "DMP_UNAVAILABLE" | "INTERNAL";
+            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "WEEK_OVER" | "DMP_UNAVAILABLE" | "INTERNAL";
             details: unknown;
             lockedUntil: string;
             message: string;
@@ -1689,12 +1689,16 @@ export interface components {
             closeAtIsExpected: boolean;
             days: components["schemas"]["MenuDayView"][];
             id: string | null;
-            latePublish: boolean;
+            /** Format: date-time */
+            latestCloseAt: string;
             lockedDates: string[];
+            /** @enum {string} */
+            publishWindow: "ON_TIME" | "LATE" | "IN_WEEK";
             /** Format: date-time */
             publishedAt: string | null;
             /** @enum {string} */
             status: "DRAFT" | "PUBLISHED" | "CLOSED" | "NEW";
+            weekOver: boolean;
             /** Format: date */
             weekStart: string;
         };
@@ -1813,6 +1817,17 @@ export interface components {
         ProgressView: {
             units: components["schemas"]["ProgressUnit"][];
             /** Format: date */
+            weekStart: string;
+        };
+        PublishBody: {
+            /** Format: date-time */
+            closeAt: string | null;
+        };
+        PublishWeekBody: {
+            canteenId: string;
+            /** Format: date-time */
+            closeAt?: string;
+            days: components["schemas"]["DayBody"][];
             weekStart: string;
         };
         Read: {
@@ -2007,6 +2022,7 @@ export interface components {
             closeAt: string;
             days: components["schemas"]["MyDayView"][];
             forecastTaken: boolean;
+            noForecast: boolean;
             /** @enum {string} */
             state: "PUBLISHED";
             /** Format: int32 */
@@ -2673,7 +2689,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WeekBody"];
+                "application/json": components["schemas"]["PublishWeekBody"];
             };
         };
         responses: {
@@ -2697,7 +2713,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

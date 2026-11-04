@@ -237,7 +237,15 @@ export const vi = {
     },
     expectedCloseAt: 'Nếu công bố bây giờ, hạn đăng ký là đến hết {time}.',
     closeAt: 'Hạn đăng ký: đến hết {time}.',
-    latePublish: 'Công bố trễ: hạn đăng ký tính từ lúc công bố',
+    latePublish: 'Công bố trễ: tự chọn hạn đăng ký',
+    lateCloseHint:
+      'Đã qua hạn đăng ký thường lệ. Chọn hạn đăng ký dự trù, muộn nhất đến hết {latest}.',
+    lateCloseLabel: 'Hạn đăng ký dự trù (đến hết)',
+    inWeekBadge: 'Công bố trong tuần',
+    weekOver:
+      'Tuần đã qua: mọi ngày phục vụ đều đã khóa nên không công bố được thực đơn. Bạn vẫn lưu nháp được để tham khảo.',
+    inWeekPublish:
+      'Công bố trong tuần phục vụ: không có dự trù, mọi suất đăng ký đều tính là đăng ký thực tế.',
     mixWarning: 'Cơ cấu khác thường lệ: {issues}.',
     mixIssue: '{type} có {actual}',
     saveDraft: 'Lưu nháp',
@@ -270,6 +278,8 @@ export const vi = {
       'Thời hạn đăng ký đến hết {time}. Sau đó mỗi ngày vẫn sửa được đến {lock} sáng cùng ngày.',
     afterClose:
       'Đã chốt dự trù tuần. Mỗi ngày vẫn có thể thay đổi được đến {lock} sáng ngày đó; phần chênh lệch so với dự trù được ghi nhận.',
+    noForecast:
+      'Thực đơn công bố trong tuần nên không có dự trù. Mỗi ngày đăng ký được đến {lock} sáng ngày đó; mọi suất đều tính là đăng ký thực tế.',
     notPublished: 'Thực đơn tuần này của {canteen} chưa được công bố.',
     unassigned:
       'Bạn chưa thuộc đầu mối nhận cơm nào nên chưa thể đăng ký. Vui lòng liên hệ phòng Hành chánh.',
@@ -293,6 +303,8 @@ export const vi = {
     },
     forecastTable: {
       intro: 'Số suất đã chốt lúc {time}, chỉ để xem. Thay đổi từng ngày ở tab Thực tế.',
+      noForecast:
+        'Thực đơn tuần này được công bố trong tuần nên không có dự trù. Mọi suất đăng ký đều tính là đăng ký thực tế; đăng ký từng ngày ở tab Thực tế.',
       dish: 'Món',
       total: 'Tổng',
       other: 'Món đã đổi hoặc bỏ khỏi thực đơn',
@@ -683,7 +695,7 @@ export const vi = {
     },
     keys: {
       'registration.close': 'Hạn đăng ký tuần (giờ cuối cùng còn nhận)',
-      'registration.latePublishHours': 'Công bố trễ: số giờ được đăng ký thêm',
+      'registration.latePublishHours': 'Công bố trễ: số giờ gợi ý cho hạn đăng ký',
       'menu.publishWarnAt': 'Cảnh báo chưa công bố thực đơn từ',
       servingDays: 'Ngày phục vụ mặc định',
       'day.lockTime': 'Giờ khóa thay đổi trong ngày',
@@ -791,6 +803,7 @@ export const vi = {
     DAY_LOCKED:
       'Ngày này đã qua giờ khóa nên không thay đổi được. Vui lòng liên hệ quản trị bộ phận.',
     MENU_INCOMPLETE: 'Mỗi ngày phục vụ cần ít nhất 1 món chính và 1 món tráng miệng.',
+    WEEK_OVER: 'Tuần này đã qua: mọi ngày phục vụ đều đã khóa nên không công bố được thực đơn.',
     DMP_UNAVAILABLE:
       'Không lấy được dữ liệu từ DMP. Không có gì bị thay đổi; vui lòng thử lại sau.',
     INTERNAL: 'Hệ thống gặp sự cố. Vui lòng thử lại sau.',

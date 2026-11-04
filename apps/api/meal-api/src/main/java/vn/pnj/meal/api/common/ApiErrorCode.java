@@ -25,6 +25,8 @@ public enum ApiErrorCode {
   DAY_LOCKED,
   /** A serving day of the menu lacks a main dish or a dessert (publishing rule, 2026-10-23). */
   MENU_INCOMPLETE,
+  /** BR-04: every serving day of the week has locked, so its menu can no longer be published. */
+  WEEK_OVER,
   /** A DMP call failed; nothing was written. */
   DMP_UNAVAILABLE,
   INTERNAL
