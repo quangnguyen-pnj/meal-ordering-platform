@@ -52,8 +52,9 @@ public class OrgController {
   }
 
   /**
-   * BR-60 / BR-62: {@code {isMealUnit?, floorId?, canteenId?, costCenterId?}}; an id set to null
-   * clears the node's own value so it inherits again.
+   * BR-60 / BR-62: {@code {isMealUnit?, isFallbackMealUnit?, floorId?, canteenId?, costCenterId?}};
+   * an id set to null clears the node's own value so it inherits again. Setting {@code
+   * isFallbackMealUnit} moves the factory's fallback meal unit here (CR 2026-11-04).
    */
   @RequirePermission(action = Action.ORG_MANAGE, scope = ScopeType.ORG_UNIT_PARAM, param = "id")
   @PatchMapping("/units/{id}")
@@ -61,6 +62,7 @@ public class OrgController {
       @PathVariable String id, @RequestBody JsonNode node, RequestPrincipal p) {
     JsonBody body = JsonBody.of(node);
     Boolean isMealUnit = body.bool("isMealUnit");
+    Boolean isFallbackMealUnit = body.bool("isFallbackMealUnit");
     boolean setFloor = body.has("floorId");
     boolean setCanteen = body.has("canteenId");
     boolean setCostCenter = body.has("costCenterId");
@@ -68,14 +70,27 @@ public class OrgController {
     String canteenId = setCanteen ? body.nullableId("canteenId") : null;
     String costCenterId = setCostCenter ? body.nullableId("costCenterId") : null;
     body.refine(
-        body.has("isMealUnit") || setFloor || setCanteen || setCostCenter, "", "Nothing to update");
+        body.has("isMealUnit")
+            || body.has("isFallbackMealUnit")
+            || setFloor
+            || setCanteen
+            || setCostCenter,
+        "",
+        "Nothing to update");
     body.requireValid();
     return org.updateUnit(
         p.employeeId(),
         p.factoryId(),
         id,
         new OrgService.UnitPatch(
-            isMealUnit, setFloor, floorId, setCanteen, canteenId, setCostCenter, costCenterId));
+            isMealUnit,
+            isFallbackMealUnit,
+            setFloor,
+            floorId,
+            setCanteen,
+            canteenId,
+            setCostCenter,
+            costCenterId));
   }
 
   public record DeptAdminBody(@NotNull @Size(min = 1, max = 32) String employeeCode) {

@@ -19,7 +19,7 @@ public class OrgDirectory {
         jdbc.sql(
                 """
                 SELECT id, "dmpCode", name, level, "dmpLevelName", "parentId", path, "isMealUnit",
-                       "floorId", "canteenId", "costCenterId", active
+                       "floorId", "canteenId", "costCenterId", active, "isFallbackMealUnit"
                 FROM "OrgUnit" WHERE "factoryId" = :factoryId ORDER BY level, name
                 """)
             .param("factoryId", factoryId)

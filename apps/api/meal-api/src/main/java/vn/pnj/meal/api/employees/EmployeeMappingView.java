@@ -14,6 +14,11 @@ import vn.pnj.meal.rules.org.Mapping.MealStatus;
  * (BR-60, BR-63); the shape of {@code EmployeeMappingView} in packages/shared.
  *
  * @param orgPath "Khối Sản xuất / Xưởng Chế tác / ..." (BR-61: screens show the full path)
+ * @param mealUnitId the employee's own meal unit (BR-60), even when invalid
+ * @param canRegister false when the department resolves no canteen, or no fallback meal unit can
+ *     take the employee (CR 2026-11-04)
+ * @param viaFallback the employee's meals go to the factory's fallback meal unit; floor and canteen
+ *     are then where those meals are delivered (CR 2026-11-04)
  * @param floorSource OVERRIDE: the HC admin set this employee's pick-up floor
  * @param costCenterSource MAPPING follows the org tree; DMP is the default when no node has one
  */
@@ -29,6 +34,8 @@ public record EmployeeMappingView(
     @ArraySchema(
             schema = @Schema(allowableValues = {Mapping.MISSING_FLOOR, Mapping.MISSING_CANTEEN}))
         List<String> missing,
+    boolean canRegister,
+    boolean viaFallback,
     @Nullable String floorId,
     @Nullable String floorName,
     @Nullable FloorSource floorSource,

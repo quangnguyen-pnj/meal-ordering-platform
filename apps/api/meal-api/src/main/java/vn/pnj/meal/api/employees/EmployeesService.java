@@ -230,17 +230,19 @@ public class EmployeesService {
             e.floorOverrideId(),
             e.dmpCostCenterCode() == null ? null : ccByCode.get(e.dmpCostCenterCode()),
             snapshot.index());
-    OrgSnapshot.Node mealUnit = a.mealUnitId() == null ? null : snapshot.get(a.mealUnitId());
+    OrgSnapshot.Node mealUnit = a.ownMealUnitId() == null ? null : snapshot.get(a.ownMealUnitId());
     return new EmployeeMappingView(
         e.employeeCode(),
         e.name(),
         e.status(),
         e.orgUnitId(),
         snapshot.pathName(e.orgUnitId()),
-        a.mealUnitId(),
+        a.ownMealUnitId(),
         mealUnit == null ? null : mealUnit.name(),
         a.status(),
         a.missing(),
+        a.canRegister(),
+        a.viaFallback(),
         a.floorId(),
         a.floorId() == null ? null : names.get(a.floorId()),
         a.floorSource(),

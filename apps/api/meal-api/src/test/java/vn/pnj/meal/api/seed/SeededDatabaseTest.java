@@ -105,7 +105,7 @@ class SeededDatabaseTest extends IntegrationTest {
     for (E e : employees) {
       var a =
           Mapping.resolveEmployeeMealAssignment(e.orgUnitId(), e.floorOverrideId(), null, index);
-      if (!java.util.Objects.equals(a.mealUnitId(), e.mealUnitId())) {
+      if (!java.util.Objects.equals(a.ownMealUnitId(), e.mealUnitId())) {
         disagreements++;
       }
       if (!a.canRegister()) {

@@ -213,6 +213,88 @@ class OrgTest extends IntegrationTest {
         .allMatch(p -> p.contains("Kho vận"));
   }
 
+  private Map<String, Object> unassignedRow(String employeeCode) throws Exception {
+    List<Map<String, Object>> rows =
+        JsonPath.read(
+            read(hc, "/api/admin/org/unassigned"),
+            "$.items[?(@.employeeCode == '" + employeeCode + "')]");
+    assertThat(rows).hasSize(1);
+    return rows.getFirst();
+  }
+
+  @Test
+  @Order(12)
+  @DisplayName(
+      "BR-60 / BR-63 (CR 2026-11-04): with a fallback meal unit, employees with a canteen but no"
+          + " usable meal unit can register; it moves, audited, and must be a valid meal unit")
+  void fallbackMealUnit() throws Exception {
+    String fallbackAudits =
+        """
+        SELECT count(*) FROM "AuditLog" WHERE action = 'orgUnit.mapping.updated'
+          AND "entityId" IN ('ou_IT', 'ou_BV') AND after::text LIKE '%isFallbackMealUnit%'
+        """;
+    int auditsBefore = jdbc.sql(fallbackAudits).query(Integer.class).single();
+    try {
+      assertThat(unassignedRow(Demo.UNASSIGNED))
+          .containsEntry("canRegister", false)
+          .containsEntry("viaFallback", false);
+
+      // Not a meal unit, or a meal unit with no floor: refused, nothing written.
+      expect(
+          400, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_KHO", "{'isFallbackMealUnit':true}");
+      expect(
+          400, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_XSC", "{'isFallbackMealUnit':true}");
+      assertThat(
+              jdbc.sql("SELECT count(*) FROM \"OrgUnit\" WHERE \"isFallbackMealUnit\"")
+                  .query(Integer.class)
+                  .single())
+          .isZero();
+
+      expect(
+          200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_IT", "{'isFallbackMealUnit':true}");
+      assertThat(byCode(tree(), "IT")).containsEntry("isFallbackMealUnit", true);
+      // Still listed so the HC admin gives them a meal unit, but they register at Phòng IT.
+      assertThat(unassignedRow(Demo.UNASSIGNED))
+          .containsEntry("mealStatus", "NO_MEAL_UNIT")
+          .containsEntry("canRegister", true)
+          .containsEntry("viaFallback", true)
+          .containsEntry("floorId", "fl_T4")
+          .containsEntry("canteenId", "ct_gv");
+      assertThat(unassignedRow(Demo.INVALID_MEAL_UNIT))
+          .containsEntry("mealStatus", "INVALID_MEAL_UNIT")
+          .containsEntry("canRegister", true)
+          .containsEntry("viaFallback", true);
+
+      // Moving it clears the previous one; both nodes are audited.
+      expect(
+          200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_BV", "{'isFallbackMealUnit':true}");
+      List<Map<String, Object>> items = tree();
+      assertThat(byCode(items, "IT")).containsEntry("isFallbackMealUnit", false);
+      assertThat(byCode(items, "BV")).containsEntry("isFallbackMealUnit", true);
+      assertThat(unassignedRow(Demo.UNASSIGNED)).containsEntry("floorId", "fl_T1");
+      // IT set, IT replaced, BV set.
+      assertThat(jdbc.sql(fallbackAudits).query(Integer.class).single())
+          .isEqualTo(auditsBefore + 3);
+
+      // Unflagging the meal unit clears the fallback with it.
+      expect(200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_BV", "{'isMealUnit':false}");
+      assertThat(byCode(tree(), "BV")).containsEntry("isFallbackMealUnit", false);
+      assertThat(unassignedRow(Demo.UNASSIGNED)).containsEntry("canRegister", false);
+
+      // Plan section 3: only the HC admin manages the org tree.
+      expect(
+          403,
+          deptProd,
+          HttpMethod.PATCH,
+          "/api/admin/org/units/ou_XCT",
+          "{'isFallbackMealUnit':true}");
+    } finally {
+      jdbc.sql("UPDATE \"OrgUnit\" SET \"isFallbackMealUnit\" = false").update();
+      jdbc.sql("UPDATE \"OrgUnit\" SET \"isMealUnit\" = true WHERE id = 'ou_BV'").update();
+      mealUnits.recompute("fac_gv");
+    }
+  }
+
   @Test
   @Order(11)
   @DisplayName("BR-60: flagging a node recomputes meal units at once, and it is audited")

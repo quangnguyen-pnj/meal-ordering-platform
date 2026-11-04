@@ -29,6 +29,7 @@ Spec gaps found while building. Each lists the safest option currently implement
 
 | Q24 | Should employees who did not register the old dish also see that a dish was replaced after closeAt (e.g. on the menu), and should a replacement before closeAt show the red note too? | Administration dept | P3 | Only the employees whose meal moved see the red note, and only for a replacement at or after closeAt (product owner, 2026-10-23). Everyone affected still gets the in-app notice at any time. |
 | Q25 | The DMP-supplied employee cost center is kept as the default when no org node above the employee has a cost center. Should those employees instead be listed as "missing cost center" until a node is mapped? | Accounting | P6 | DMP value as the default (safest: no cost is lost). The "missing cost center" list shows employees with neither. |
+| Q28 | BR-60 fallback meal unit (CR 2026-11-04): when an employee's department eats at canteen A but the fallback meal unit sits under canteen B, which canteen's box carries their meal? Go Vap has one canteen in the MVP, so it cannot happen yet. | Administration dept | Second canteen | The employee sees canteen A's menu and their lines carry canteen A with the fallback meal unit's floor. `TODO(BR-60)` in `Mapping.resolveEmployeeMealAssignment`. One fallback per factory, not per canteen. |
 | Q26 | Should a dish type that is still used by dishes be deactivated, and does the pick-up floor need an end date (temporary moves)? | Administration dept | P3 | A type can be deactivated; its dishes stay and can still be put on menus. The pick-up floor has no end date; it is removed by hand. |
 
 ## Resolved
@@ -39,8 +40,8 @@ Spec gaps found while building. Each lists the safest option currently implement
 
 **Answer (product owner, 2026-10-23):** cost center follows the org structure. Each centre or department has its own cost center and every cost of its employees adds up there. The per-employee override is no longer used; the DMP value stays as the default when no node has one (Q25).
 
-| #   | Question | Needs answer from | Before | Behaviour before the answer |
-| --- | -------- | ----------------- | ------ | --------------------------- |
-| Q27 | BR-04: may the HC admin publish the menu of a week that is already over (e.g. week 44 seen from week 45)? Every serving day has locked, so nobody could register on it. | Product owner | — | Allowed: it became an in-week publish with no forecast and no day open. |
+| #   | Question                                                                                                                                                                | Needs answer from | Before | Behaviour before the answer                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ----------------------------------------------------------------------- |
+| Q27 | BR-04: may the HC admin publish the menu of a week that is already over (e.g. week 44 seen from week 45)? Every serving day has locked, so nobody could register on it. | Product owner     | —      | Allowed: it became an in-week publish with no forecast and no day open. |
 
 **Answer (product owner, 2026-11-04):** no. Publishing is refused with `409 WEEK_OVER` once every serving day of the week has locked (from 08:00 of its last serving day; a week with no serving day, from 08:00 Sunday). The builder hides "Công bố" and says why; a draft can still be saved.
