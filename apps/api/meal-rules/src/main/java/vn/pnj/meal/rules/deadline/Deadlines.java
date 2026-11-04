@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import vn.pnj.meal.rules.VnTime;
 
 /** Registration deadlines. Every rule reads its time from a setting and takes {@code now} in. */
@@ -157,5 +158,19 @@ public final class Deadlines {
   public static boolean isMenuPublishWarningDue(
       Instant now, LocalDate weekStart, WeekdayTime warnRule, boolean published) {
     return !published && !now.isBefore(menuPublishWarnAt(weekStart, warnRule));
+  }
+
+  /**
+   * BR-04 (product owner, 2026-11-04): a week whose serving days have all locked cannot be
+   * published, since nobody could register on it any more (BR-21, BR-24). A week with no serving
+   * day counts as over once its Sunday has locked.
+   *
+   * @param servingDates the serving days of the week, in any order
+   */
+  public static boolean isWeekOver(
+      LocalDate weekStart, List<LocalDate> servingDates, Instant now, LocalTime lockTime) {
+    requireMonday(weekStart);
+    LocalDate last = servingDates.stream().max(LocalDate::compareTo).orElse(weekStart.plusDays(6));
+    return !now.isBefore(dayLockAt(last, lockTime));
   }
 }

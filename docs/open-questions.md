@@ -38,3 +38,9 @@ Spec gaps found while building. Each lists the safest option currently implement
 | Q9  | Cost center precedence: the plan says a DMP-supplied cost center is the default and an admin mapping overrides it. Does "DMP-supplied" mean per employee, per org node, or both? (Also open: whether DMP nodes carry a cost center code at all, plan section 8.) | DMP team, accounting | P1     | Employee override, then inherited node mapping, then the employee's DMP cost center (`resolveEmployeeCostCenter`). |
 
 **Answer (product owner, 2026-10-23):** cost center follows the org structure. Each centre or department has its own cost center and every cost of its employees adds up there. The per-employee override is no longer used; the DMP value stays as the default when no node has one (Q25).
+
+| #   | Question | Needs answer from | Before | Behaviour before the answer |
+| --- | -------- | ----------------- | ------ | --------------------------- |
+| Q27 | BR-04: may the HC admin publish the menu of a week that is already over (e.g. week 44 seen from week 45)? Every serving day has locked, so nobody could register on it. | Product owner | — | Allowed: it became an in-week publish with no forecast and no day open. |
+
+**Answer (product owner, 2026-11-04):** no. Publishing is refused with `409 WEEK_OVER` once every serving day of the week has locked (from 08:00 of its last serving day; a week with no serving day, from 08:00 Sunday). The builder hides "Công bố" and says why; a draft can still be saved.

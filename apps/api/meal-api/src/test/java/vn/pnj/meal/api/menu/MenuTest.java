@@ -949,6 +949,44 @@ class MenuTest extends IntegrationTest {
     moveTo("2027-03-06", "09:30");
   }
 
+  @Test
+  @Order(52)
+  @DisplayName(
+      "BR-04: a week whose serving days have all locked cannot be published (409 WEEK_OVER)")
+  void weekOver() throws Exception {
+    // Friday 09:00 of week 2027-03-22: Friday locked at 08:00
+    moveTo("2027-03-26", "09:00");
+    String body =
+        week(
+            CANTEEN,
+            "2027-03-22",
+            day("2027-03-22", STANDARD, List.of("chuoi")),
+            day("2027-03-26", STANDARD, List.of("chuoi")));
+    String res = expect(409, hc, HttpMethod.POST, "/api/admin/menu/weeks/publish", body);
+    assertThat(JsonPath.<String>read(res, "$.code")).isEqualTo("WEEK_OVER");
+    // Refused before the draft was written.
+    String view = read(hc, "/api/admin/menu/weeks?canteenId=" + CANTEEN + "&weekStart=2027-03-22");
+    assertThat(JsonPath.<String>read(view, "$.status")).isEqualTo("NEW");
+    assertThat(JsonPath.<Boolean>read(view, "$.weekOver")).isTrue();
+
+    // A saved draft is refused the same way.
+    String saved = expect(200, hc, HttpMethod.PUT, "/api/admin/menu/weeks", body);
+    String byId =
+        expect(
+            409,
+            hc,
+            HttpMethod.POST,
+            "/api/admin/menu/weeks/" + JsonPath.read(saved, "$.menu.id") + "/publish",
+            null);
+    assertThat(JsonPath.<String>read(byId, "$.code")).isEqualTo("WEEK_OVER");
+
+    // At 07:59 the same Friday the week could still be published (as an in-week publish).
+    moveTo("2027-03-26", "07:59");
+    String open = read(hc, "/api/admin/menu/weeks?canteenId=" + CANTEEN + "&weekStart=2027-03-22");
+    assertThat(JsonPath.<Boolean>read(open, "$.weekOver")).isFalse();
+    moveTo("2027-03-06", "09:30");
+  }
+
   // --- BR-10: Excel import of a canteen library -------------------------------------------------
 
   private static final List<String> HEADER =

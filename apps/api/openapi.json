@@ -2443,7 +2443,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "DMP_UNAVAILABLE", "INTERNAL" ]
+            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "WEEK_OVER", "DMP_UNAVAILABLE", "INTERNAL" ]
           },
           "details" : { },
           "lockedUntil" : {
@@ -4081,12 +4081,15 @@
             "type" : "string",
             "enum" : [ "DRAFT", "PUBLISHED", "CLOSED", "NEW" ]
           },
+          "weekOver" : {
+            "type" : "boolean"
+          },
           "weekStart" : {
             "type" : "string",
             "format" : "date"
           }
         },
-        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latestCloseAt", "lockedDates", "publishWindow", "publishedAt", "status", "weekStart" ]
+        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latestCloseAt", "lockedDates", "publishWindow", "publishedAt", "status", "weekOver", "weekStart" ]
       },
       "MixCheck" : {
         "type" : "object",

@@ -242,6 +242,8 @@ export const vi = {
       'Đã qua hạn đăng ký thường lệ. Chọn hạn đăng ký dự trù, muộn nhất đến hết {latest}.',
     lateCloseLabel: 'Hạn đăng ký dự trù (đến hết)',
     inWeekBadge: 'Công bố trong tuần',
+    weekOver:
+      'Tuần đã qua: mọi ngày phục vụ đều đã khóa nên không công bố được thực đơn. Bạn vẫn lưu nháp được để tham khảo.',
     inWeekPublish:
       'Công bố trong tuần phục vụ: không có dự trù, mọi suất đăng ký đều tính là đăng ký thực tế.',
     mixWarning: 'Cơ cấu khác thường lệ: {issues}.',
@@ -800,6 +802,7 @@ export const vi = {
     DAY_LOCKED:
       'Ngày này đã qua giờ khóa nên không thay đổi được. Vui lòng liên hệ quản trị bộ phận.',
     MENU_INCOMPLETE: 'Mỗi ngày phục vụ cần ít nhất 1 món chính và 1 món tráng miệng.',
+    WEEK_OVER: 'Tuần này đã qua: mọi ngày phục vụ đều đã khóa nên không công bố được thực đơn.',
     DMP_UNAVAILABLE:
       'Không lấy được dữ liệu từ DMP. Không có gì bị thay đổi; vui lòng thử lại sau.',
     INTERNAL: 'Hệ thống gặp sự cố. Vui lòng thử lại sau.',

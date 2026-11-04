@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -136,6 +137,8 @@ public class MenuService {
    * @param publishWindow when the menu was (or would now be) published: ON_TIME, LATE (the HC admin
    *     picks closeAt) or IN_WEEK (no forecast)
    * @param latestCloseAt BR-04: the latest closeAt the HC admin may pick (00:00 Monday of the week)
+   * @param weekOver BR-04: every serving day has locked, so an unpublished week can no longer be
+   *     published
    * @param lockedDates days whose lock has passed can no longer change once published
    */
   public record MenuWeekView(
@@ -149,6 +152,7 @@ public class MenuService {
       boolean closeAtIsExpected,
       @Schema(allowableValues = {"ON_TIME", "LATE", "IN_WEEK"}) String publishWindow,
       Instant latestCloseAt,
+      boolean weekOver,
       List<LocalDate> lockedDates,
       List<MenuDayView> days) {
 
@@ -164,6 +168,7 @@ public class MenuService {
           closeAtIsExpected,
           publishWindow,
           latestCloseAt,
+          weekOver,
           lockedDates,
           days.stream().filter(MenuDayView::isServing).toList());
     }
@@ -273,6 +278,11 @@ public class MenuService {
         expected,
         window.name(),
         Deadlines.weekStartAt(weekStart),
+        Deadlines.isWeekOver(
+            weekStart,
+            days.stream().filter(MenuDayView::isServing).map(MenuDayView::date).toList(),
+            now,
+            lockTime),
         published
             ? dates.stream().filter(d -> !Deadlines.dayLockAt(d, lockTime).isAfter(now)).toList()
             : List.of(),
@@ -736,6 +746,22 @@ public class MenuService {
   }
 
   /**
+   * BR-04 (product owner, 2026-11-04): 409 WEEK_OVER when every serving day of the week has locked,
+   * since nobody could register on it any more.
+   */
+  private void assertWeekNotOver(String factoryId, LocalDate weekStart, List<LocalDate> serving) {
+    LocalTime lockTime = settings.getTime(factoryId, SettingKey.DAY_LOCK_TIME);
+    if (Deadlines.isWeekOver(weekStart, serving, clock.now(), lockTime)) {
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          ApiErrorCode.WEEK_OVER,
+          "Every serving day of this week has locked; it can no longer be published",
+          null,
+          null);
+    }
+  }
+
+  /**
    * BR-02 / BR-03 / BR-04: publishing opens registration and fixes closeAt. Audited.
    *
    * @param chosenCloseAt BR-04: required for a LATE publish, where the HC admin picks closeAt;
@@ -761,6 +787,10 @@ public class MenuService {
     if (!gaps.isEmpty()) {
       throw incomplete(gaps);
     }
+    assertWeekNotOver(
+        factoryId,
+        week.weekStart(),
+        week.days().stream().filter(MenuStore.Day::isServing).map(MenuStore.Day::date).toList());
     Instant now = clock.now();
     Deadlines.CloseAt result =
         Deadlines.computeCloseAt(
@@ -834,6 +864,22 @@ public class MenuService {
     if (!gaps.isEmpty()) {
       throw incomplete(gaps);
     }
+    // Checked before the draft is written too; the days not submitted keep their stored state.
+    Set<LocalDate> submitted = new HashSet<>();
+    List<LocalDate> serving = new ArrayList<>();
+    for (DayInput d : input.days()) {
+      submitted.add(d.date());
+      if (d.isServing()) {
+        serving.add(d.date());
+      }
+    }
+    MenuStore.Week stored = store.find(input.canteenId(), input.weekStart());
+    if (stored != null) {
+      stored.days().stream()
+          .filter(d -> d.isServing() && !submitted.contains(d.date()))
+          .forEach(d -> serving.add(d.date()));
+    }
+    assertWeekNotOver(factoryId, input.weekStart(), serving);
     MenuSaveResult saved = save(actorId, factoryId, input);
     if (!Objects.equals(saved.menu().status(), "DRAFT") || saved.menu().id() == null) {
       throw ApiException.invalidState("Menu week is already published", null);

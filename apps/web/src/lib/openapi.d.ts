@@ -1146,7 +1146,7 @@ export interface components {
     schemas: {
         ApiErrorBody: {
             /** @enum {string} */
-            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "DMP_UNAVAILABLE" | "INTERNAL";
+            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "WEEK_OVER" | "DMP_UNAVAILABLE" | "INTERNAL";
             details: unknown;
             lockedUntil: string;
             message: string;
@@ -1698,6 +1698,7 @@ export interface components {
             publishedAt: string | null;
             /** @enum {string} */
             status: "DRAFT" | "PUBLISHED" | "CLOSED" | "NEW";
+            weekOver: boolean;
             /** Format: date */
             weekStart: string;
         };

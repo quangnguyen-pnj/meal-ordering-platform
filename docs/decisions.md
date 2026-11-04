@@ -616,3 +616,10 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **The menu-publish audit** records `publishWindow` instead of `latePublish`.
 - **Not retroactive:** weeks already published keep their stored closeAt and snapshot.
 - **Rejected:** keeping the 24-hour window for in-week publishes (registrations made in it would count as forecast, which is what the request rules out); treating Friday–Sunday publishes as in-week (the product owner chose 00:00 Monday as the boundary).
+
+## Past weeks cannot be published (2026-11-04)
+
+- **Problem:** after the in-week publish rule, publishing week 44's menu from week 45 was accepted as an in-week publish: an empty forecast and every day already locked, so the week was published but nobody could register, and it could not be edited any more (open-questions Q27).
+- **Rule (`Deadlines.isWeekOver`, BR-04 in the plan):** a week can no longer be published once its last serving day has locked (`day.lockTime` on that day; Sunday for a week with no serving day). Both publish endpoints answer `409 WEEK_OVER` (new error code, Java and `packages/shared`); the save-and-publish endpoint checks before writing the draft. Saving a draft is still allowed.
+- **API:** `MenuWeekView.weekOver`. The builder hides the publish button, the closeAt line and the late/in-week badges for such a week and shows a warning.
+- **Known gap:** `weekOver` in the view is computed from the stored (or default) serving days; turning Saturday on in the builder only counts once the draft is saved.

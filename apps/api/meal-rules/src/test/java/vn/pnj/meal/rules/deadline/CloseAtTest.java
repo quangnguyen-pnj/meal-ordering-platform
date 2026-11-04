@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -145,6 +146,58 @@ class CloseAtTest {
       assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, saturday)).isFalse();
       assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, at("2026-10-31", "09:00")))
           .isFalse();
+    }
+  }
+
+  @Nested
+  @DisplayName("BR-04: a week whose serving days have all locked cannot be published")
+  class WeekOver {
+    private final List<LocalDate> monToFri =
+        List.of(WEEK_START, WEEK_START.plusDays(1), WEEK_START.plusDays(4));
+
+    private boolean overAt(List<LocalDate> days, String date, String time) {
+      return Deadlines.isWeekOver(WEEK_START, days, at(date, time), LOCK_TIME);
+    }
+
+    @Test
+    @DisplayName("BR-04: on Wednesday of week N the week is not over while Friday is still open")
+    void midWeek() {
+      assertThat(overAt(monToFri, "2026-11-04", "10:00")).isFalse();
+    }
+
+    @Test
+    @DisplayName("BR-04: the week is over from 08:00 of its last serving day, not at 07:59")
+    void lastDayLock() {
+      assertThat(overAt(monToFri, "2026-11-06", "07:59")).isFalse();
+      assertThat(overAt(monToFri, "2026-11-06", "08:00")).isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: a past week (week 44 seen from week 45) is over")
+    void pastWeek() {
+      LocalDate week44 = WEEK_START.minusDays(7);
+      assertThat(
+              Deadlines.isWeekOver(
+                  week44,
+                  List.of(week44, week44.plusDays(4)),
+                  at("2026-11-03", "10:00"),
+                  LOCK_TIME))
+          .isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: an enabled Saturday keeps the week open until its own lock")
+    void saturday() {
+      List<LocalDate> withSaturday = List.of(WEEK_START, WEEK_START.plusDays(5));
+      assertThat(overAt(withSaturday, "2026-11-06", "09:00")).isFalse();
+      assertThat(overAt(withSaturday, "2026-11-07", "08:00")).isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: a week with no serving day is over once its Sunday has locked")
+    void noServingDay() {
+      assertThat(overAt(List.of(), "2026-11-08", "07:59")).isFalse();
+      assertThat(overAt(List.of(), "2026-11-08", "08:00")).isTrue();
     }
   }
 

@@ -14,6 +14,7 @@ const view = {
   closeAtIsExpected: false,
   publishWindow: 'ON_TIME',
   latestCloseAt: '2027-02-28T17:00:00.000Z',
+  weekOver: false,
   lockedDates: [],
   days: [
     {
