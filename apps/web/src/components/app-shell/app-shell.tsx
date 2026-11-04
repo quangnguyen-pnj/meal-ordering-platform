@@ -1,12 +1,20 @@
 'use client';
 
 import type { BannerView, SessionUser } from '@/lib/api-types';
-import { LogOut, Menu } from 'lucide-react';
+import { ChevronDown, LogOut, Menu } from 'lucide-react';
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -73,18 +81,80 @@ function NavLink({
   );
 }
 
-function UserBlock({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
-  const roleLabels = user.roles
+function roleLabels(user: SessionUser): string {
+  return user.roles
     .filter((r) => r !== 'EMPLOYEE')
     .map((r) => vi.roles[r])
     .join(', ');
+}
+
+/** Vietnamese names put the given name last, so the avatar shows its first letter. */
+function initial(name: string): string {
+  const given = name.trim().split(/\s+/).at(-1) ?? '';
+  return given.charAt(0).toLocaleUpperCase('vi-VN') || '?';
+}
+
+/** True once the window has scrolled away from the top. */
+function useScrolled(): boolean {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 0);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+  return scrolled;
+}
+
+/** Desktop: the account sits behind one button so sign-out is never a stray click. */
+function AccountMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
+  const roles = roleLabels(user);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-auto gap-2 py-1.5 pl-1.5 pr-2"
+          aria-label={`${t('common.account')}: ${user.name}`}
+        >
+          <span
+            aria-hidden
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+          >
+            {initial(user.name)}
+          </span>
+          <span className="min-w-0 max-w-48 truncate text-sm font-medium">{user.name}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="font-normal">
+          <p className="truncate font-medium">{user.name}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {user.employeeCode}
+            {roles ? ` · ${roles}` : ''}
+          </p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onSignOut}>
+          <LogOut className="h-4 w-4" aria-hidden />
+          {t('common.signOut')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Phones: the account block at the foot of the menu sheet. */
+function UserBlock({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
+  const roles = roleLabels(user);
   return (
     <>
       <div className="min-w-0 text-sm leading-tight md:text-right">
         <p className="truncate font-medium">{user.name}</p>
         <p className="truncate text-xs text-muted-foreground">
           {user.employeeCode}
-          {roleLabels ? ` · ${roleLabels}` : ''}
+          {roles ? ` · ${roles}` : ''}
         </p>
       </div>
       <Button variant="outline" size="sm" onClick={onSignOut} className="shrink-0">
@@ -107,6 +177,8 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const scrolled = useScrolled();
+  const [asideScrolled, setAsideScrolled] = useState(false);
   const nav = visibleNav(user.roles);
   const groups = [
     { key: 'mine', title: t('nav.groups.mine'), items: nav.mine },
@@ -173,8 +245,17 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden">
-        <div className="px-4 py-5">
+      <aside
+        onScroll={(e) => setAsideScrolled(e.currentTarget.scrollTop > 0)}
+        className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden"
+      >
+        {/* The app name stays put while a long menu scrolls under it. */}
+        <div
+          className={cn(
+            'sticky top-0 z-10 bg-card px-4 py-5 transition-shadow',
+            asideScrolled && 'shadow-[0_1px_0_hsl(var(--border))]',
+          )}
+        >
           <p className="text-lg font-semibold">{t('app.name')}</p>
           <p className="text-sm text-muted-foreground">{t('app.factory')}</p>
         </div>
@@ -182,8 +263,14 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-20 hidden items-center justify-end gap-3 bg-background px-4 py-2 md:flex md:px-6 print:hidden">
-          <UserBlock user={user} onSignOut={signOut} />
+        {/* Same canvas as the page so it reads as part of it; a hairline appears once content scrolls under. */}
+        <div
+          className={cn(
+            'sticky top-0 z-20 hidden items-center justify-end gap-3 border-b border-transparent bg-canvas/85 px-4 py-2 backdrop-blur-md transition-colors md:flex md:px-6 print:hidden',
+            scrolled && 'border-border',
+          )}
+        >
+          <AccountMenu user={user} onSignOut={signOut} />
         </div>
         <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8 print:p-0">
           {/* Paper forms (/admin/print) print the page content only. */}

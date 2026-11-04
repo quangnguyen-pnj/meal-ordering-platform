@@ -24,6 +24,7 @@ export const vi = {
   common: {
     loading: 'Đang tải…',
     signOut: 'Đăng xuất',
+    account: 'Tài khoản',
     back: 'Quay lại',
     menu: 'Mở menu',
     requiredField: 'Trường này là bắt buộc',
