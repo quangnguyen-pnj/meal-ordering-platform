@@ -253,7 +253,7 @@ export function AppShell({
         <div
           className={cn(
             'sticky top-0 z-10 bg-card px-4 py-5 transition-shadow',
-            asideScrolled && 'shadow-[0_1px_0_hsl(var(--border))]',
+            // asideScrolled && 'shadow-[0_1px_40px_hsl(var(--border))]',
           )}
         >
           <p className="text-lg font-semibold">{t('app.name')}</p>
