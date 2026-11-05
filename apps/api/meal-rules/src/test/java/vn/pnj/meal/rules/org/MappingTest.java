@@ -375,6 +375,47 @@ class MappingTest {
     }
 
     @Test
+    @DisplayName("BR-63: the fallback meal unit is valid with a floor and no canteen")
+    void fallbackValidWithFloorOnly() {
+      MealUnitMapping fb = Mapping.resolveMealUnitMapping("FB", withFallback);
+      assertThat(fb.valid()).isTrue();
+      assertThat(fb.floorId()).isEqualTo("F7");
+      assertThat(fb.missing()).isEmpty();
+      // Without the fallback flag the same node still lacks a canteen.
+      OrgIndex notFallback =
+          OrgIndex.of(List.of(new OrgNode("FB", null, true, "F7", null, null)), null);
+      assertThat(Mapping.resolveMealUnitMapping("FB", notFallback).missing())
+          .containsExactly("canteen");
+      OrgIndex noFloor =
+          OrgIndex.of(List.of(new OrgNode("FB", null, true, null, null, null)), "FB");
+      assertThat(Mapping.resolveMealUnitMapping("FB", noFloor).valid()).isFalse();
+    }
+
+    @Test
+    @DisplayName(
+        "BR-63: employees under the fallback meal unit are OK there with their department's canteen")
+    void ownFallbackUsesDepartmentCanteen() {
+      OrgIndex index =
+          OrgIndex.of(
+              List.of(
+                  node("R", null),
+                  new OrgNode("FB", "R", true, "F7", null, null),
+                  new OrgNode("D", "FB", false, null, "CD", null),
+                  node("E", "FB")),
+              "FB");
+      EmployeeMealAssignment d = Mapping.resolveEmployeeMealAssignment("D", null, null, index);
+      assertThat(d.status()).isEqualTo(MealStatus.OK);
+      assertThat(d.viaFallback()).isFalse();
+      assertThat(d.mealUnitId()).isEqualTo("FB");
+      assertThat(d.floorId()).isEqualTo("F7");
+      assertThat(d.canteenId()).isEqualTo("CD");
+      // No canteen in their department: still blocked (CR 2026-11-04).
+      EmployeeMealAssignment e = Mapping.resolveEmployeeMealAssignment("E", null, null, index);
+      assertThat(e.canRegister()).isFalse();
+      assertThat(e.missing()).containsExactly("canteen");
+    }
+
+    @Test
     @DisplayName("BR-60: a fallback that is no longer a meal unit, or has no floor, is ignored")
     void unusableFallback() {
       OrgIndex notMealUnit =

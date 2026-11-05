@@ -67,7 +67,9 @@ public final class Mapping {
   }
 
   /**
-   * BR-63: a meal unit is valid only when both a floor and a canteen resolve for it.
+   * BR-63: a meal unit is valid only when both a floor and a canteen resolve for it. The factory's
+   * fallback meal unit serves every canteen (product owner, 2026-11-05, Q28), so a floor is enough
+   * for it; its {@code canteenId} is then null.
    *
    * @param missing which of "floor" / "canteen" did not resolve; empty when valid
    */
@@ -79,6 +81,9 @@ public final class Mapping {
     String canteen = resolve(mealUnitId, Field.CANTEEN, index).value();
     if (floor != null && canteen != null) {
       return new MealUnitMapping(true, floor, canteen, List.of());
+    }
+    if (floor != null && mealUnitId.equals(index.fallbackMealUnitId())) {
+      return new MealUnitMapping(true, floor, null, List.of());
     }
     return new MealUnitMapping(false, null, null, missing(floor, canteen));
   }
@@ -153,6 +158,7 @@ public final class Mapping {
    *
    * <ul>
    *   <li>Canteen: the own meal unit's, else the nearest one at or above the employee's node.
+   *       Employees whose own meal unit is the fallback (it may have no canteen) are OK there.
    *   <li>Floor: the employee floor override, else the fallback meal unit's floor. The fallback
    *       serves every canteen and needs no canteen of its own.
    *   <li>No fallback meal unit set, or it resolves no floor: they cannot register, as before.
@@ -172,7 +178,12 @@ public final class Mapping {
       unitFloor = resolve(ownMealUnitId, Field.FLOOR, index).value();
       unitCanteen = resolve(ownMealUnitId, Field.CANTEEN, index).value();
       String floor = floorOverrideId != null ? floorOverrideId : unitFloor;
-      if (floor != null && unitCanteen != null) {
+      String canteen = unitCanteen;
+      if (canteen == null && ownMealUnitId.equals(index.fallbackMealUnitId())) {
+        // The fallback serves every canteen (Q28): its own employees keep their department's.
+        canteen = resolve(orgUnitId, Field.CANTEEN, index).value();
+      }
+      if (floor != null && canteen != null) {
         return new EmployeeMealAssignment(
             ownMealUnitId,
             ownMealUnitId,
@@ -180,7 +191,7 @@ public final class Mapping {
             List.of(),
             floor,
             floorOverrideId != null ? FloorSource.OVERRIDE : FloorSource.MEAL_UNIT,
-            unitCanteen,
+            canteen,
             cost.costCenterId(),
             cost.source(),
             true,

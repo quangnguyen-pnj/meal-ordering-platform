@@ -403,7 +403,11 @@ function MealUnitList({
               <TableCell>{nodePath(n.id, idx)}</TableCell>
               <TableCell>{mealCounts.get(n.id) ?? 0}</TableCell>
               <TableCell>{nameOr(n.resolved.floor.id, floorName)}</TableCell>
-              <TableCell>{nameOr(n.resolved.canteen.id, canteenName)}</TableCell>
+              <TableCell>
+                {n.isFallbackMealUnit && n.resolved.canteen.id === null
+                  ? t('org.fallbackAnyCanteen')
+                  : nameOr(n.resolved.canteen.id, canteenName)}
+              </TableCell>
               <TableCell>
                 {n.mealUnitValid ? (
                   <Badge variant="success">{t('org.mealUnitOk')}</Badge>
@@ -432,7 +436,8 @@ function MealUnitList({
 /** CR 2026-11-04: the factory's fallback meal unit, when one is set and valid. */
 function fallbackMealUnit(idx: OrgTreeIndex): OrgUnitView | undefined {
   for (const n of idx.byId.values()) {
-    if (n.isFallbackMealUnit && n.isMealUnit && n.resolved.floor.id !== null) return n;
+    // The API counts it valid with a floor alone: it serves every canteen (Q28).
+    if (n.isFallbackMealUnit && n.isMealUnit && n.mealUnitValid) return n;
   }
   return undefined;
 }
@@ -476,6 +481,25 @@ function mealStatus(
             missing: missingParts(mealUnit),
             fallback: fallback.name,
           });
+  } else if (mealUnit === fallback && mealUnit.resolved.canteen.id === null) {
+    // The fallback meal unit with a floor but no canteen: its employees order from their
+    // department's canteen; only those whose department has none are blocked.
+    const own = mealUnit.id === node.id;
+    const floor = floorName(mealUnit.resolved.floor.id);
+    warn = count > 0 && node.resolved.canteen.id === null;
+    if (own) {
+      text = t('org.statusFallbackOwn', { floor });
+      if (warn) text = `${text} ${t('org.statusNoCanteen', { count })}`;
+    } else {
+      text = warn
+        ? t('org.statusNoCanteen', { count })
+        : t('org.statusInherited', {
+            count,
+            name: mealUnit.name,
+            floor,
+            canteen: canteenName(node.resolved.canteen.id),
+          });
+    }
   } else {
     const own = mealUnit.id === node.id;
     const place = {
