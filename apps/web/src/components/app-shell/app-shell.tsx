@@ -183,7 +183,7 @@ export function AppShell({
   const groups = [
     { key: 'mine', title: t('nav.groups.mine'), items: nav.mine },
     { key: 'admin', title: t('nav.groups.admin'), items: nav.admin },
-    { key: 'admin', title: 'Master Data', items: nav.masterdata },
+    { key: 'masterdata', title: 'Master Data', items: nav.masterdata },
   ].filter((g) => g.items.length > 0);
 
   async function signOut() {
@@ -253,7 +253,7 @@ export function AppShell({
         <div
           className={cn(
             'sticky top-0 z-10 bg-card px-4 py-5 transition-shadow',
-            asideScrolled && 'shadow-[0_1px_0_hsl(var(--border))]',
+            asideScrolled && 'shadow-[0_8px_12px_-10px_rgb(41_37_36/0.25)]',
           )}
         >
           <p className="text-lg font-semibold">{t('app.name')}</p>
@@ -263,11 +263,11 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Same canvas as the page so it reads as part of it; a hairline appears once content scrolls under. */}
+        {/* Same canvas as the page so it reads as part of it; a soft shadow appears once content scrolls under. */}
         <div
           className={cn(
-            'sticky top-0 z-20 hidden items-center justify-end gap-3 border-b border-transparent bg-canvas/85 px-4 py-2 backdrop-blur-md transition-colors md:flex md:px-6 print:hidden',
-            scrolled && 'border-border',
+            'sticky top-0 z-20 hidden items-center justify-end gap-3 bg-canvas/85 px-4 py-2 backdrop-blur-md transition-shadow md:flex md:px-6 print:hidden',
+            scrolled && 'shadow-[0_8px_16px_-12px_rgb(41_37_36/0.3)]',
           )}
         >
           <AccountMenu user={user} onSignOut={signOut} />

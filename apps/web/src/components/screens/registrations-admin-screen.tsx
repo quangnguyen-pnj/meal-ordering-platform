@@ -580,7 +580,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
               </TableRow>
             </TableHeader>
 
-            <TableBody>
+            <TableBody striped={false}>
               {shown.map(({ row, index }, r) => {
                 const cell = row.cells[date]!;
                 const invalid = changes.invalid[row.employeeCode] ?? [];
@@ -597,7 +597,8 @@ function GridTab({ weekStart }: { weekStart: string }) {
                   <TableRow
                     key={row.employeeCode}
                     className={cn(
-                      'group hover:bg-transparent focus-within:bg-primary/5',
+                      // A data-entry grid: thin row lines help keep the eye on one employee.
+                      'group border-b border-border/50 hover:bg-transparent focus-within:bg-primary/5',
                       hasError && 'bg-destructive/5 focus-within:bg-destructive/5',
                     )}
                   >

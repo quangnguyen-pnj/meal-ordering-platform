@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react';
 import * as React from 'react';
+import { fieldSurface } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 
 /** shadcn/ui NativeSelect: a real <select> styled like SelectTrigger (opens the OS picker). */
@@ -11,7 +12,8 @@ const NativeSelect = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        'flex h-11 w-full appearance-none rounded-md border border-input bg-background py-2 pl-3 pr-9 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        fieldSurface,
+        'flex h-11 w-full appearance-none py-2 pl-3 pr-9 text-base',
         className,
       )}
       {...props}

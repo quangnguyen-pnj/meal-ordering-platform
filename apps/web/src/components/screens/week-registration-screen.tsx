@@ -119,7 +119,7 @@ export function WeekRegistrationScreen() {
               onChange={(itemId, q) => setDraft((d) => setQuantity(d, day.date, itemId, q))}
               showForecast={forecastTaken}
             />
-            <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2">
+            <footer className="-mx-4 -mb-4 mt-auto flex flex-wrap items-center justify-between gap-2 rounded-b-lg bg-muted/50 px-4 py-2.5 sm:-mx-5 sm:-mb-5 sm:px-5">
               <span className="text-sm font-medium">
                 {t('week.dayTotal', { count: dayTotal(draft, day.date) })}
               </span>

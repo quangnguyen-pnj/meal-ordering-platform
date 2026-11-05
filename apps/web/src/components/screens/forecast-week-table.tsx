@@ -70,7 +70,7 @@ export function ForecastWeekTable({ days }: { days: readonly MyDayView[] }) {
             </TableCell>
           </TableRow>
         ) : null}
-        <TableRow className="bg-muted/50 font-medium hover:bg-muted/50">
+        <TableRow className="!bg-muted/70 font-semibold">
           <TableCell>{t('week.forecastTable.total')}</TableCell>
           {days.map((d) => (
             <TableCell key={d.date} className="text-center tabular-nums">

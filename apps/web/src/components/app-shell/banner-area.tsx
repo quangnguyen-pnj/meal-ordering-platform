@@ -189,12 +189,12 @@ function NoticeBox({
           id={listId}
           hidden={!open}
           // `flex` would override the hidden attribute's display: none.
-          className={cn('flex-col divide-y divide-border/60', open ? 'flex' : 'hidden')}
+          className={cn('flex-col gap-1', open ? 'flex' : 'hidden')}
         >
           {notices.map((n) => (
             <li
               key={n.id}
-              className="flex flex-col gap-1 py-2 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              className="flex flex-col gap-1 rounded-md bg-background/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
               <span>{n.message}</span>
               <BannerActions banner={n} onDismiss={() => onDismiss([n.dismissId!])} />
