@@ -355,6 +355,26 @@ class MappingTest {
     }
 
     @Test
+    @DisplayName(
+        "BR-60: the fallback serves every canteen; it needs a floor but no canteen of its own")
+    void fallbackWithoutCanteen() {
+      OrgIndex index =
+          OrgIndex.of(
+              List.of(
+                  node("R", null),
+                  new OrgNode("FB", "R", true, "F7", null, null),
+                  new OrgNode("A", "R", false, null, "CA", null),
+                  new OrgNode("B", "R", false, null, "CB", null)),
+              "FB");
+      EmployeeMealAssignment a = Mapping.resolveEmployeeMealAssignment("A", null, null, index);
+      EmployeeMealAssignment b = Mapping.resolveEmployeeMealAssignment("B", null, null, index);
+      assertThat(List.of(a, b)).allMatch(x -> x.canRegister() && "FB".equals(x.mealUnitId()));
+      assertThat(List.of(a.floorId(), b.floorId())).containsOnly("F7");
+      assertThat(a.canteenId()).isEqualTo("CA");
+      assertThat(b.canteenId()).isEqualTo("CB");
+    }
+
+    @Test
     @DisplayName("BR-60: a fallback that is no longer a meal unit, or has no floor, is ignored")
     void unusableFallback() {
       OrgIndex notMealUnit =

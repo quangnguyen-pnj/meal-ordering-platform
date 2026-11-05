@@ -558,7 +558,7 @@ export const vi = {
     fallbackQuestion: 'Đầu mối nhận cơm tập trung',
     fallbackLabel: 'Dùng đơn vị này làm đầu mối nhận cơm tập trung',
     fallbackHint:
-      'Nhân viên có nhà ăn nhưng chưa có đầu mối nhận cơm (hoặc đầu mối thiếu tầng) vẫn đặt cơm được; suất cơm của họ giao về đây cho đến khi được gán đầu mối. Mỗi nhà máy chỉ có một đầu mối tập trung; chọn đơn vị này sẽ bỏ chọn đơn vị cũ.',
+      'Nhân viên có nhà ăn nhưng chưa có đầu mối nhận cơm (hoặc đầu mối thiếu tầng) vẫn đặt cơm được; suất cơm của họ giao về đây cho đến khi được gán đầu mối. Đầu mối tập trung nhận suất của mọi nhà ăn (nhà cung cấp), chỉ cần có tầng nhận cơm. Mỗi nhà máy chỉ có một đầu mối tập trung; chọn đơn vị này sẽ bỏ chọn đơn vị cũ.',
     fallbackCurrent: 'Đầu mối tập trung hiện tại: {name}.',
     fallbackNone:
       'Chưa có đầu mối tập trung: nhân viên chưa có đầu mối nhận cơm sẽ chưa đặt cơm được.',

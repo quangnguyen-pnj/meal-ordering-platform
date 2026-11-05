@@ -153,7 +153,8 @@ public final class Mapping {
    *
    * <ul>
    *   <li>Canteen: the own meal unit's, else the nearest one at or above the employee's node.
-   *   <li>Floor: the employee floor override, else the fallback meal unit's floor.
+   *   <li>Floor: the employee floor override, else the fallback meal unit's floor. The fallback
+   *       serves every canteen and needs no canteen of its own.
    *   <li>No fallback meal unit set, or it resolves no floor: they cannot register, as before.
    * </ul>
    */
@@ -194,7 +195,8 @@ public final class Mapping {
         ownMealUnitId == null
             ? List.of()
             : missing(floorOverrideId != null ? floorOverrideId : unitFloor, unitCanteen);
-    // TODO(BR-60): open-questions Q28, a fallback meal unit under another canteen.
+    // One fallback per factory, whatever the canteen (product owner, 2026-11-05, Q28): the menu
+    // and the supplier follow the employee's canteen, the pick-up place follows the fallback.
     String canteen =
         unitCanteen != null ? unitCanteen : resolve(orgUnitId, Field.CANTEEN, index).value();
     String fallbackId = index.fallbackMealUnitId();

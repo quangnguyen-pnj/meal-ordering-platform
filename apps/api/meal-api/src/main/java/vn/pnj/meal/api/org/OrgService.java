@@ -269,11 +269,14 @@ public class OrgService {
             after.containsKey("costCenterId") ? patch.costCenterId() : unit.costCenterId())
         .param("id", unitId)
         .update();
-    if (fallback && !Mapping.resolveMealUnitMapping(unitId, org.load(factoryId).index()).valid()) {
-      // Rolls the update back: the fallback receives boxes, so it needs a floor and a canteen.
+    if (fallback
+        && Mapping.resolve(unitId, Field.FLOOR, org.load(factoryId).index()).value() == null) {
+      // Rolls the update back: the fallback is a place to pick meals up, so it needs a floor. It
+      // takes meals of every canteen, so it needs no canteen of its own (product owner,
+      // 2026-11-05).
       throw ApiException.invalid(
-          "The fallback meal unit needs a floor and a canteen",
-          List.of(Map.of("path", "isFallbackMealUnit", "message", "invalidMealUnit")));
+          "The fallback meal unit needs a floor",
+          List.of(Map.of("path", "isFallbackMealUnit", "message", "noFloor")));
     }
     audit.log(
         AuditService.Entry.of(actorId, "orgUnit.mapping.updated", "OrgUnit", unitId)
