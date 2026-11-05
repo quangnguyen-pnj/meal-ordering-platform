@@ -542,6 +542,18 @@ function reachHint(node: OrgUnitView, key: 'floorId' | 'canteenId', idx: OrgTree
   };
 }
 
+/** CR 2026-11-04: say why a node cannot be the fallback, instead of the generic 400 text. */
+function updateErrorText(error: unknown): string {
+  if (error instanceof ApiError && Array.isArray(error.details)) {
+    const detail = (error.details as Array<{ path?: string; message?: string }>).find(
+      (d) => d.path === 'isFallbackMealUnit',
+    );
+    if (detail?.message === 'noFloor') return t('org.fallbackErrors.noFloor');
+    if (detail?.message === 'notMealUnit') return t('org.fallbackErrors.notMealUnit');
+  }
+  return apiErrorText(error);
+}
+
 function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
   const qc = useQueryClient();
   const floors = useMaster('floors');
@@ -810,7 +822,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
           </Button>
         </form>
       </section>
-      {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
+      {error ? <Alert variant="destructive">{updateErrorText(error)}</Alert> : null}
     </div>
   );
 }

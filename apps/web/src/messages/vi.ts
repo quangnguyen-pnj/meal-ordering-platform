@@ -563,6 +563,12 @@ export const vi = {
     fallbackHint:
       'Nhân viên có nhà ăn nhưng chưa có đầu mối nhận cơm (hoặc đầu mối thiếu tầng) vẫn đặt cơm được; suất cơm của họ giao về đây cho đến khi được gán đầu mối. Đầu mối tập trung nhận suất của mọi nhà ăn (nhà cung cấp), chỉ cần có tầng nhận cơm. Mỗi nhà máy chỉ có một đầu mối tập trung; chọn đơn vị này sẽ bỏ chọn đơn vị cũ.',
     fallbackAnyCanteen: 'Mọi nhà ăn',
+    fallbackErrors: {
+      noFloor:
+        'Chưa chọn được làm đầu mối tập trung: đơn vị này chưa có tầng nhận cơm. Hãy chọn Tầng bên dưới trước, rồi tick lại.',
+      notMealUnit:
+        'Chưa chọn được làm đầu mối tập trung: đơn vị này chưa là đầu mối nhận cơm. Hãy chọn "Có" ở câu hỏi đầu mối trước.',
+    },
     fallbackCurrent: 'Đầu mối tập trung hiện tại: {name}.',
     fallbackNone:
       'Chưa có đầu mối tập trung: nhân viên chưa có đầu mối nhận cơm sẽ chưa đặt cơm được.',
