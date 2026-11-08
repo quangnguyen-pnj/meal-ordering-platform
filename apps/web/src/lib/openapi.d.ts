@@ -1380,6 +1380,7 @@ export interface components {
             updated: number;
         };
         EmployeeMappingView: {
+            canRegister: boolean;
             canteenId: string | null;
             canteenName: string | null;
             costCenterId: string | null;
@@ -1403,6 +1404,7 @@ export interface components {
             roles: string[];
             /** @enum {string} */
             status: "ACTIVE" | "LEFT";
+            viaFallback: boolean;
         };
         ExtraBody: {
             date: string;
@@ -1775,6 +1777,7 @@ export interface components {
             dmpCode: string;
             dmpLevelName: string;
             id: string;
+            isFallbackMealUnit: boolean;
             isMealUnit: boolean;
             /** Format: int32 */
             level: number;

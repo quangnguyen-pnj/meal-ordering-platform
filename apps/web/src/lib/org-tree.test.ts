@@ -27,6 +27,7 @@ function node(
     parentId,
     active: true,
     isMealUnit: opts.isMealUnit ?? false,
+    isFallbackMealUnit: false,
     own: { floorId: opts.floorId ?? null, canteenId: null, costCenterId: null },
     resolved: { floor: unset, canteen: unset, costCenter: unset },
     mealUnitId: opts.mealUnitId ?? null,

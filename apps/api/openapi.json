@@ -3135,6 +3135,9 @@
       "EmployeeMappingView" : {
         "type" : "object",
         "properties" : {
+          "canRegister" : {
+            "type" : "boolean"
+          },
           "canteenId" : {
             "type" : [ "string", "null" ]
           },
@@ -3202,9 +3205,12 @@
           "status" : {
             "type" : "string",
             "enum" : [ "ACTIVE", "LEFT" ]
+          },
+          "viaFallback" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status" ]
+        "required" : [ "canRegister", "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status", "viaFallback" ]
       },
       "ExtraBody" : {
         "type" : "object",
@@ -4321,6 +4327,9 @@
           "id" : {
             "type" : "string"
           },
+          "isFallbackMealUnit" : {
+            "type" : "boolean"
+          },
           "isMealUnit" : {
             "type" : "boolean"
           },
@@ -4347,7 +4356,7 @@
             "$ref" : "#/components/schemas/ResolvedView"
           }
         },
-        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
+        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isFallbackMealUnit", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
       },
       "Own" : {
         "type" : "object",
