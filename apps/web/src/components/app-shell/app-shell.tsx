@@ -178,7 +178,6 @@ export function AppShell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
-  const [asideScrolled, setAsideScrolled] = useState(false);
   const nav = visibleNav(user.roles);
   const groups = [
     { key: 'mine', title: t('nav.groups.mine'), items: nav.mine },
@@ -245,17 +244,9 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <aside
-        onScroll={(e) => setAsideScrolled(e.currentTarget.scrollTop > 0)}
-        className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden"
-      >
-        {/* The app name stays put while a long menu scrolls under it. */}
-        <div
-          className={cn(
-            'sticky top-0 z-10 bg-card px-4 py-5 transition-shadow',
-            asideScrolled && 'shadow-[0_8px_12px_-10px_rgb(41_37_36/0.25)]',
-          )}
-        >
+      <aside className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden">
+        {/* The app name stays put while a long menu scrolls under it (no shadow, by choice). */}
+        <div className="sticky top-0 z-10 bg-card px-4 py-5">
           <p className="text-lg font-semibold">{t('app.name')}</p>
           <p className="text-sm text-muted-foreground">{t('app.factory')}</p>
         </div>
