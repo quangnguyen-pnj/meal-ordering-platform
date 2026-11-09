@@ -709,3 +709,10 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Migration:** main's fallback meal unit took Flyway V5 (`V5__fallback_meal_unit.sql`), so the P3 attendance migration is now `V6__p3_attendance.sql`. A local database that already applied the old P3 V5 fails Flyway validation; reset it (`pnpm db:local` with a fresh data directory, then `pnpm db:seed`).
 - **Open questions:** main's Q27 (past weeks) and Q28 (fallback for every canteen) keep their numbers; the branch's Q27 (how DMP exposes the manager's confirmation) is now **Q32** and Q28 (afternoon leave is no case) is now **Q33**, in code comments, tests, plan and docs.
 - **Main's own red checks fixed in the merge:** `nav.test.ts` still expected the master-data screens in the "admin" group after main moved them to "masterdata" (it now checks both groups and the new order); `app-shell.tsx` had an unused `asideScrolled` after its shadow was commented out (renamed `_asideScrolled`).
+
+## Date picker on /admin/today (2026-11-09)
+
+- **Request:** the browser's `<input type="date">` looks different on every browser and does not match the rest of the UI.
+- **Choice:** `components/ui/calendar.tsx` (shadcn/ui Calendar on `react-day-picker` v9, Vietnamese locale, weeks from Monday) and `components/ui/date-picker.tsx` (Popover + Calendar). The value stays a `YYYY-MM-DD` string; it shows as dd/MM/yyyy. The date is built from local fields, so there is no timezone shift, and no code reads the clock (the picker only builds a `Date` from a given string).
+- **Used in:** `/admin/today` only; other screens pick days with their own buttons.
+- **Rejected:** a hand-written calendar (more code to keep, no keyboard and screen-reader support); keeping the native input.

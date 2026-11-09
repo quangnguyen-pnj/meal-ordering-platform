@@ -373,6 +373,7 @@ export const vi = {
     intro:
       'Suất ăn, chấm công và nghỉ phép trong ngày của các đơn vị bạn phụ trách. Xác nhận có mặt cho người quên chấm công hoặc đi trễ; sau {lock} sửa suất ăn kèm lý do.',
     date: 'Ngày',
+    datePlaceholder: 'Chọn ngày',
     tabs: { all: 'Tất cả', exceptions: 'Ngoại lệ ({count})' },
     summary: {
       withMeals: 'Người có suất',
