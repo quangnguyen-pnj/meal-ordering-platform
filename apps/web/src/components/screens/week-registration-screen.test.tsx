@@ -95,11 +95,10 @@ describe('WeekRegistrationScreen tabs', () => {
 
   it('BR-04: a menu published inside its week keeps "Đăng ký dự trù" and says there is no forecast', async () => {
     show(week(true, true));
-    expect(
-      await screen.findByText(/công bố trong tuần nên không có dự trù\. Mỗi ngày/),
-    ).toBeVisible();
+    expect(await screen.findByText('Không có dự trù')).toBeVisible();
+    expect(screen.getByText(/Sửa từng ngày đến/)).toBeVisible();
     await userEvent.click(await screen.findByRole('tab', { name: 'Đăng ký dự trù' }));
-    expect(screen.getByText(/được công bố trong tuần nên không có dự trù/)).toBeVisible();
+    expect(screen.getByText(/công bố trong tuần nên không có dự trù/)).toBeVisible();
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });

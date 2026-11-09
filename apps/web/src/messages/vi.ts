@@ -146,8 +146,7 @@ export const vi = {
   },
   dishes: {
     title: 'Thư viện món',
-    intro:
-      'Mỗi nhà ăn có thư viện món chính và món tráng miệng riêng, dùng lại qua các tuần. Món không dùng nữa được lưu trữ, không xóa.',
+    intro: 'Món chính và tráng miệng của từng nhà ăn, dùng lại qua các tuần.',
     canteen: 'Nhà ăn',
     tabs: { main: 'Món chính', desserts: 'Tráng miệng', types: 'Loại món' },
     searchName: 'Tìm theo tên món',
@@ -158,7 +157,7 @@ export const vi = {
     import: {
       open: 'Nhập từ Excel',
       title: 'Nhập thư viện món từ Excel',
-      hint: 'Mỗi dòng là một món chính (có mã loại món) hoặc một món tráng miệng. Món đã có trong thư viện của {canteen} được bỏ qua, nên nhập lại cùng một tệp không tạo món trùng.',
+      hint: 'Mỗi dòng là một món chính (có mã loại món) hoặc một món tráng miệng. Món đã có trong thư viện của {canteen} được bỏ qua.',
       template: 'Tải tệp mẫu',
       file: 'Tệp .xlsx',
       check: 'Kiểm tra tệp',
@@ -179,8 +178,7 @@ export const vi = {
       } satisfies Record<LibraryRowErrorCode, string>,
     },
     types: {
-      intro:
-        'Loại món hiện cùng tên món, mỗi loại một màu. Số món mỗi ngày (không bắt buộc) dùng để nhắc khi thực đơn khác thường lệ; không chặn công bố.',
+      intro: 'Phân loại món theo màu và số món thường có mỗi ngày.',
       add: 'Thêm loại món',
       edit: 'Sửa loại món',
       color: 'Màu',
@@ -282,16 +280,13 @@ export const vi = {
   },
   week: {
     title: 'Đăng ký tuần',
-    intro:
-      'Chọn số suất cho từng món, không giới hạn số suất. Để 0 nghĩa là không ăn. Không đăng ký thì không có suất ăn.',
-    canteen: 'Nhà ăn: {canteen}',
+    intro: 'Chọn suất ăn trưa cho từng ngày trong tuần.',
+    canteen: 'Nhà ăn',
     closeAt: 'Hạn đăng ký: đến hết {time}',
-    beforeClose:
-      'Thời hạn đăng ký đến hết {time}. Sau đó mỗi ngày vẫn sửa được đến {lock} sáng cùng ngày.',
-    afterClose:
-      'Đã chốt dự trù tuần. Mỗi ngày vẫn có thể thay đổi được đến {lock} sáng ngày đó; phần chênh lệch so với dự trù được ghi nhận.',
-    noForecast:
-      'Thực đơn công bố trong tuần nên không có dự trù. Mỗi ngày đăng ký được đến {lock} sáng ngày đó; mọi suất đều tính là đăng ký thực tế.',
+    beforeClose: 'Hạn đăng ký: {time}',
+    afterClose: 'Đã chốt dự trù',
+    noForecast: 'Không có dự trù',
+    dailyLock: 'Sửa từng ngày đến {lock} sáng',
     notPublished: 'Thực đơn tuần này của {canteen} chưa được công bố.',
     // CR 2026-11-04: only a department without a canteen (or a factory with no fallback meal
     // unit) blocks registration.
@@ -302,11 +297,11 @@ export const vi = {
     save: 'Lưu đăng ký',
     discard: 'Bỏ thay đổi',
     saved: 'Đã lưu. Tuần này bạn có {meals} suất. Hạn đăng ký: đến hết {time}.',
-    unsaved: 'Có thay đổi chưa lưu.',
-    noChanges: 'Không có thay đổi nào.',
+    unsaved: 'Có thay đổi chưa lưu',
+    noChanges: 'Chưa có thay đổi',
     leaveConfirm: 'Có thay đổi chưa lưu. Chuyển tuần và bỏ các thay đổi này?',
     dayTotal: '{count} suất',
-    totalMeals: 'Tổng cả tuần: {count} suất',
+    totalMeals: 'suất cả tuần',
     forecast: 'Đã dự trù: {count} suất',
     itemForecast: 'Dự trù: {count}',
     changed: 'Khác dự trù',
@@ -316,16 +311,16 @@ export const vi = {
       actual: 'Đăng ký thực tế',
     },
     forecastTable: {
-      intro: 'Số suất đã chốt lúc {time}, chỉ để xem. Thay đổi từng ngày ở tab Thực tế.',
-      noForecast:
-        'Thực đơn tuần này được công bố trong tuần nên không có dự trù. Mọi suất đăng ký đều tính là đăng ký thực tế; đăng ký từng ngày ở tab Thực tế.',
+      closedAt: 'Chốt {time}',
+      intro: 'Sửa ở tab Thực tế.',
+      noForecast: 'Thực đơn công bố trong tuần nên không có dự trù. Đăng ký ở tab Thực tế.',
       dish: 'Món',
       total: 'Tổng',
       other: 'Món đã đổi hoặc bỏ khỏi thực đơn',
       empty: 'Bạn không dự trù suất nào trong tuần này.',
     },
     window: {
-      AFTER_CLOSE: 'Còn sửa được đến {lock}',
+      AFTER_CLOSE: 'Sửa đến {lock}',
       LOCKED: 'Đã khóa',
     },
     needsReselect:
@@ -371,8 +366,7 @@ export const vi = {
   },
   adminToday: {
     title: 'Hôm nay (quản trị)',
-    intro:
-      'Suất ăn, chấm công và nghỉ phép trong ngày của các đơn vị bạn phụ trách. Xác nhận có mặt cho người quên chấm công hoặc đi trễ; sau {lock} sửa suất ăn kèm lý do.',
+    intro: 'Suất ăn và chấm công hôm nay của các đơn vị bạn phụ trách.',
     date: 'Ngày',
     datePlaceholder: 'Chọn ngày',
     tabs: { all: 'Tất cả', exceptions: 'Ngoại lệ ({count})' },
@@ -453,7 +447,7 @@ export const vi = {
   },
   team: {
     title: 'Đơn vị của tôi',
-    intro: 'Suất ăn hôm nay của đồng nghiệp cùng đầu mối nhận cơm.',
+    intro: 'Suất ăn hôm nay của đồng nghiệp cùng đầu mối.',
     unit: 'Đơn vị: {unit} · {date}',
     eating: 'Có ăn',
     notEating: 'Không ăn',
@@ -464,7 +458,7 @@ export const vi = {
   },
   history: {
     title: 'Lịch sử',
-    intro: 'Các ngày đã qua: dự trù lúc chốt tuần, suất thực tế và tình trạng.',
+    intro: 'Suất ăn các ngày đã qua.',
     date: 'Ngày',
     forecast: 'Dự trù',
     actual: 'Thực tế',
@@ -479,8 +473,7 @@ export const vi = {
   },
   registrations: {
     title: 'Đăng ký tuần (quản trị)',
-    intro:
-      'Theo dõi tiến độ, danh sách chưa đăng ký và nhập theo phiếu giấy cho các đơn vị bạn quản lý.',
+    intro: 'Theo dõi và nhập đăng ký tuần cho các đơn vị bạn quản lý.',
     tabs: { progress: 'Tiến độ', notRegistered: 'Chưa đăng ký', grid: 'Nhập theo bảng' },
     week: 'Tuần bắt đầu',
     unit: 'Đơn vị',
@@ -502,7 +495,7 @@ export const vi = {
     import: {
       open: 'Nhập từ Excel',
       title: 'Nhập đăng ký tuần từ Excel',
-      hint: 'Tải tệp mẫu của đơn vị (đã điền số suất hiện tại), sửa số suất rồi tải lên. Chỉ gồm các ngày còn nhập thay được; ô trống là không ăn.',
+      hint: 'Tải tệp mẫu (đã có số suất hiện tại), sửa rồi tải lên. Tệp chỉ gồm các ngày còn sửa được; ô trống là không ăn.',
       template: 'Tải tệp mẫu',
       file: 'Tệp .xlsx',
       check: 'Kiểm tra tệp',
@@ -585,8 +578,7 @@ export const vi = {
   },
   print: {
     title: 'In phiếu đăng ký',
-    intro:
-      'Chọn tuần và đơn vị, rồi in. Mỗi ngày một bảng: mỗi dòng một nhân viên, mỗi cột một món, ô trống để ghi số suất.',
+    intro: 'In phiếu đăng ký giấy theo tuần và đơn vị.',
     print: 'In phiếu',
     heading: 'PHIẾU ĐĂNG KÝ SUẤT ĂN TRƯA',
     unitLine: 'Đơn vị: {unit} · Nhà ăn: {canteen}',
@@ -598,8 +590,7 @@ export const vi = {
   },
   master: {
     title: 'Nhà ăn, tầng, trung tâm chi phí',
-    intro:
-      'Danh mục do phòng Hành chánh quản lý. Chỉ ngưng dùng, không xóa; mục đang được gán cho đơn vị thì không ngưng được.',
+    intro: 'Danh mục dùng chung để gán cho các đơn vị.',
     tabs: { canteens: 'Nhà ăn', floors: 'Tầng', costCenters: 'Trung tâm chi phí' },
     sortOrder: 'Thứ tự',
     source: 'Nguồn',
@@ -614,8 +605,7 @@ export const vi = {
   },
   org: {
     title: 'Đơn vị nhận cơm',
-    intro:
-      'Chọn đơn vị nào là đầu mối nhận cơm, nhận tại tầng và nhà ăn nào; gán trung tâm chi phí và quản trị bộ phận cho từng đơn vị. Cây đơn vị 6 cấp lấy từ DMP.',
+    intro: 'Chọn đầu mối nhận cơm và nơi nhận cơm cho từng đơn vị.',
     tabs: {
       tree: 'Cây tổ chức',
       unassigned: 'Chưa đăng ký cơm được',
@@ -770,7 +760,7 @@ export const vi = {
   },
   employees: {
     title: 'Nhân viên',
-    intro: 'Tìm nhân viên trong phạm vi bạn quản lý, xem đầu mối nhận cơm và cấp lại mã PIN.',
+    intro: 'Tìm nhân viên và cấp lại mã PIN.',
     filters: 'Bộ lọc',
     filtersHint: 'Danh sách cập nhật ngay khi bạn chọn.',
     clearFilters: 'Xóa bộ lọc',
@@ -808,7 +798,7 @@ export const vi = {
   },
   settings: {
     title: 'Cài đặt',
-    intro: 'Hạn chót, ngày phục vụ và các ngưỡng cảnh báo. Mọi thay đổi đều được ghi nhật ký.',
+    intro: 'Hạn chót, ngày phục vụ và ngưỡng cảnh báo.',
     default: 'Mặc định: {value}',
     was: 'Đang áp dụng: {value}',
     time: 'giờ',

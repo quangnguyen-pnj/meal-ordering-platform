@@ -116,7 +116,7 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
         <CardTitle>{t('adminToday.title')}</CardTitle>
         <CardDescription>
           {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
-          {t('adminToday.intro', { lock: view ? formatVnTime(view.lockAt) : '08:00' })}
+          {t('adminToday.intro')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
