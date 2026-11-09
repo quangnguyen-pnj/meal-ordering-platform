@@ -1,9 +1,12 @@
 package vn.pnj.meal.api.dmp;
 
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +21,7 @@ import vn.pnj.meal.api.config.AppProperties;
 
 /**
  * The real DMP client (plan section 5): service-token login and a GET helper with the 10 s timeout
- * and 3 attempts with backoff, re-logging in once on 401. Org tree and employees are implemented;
- * attendance and leave follow in P3. Never used against a real DMP in tests.
+ * and 3 attempts with backoff, re-logging in once on 401. Never used against a real DMP in tests.
  *
  * <p>Endpoint notes: GET /api/hr-employees (page, size <= 500, sort=employeeId,asc; Spring Page,
  * sequential pages); GET /api/hierarchy (full tree, unpaged); GET /api/attendance (fromDate, toDate
@@ -31,6 +33,7 @@ public class HttpDmpClient implements DmpClient {
   static final Duration TIMEOUT = Duration.ofSeconds(10);
   static final int MAX_ATTEMPTS = 3;
   static final int PAGE_SIZE = 500;
+  private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
   /** Safety stop: 1,700 employees fit in 4 pages; 200 pages means the paging is broken. */
   static final int MAX_PAGES = 200;
@@ -84,14 +87,75 @@ public class HttpDmpClient implements DmpClient {
         "DMP /api/hr-employees returned more than " + MAX_PAGES + " pages");
   }
 
+  /**
+   * GET /api/attendance for one day (fromDate = toDate, dd-MM-yyyy). DMP has no time filter, so the
+   * whole day is read; the rules keep the earliest check-in per person (BR-30).
+   */
   @Override
   public List<AttendanceRecord> getAttendance(LocalDate date) {
-    throw notImplemented("getAttendance", "P3");
+    String day = DMY.format(date);
+    List<AttendanceRecord> all = new ArrayList<>();
+    for (int page = 0; page < MAX_PAGES; page++) {
+      DmpParsers.Page<AttendanceRecord> result =
+          DmpParsers.parseAttendancePage(
+              get(
+                  "/api/attendance?fromDate="
+                      + day
+                      + "&toDate="
+                      + day
+                      + companyCode()
+                      + "&page="
+                      + page
+                      + "&size="
+                      + PAGE_SIZE),
+              date,
+              PAGE_SIZE);
+      all.addAll(result.items());
+      if (result.last()) {
+        return all;
+      }
+    }
+    throw tooManyPages("/api/attendance");
   }
 
+  /** GET /api/daily-forecast?hasLeave=true for the inclusive range (ISO dates), flags only. */
   @Override
   public List<LeaveRecord> getLeave(LocalDate fromDate, LocalDate toDate) {
-    throw notImplemented("getLeave", "P3");
+    List<LeaveRecord> all = new ArrayList<>();
+    for (int page = 0; page < MAX_PAGES; page++) {
+      DmpParsers.Page<LeaveRecord> result =
+          DmpParsers.parseLeavePage(
+              get(
+                  "/api/daily-forecast?fromDate="
+                      + fromDate
+                      + "&toDate="
+                      + toDate
+                      + "&hasLeave=true"
+                      + companyCode()
+                      + "&page="
+                      + page
+                      + "&pageSize="
+                      + PAGE_SIZE),
+              PAGE_SIZE);
+      all.addAll(result.items());
+      if (result.last()) {
+        return all;
+      }
+    }
+    throw tooManyPages("/api/daily-forecast");
+  }
+
+  /** {@code &companyCode=...} when DMP_COMPANY_CODE is set (open question Q1). */
+  private String companyCode() {
+    return config.companyCode() == null
+        ? ""
+        : "&companyCode=" + URLEncoder.encode(config.companyCode(), StandardCharsets.UTF_8);
+  }
+
+  private static DmpException tooManyPages(String endpoint) {
+    return new DmpException(
+        DmpException.Kind.API_ERROR,
+        "DMP " + endpoint + " returned more than " + MAX_PAGES + " pages");
   }
 
   /** POST /api/auth/login with the LDAP service account; the JWT has no refresh token. */
@@ -184,11 +248,5 @@ public class HttpDmpClient implements DmpClient {
       Thread.currentThread().interrupt();
       throw new DmpException(DmpException.Kind.API_ERROR, "Interrupted while retrying DMP");
     }
-  }
-
-  private static DmpException notImplemented(String method, String phase) {
-    return new DmpException(
-        DmpException.Kind.NOT_IMPLEMENTED,
-        "HttpDmpClient." + method + " is implemented in " + phase);
   }
 }

@@ -178,7 +178,7 @@ export function AppShell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
-  const [asideScrolled, setAsideScrolled] = useState(false);
+  const [_asideScrolled, setAsideScrolled] = useState(false);
   const nav = visibleNav(user.roles);
   const groups = [
     { key: 'mine', title: t('nav.groups.mine'), items: nav.mine },

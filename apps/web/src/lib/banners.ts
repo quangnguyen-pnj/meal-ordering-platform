@@ -1,7 +1,7 @@
 import type { NotificationType } from '@meal/shared';
 import type { BannerView } from '@/lib/api-types';
 import type { Banner } from '@/components/app-shell/banner-area';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatVnTime } from '@/lib/utils';
 import { t, vi } from '@/messages';
 
 /**
@@ -31,6 +31,32 @@ export function toBanners(views: readonly BannerView[]): Banner[] {
         }),
         // Only HC admins get this banner, and they can always open the menu builder.
         action: { href: '/admin/menu', label: t('banners.openMenu') },
+      };
+    }
+    if (b.kind === 'ATTENDANCE_SYNC_FAILED') {
+      return {
+        id: b.id,
+        severity: b.severity,
+        message: t('banners.attendanceSyncFailed', {
+          date: asDate(b.params.date),
+          at: typeof b.params.at === 'string' ? formatVnTime(b.params.at) : '',
+        }),
+        // Only HC admins get the attendance banners (BR-34).
+        action: { href: '/admin/today', label: t('banners.openAdminToday') },
+      };
+    }
+    if (b.kind === 'ATTENDANCE_CUTOFF_HELD') {
+      const outcome =
+        b.params.outcome === 'HELD_TOO_FEW_PRESENT' ? 'HELD_TOO_FEW_PRESENT' : 'HELD_SYNC_FAILED';
+      return {
+        id: b.id,
+        severity: b.severity,
+        message: t(`banners.attendanceCutoffHeld.${outcome}`, {
+          date: asDate(b.params.date),
+          present: String(b.params.presentWithMeals ?? ''),
+          total: String(b.params.withMeals ?? ''),
+        }),
+        action: { href: '/admin/today', label: t('banners.openAdminToday') },
       };
     }
     const type = b.notificationType as NotificationType;

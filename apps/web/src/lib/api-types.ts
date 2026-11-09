@@ -50,6 +50,16 @@ export type GridSaveResult = Schemas['GridSaveResult'];
 export type RegistrationImportView = Schemas['ImportView'];
 export type RegistrationImportErrorCode = Schemas['RegistrationImportError']['code'];
 
+export type AdminTodayView = Schemas['AdminTodayView'];
+export type TodayRow = Schemas['TodayRow'];
+export type TodayCase = TodayRow['cases'][number];
+export type PresenceState = Schemas['TodayPresence']['state'];
+export type TodayPresence = Schemas['TodayPresence'];
+export type TodayEditResult = Schemas['TodayEditResult'];
+export type AttendanceStatus = Schemas['AttendanceStatus'];
+export type AttendanceRerunResult = Schemas['RerunResult'];
+export type MyAttendanceView = Schemas['MyAttendanceView'];
+
 /**
  * The error codes the web has copy for (packages/shared, used to parse error bodies at run time)
  * must be exactly the ones the API sends: this fails to compile when they drift apart.

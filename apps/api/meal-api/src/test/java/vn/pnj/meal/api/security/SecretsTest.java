@@ -60,6 +60,8 @@ class SecretsTest extends IntegrationTest {
           "/api/admin/registrations/units",
           "/api/admin/registrations/progress?weekStart=2026-10-26",
           "/api/admin/registrations/units/ou_XCT-A1-1/grid?weekStart=2026-10-26",
+          "/api/admin/today",
+          "/api/admin/today?date=2026-10-26",
           "/api/team",
           "/api/registrations/me/week?weekStart=2026-10-26",
           "/api/registrations/me/day",

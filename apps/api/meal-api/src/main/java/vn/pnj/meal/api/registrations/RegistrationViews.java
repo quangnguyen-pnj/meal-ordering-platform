@@ -6,7 +6,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
+import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.dishes.DishTypeLabel;
+import vn.pnj.meal.rules.attendance.AttendanceRules.PresenceState;
+import vn.pnj.meal.rules.attendance.DayCases.CaseType;
 import vn.pnj.meal.rules.registration.RegistrationImport.RegistrationImportError;
 import vn.pnj.meal.rules.registration.RegistrationRules.AdminDayWindow;
 import vn.pnj.meal.rules.registration.RegistrationRules.EmployeeDayWindow;
@@ -152,6 +155,7 @@ public final class RegistrationViews {
 
   /**
    * @param now server time (ClockService), so the countdown to the lock follows fake time too
+   * @param attendance BR-30 to BR-35 on day D itself; null on other days
    */
   public record DayOpen(
       @Schema(allowableValues = "DAY") String state,
@@ -160,7 +164,8 @@ public final class RegistrationViews {
       Instant closeAt,
       boolean forecastTaken,
       MyDayView day,
-      Instant now)
+      Instant now,
+      @Nullable MyAttendanceView attendance)
       implements MyDayRegistrationView {
     DayOpen(
         LocalDate date,
@@ -168,8 +173,9 @@ public final class RegistrationViews {
         Instant closeAt,
         boolean forecastTaken,
         MyDayView day,
-        Instant now) {
-      this("DAY", date, canteenName, closeAt, forecastTaken, day, now);
+        Instant now,
+        MyAttendanceView attendance) {
+      this("DAY", date, canteenName, closeAt, forecastTaken, day, now, attendance);
     }
   }
 
@@ -285,4 +291,98 @@ public final class RegistrationViews {
       List<RegistrationImportError> errors,
       int changedDays,
       int changedEmployees) {}
+
+  // --- /admin/today (P3: BR-24, BR-30 to BR-35, BR-41) ------------------------------------------
+
+  /**
+   * One meal of an employee's day: the current quantity and the forecast quantity.
+   *
+   * @param onMenu false for a forecast meal whose dish is no longer on the menu
+   */
+  public record TodayLine(
+      String menuItemId, String displayName, int quantity, int forecast, boolean onMenu) {}
+
+  /**
+   * @param checkedInInTime BR-30: a check-in no later than the cutoff
+   * @param confirmedInDmp BR-30 (v1.3): a manager confirmed presence in DMP
+   * @param confirmReason BR-33: optional, admins only (never on /team, BR-27)
+   */
+  public record TodayPresence(
+      PresenceState state,
+      @Nullable Instant firstCheckInAt,
+      boolean checkedInInTime,
+      boolean confirmedInDmp,
+      @Nullable String confirmedByName,
+      @Nullable Instant confirmedAt,
+      @Nullable String confirmReason) {}
+
+  /**
+   * @param forecastTotal null while the forecast is not taken (BR-07)
+   * @param mealsCount false when presence cancels the meals (BR-31)
+   * @param cases BR-41 cases to review
+   */
+  public record TodayRow(
+      String employeeCode,
+      String name,
+      String orgPath,
+      @Nullable String canteenId,
+      List<TodayLine> lines,
+      @Nullable Integer forecastTotal,
+      int actualTotal,
+      boolean mealsCount,
+      TodayPresence presence,
+      AttendanceService.@Nullable LeaveFlag leave,
+      List<CaseType> cases) {}
+
+  public record TodayMenu(String canteenId, String canteenName, List<GridItem> items) {}
+
+  /**
+   * @param countedMeals meals that count once presence is applied (BR-31)
+   */
+  public record TodaySummary(
+      int employees,
+      int withMeals,
+      int present,
+      int provisionallyCancelled,
+      int forecastMeals,
+      int actualMeals,
+      int countedMeals,
+      int cases) {}
+
+  /**
+   * /admin/today for one serving day.
+   *
+   * @param window BR-21 / BR-24: ON_BEHALF before the lock, EXTRA (edits with a reason) until
+   *     finalization, CLOSED after
+   * @param canConfirmPresence BR-33: day D until finalization
+   */
+  public record AdminTodayView(
+      LocalDate date,
+      Instant now,
+      AdminDayWindow window,
+      Instant lockAt,
+      boolean canConfirmPresence,
+      AttendanceService.AttendanceStatus attendance,
+      TodaySummary summary,
+      List<TodayMenu> menus,
+      List<TodayRow> rows) {}
+
+  public record TodayEditResult(
+      String employeeCode,
+      LocalDate date,
+      Map<String, Integer> before,
+      Map<String, Integer> after) {}
+
+  /**
+   * The employee's own attendance on /today (BR-30 to BR-35). No reason and no admin name: the
+   * employee only sees what happened.
+   */
+  public record MyAttendanceView(
+      PresenceState state,
+      @Nullable Instant firstCheckInAt,
+      boolean checkedInInTime,
+      boolean confirmedInDmp,
+      boolean confirmedByAdmin,
+      Instant cutoffAt,
+      AttendanceService.@Nullable LeaveFlag leave) {}
 }

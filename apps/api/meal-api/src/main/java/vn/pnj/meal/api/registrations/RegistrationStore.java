@@ -545,6 +545,60 @@ public class RegistrationStore {
     return new ExtraAdded(before, after);
   }
 
+  /** A forecast line of day D with the meal's name as shown (BR-12). */
+  record ForecastItem(String employeeId, String menuItemId, String displayName, int quantity) {}
+
+  /** Forecast lines of the employees on {@code date}, whatever their canteen's week (BR-07). */
+  List<ForecastItem> forecastOn(LocalDate date, List<String> employeeIds) {
+    if (employeeIds.isEmpty()) {
+      return List.of();
+    }
+    return jdbc.sql(
+            """
+            SELECT f."employeeId", f."menuItemId", d.name AS "dishName", t.name AS "typeName",
+                   f.quantity
+            FROM "ForecastLine" f
+            JOIN "MenuItem" i ON i.id = f."menuItemId"
+            JOIN "Dish" d ON d.id = i."dishId"
+            JOIN "DishType" t ON t.id = d."typeId"
+            WHERE f.date = :date AND f.session = 'LUNCH' AND f."employeeId" IN (:ids)
+            ORDER BY f.id
+            """)
+        .param("date", date)
+        .param("ids", employeeIds)
+        .query(
+            (rs, i) ->
+                new ForecastItem(
+                    rs.getString("employeeId"),
+                    rs.getString("menuItemId"),
+                    MenuRules.mealDisplayName(rs.getString("typeName"), rs.getString("dishName")),
+                    rs.getInt("quantity")))
+        .list();
+  }
+
+  /**
+   * BR-24 / BR-25: after the lock, meals an admin adds while editing a day are flagged "Extra" with
+   * the edit's reason.
+   */
+  void markExtra(
+      String employeeId, LocalDate date, Set<String> menuItemIds, String reason, Instant now) {
+    if (menuItemIds.isEmpty()) {
+      return;
+    }
+    jdbc.sql(
+            """
+            UPDATE "Registration" SET "isExtra" = TRUE, "extraReason" = :reason, "updatedAt" = :now
+            WHERE "employeeId" = :employeeId AND date = :date AND "menuItemId" IN (:ids)
+              AND session = 'LUNCH'
+            """)
+        .param("reason", reason)
+        .param("now", SqlTime.utc(now))
+        .param("employeeId", employeeId)
+        .param("date", date)
+        .param("ids", menuItemIds)
+        .update();
+  }
+
   /** Forecast lines of employees in a week: employee id → date → menu item → quantity. */
   Map<String, Map<LocalDate, Map<String, Integer>>> forecastOf(
       String menuWeekId, List<String> employeeIds) {
