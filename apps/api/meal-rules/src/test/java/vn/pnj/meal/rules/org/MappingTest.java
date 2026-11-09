@@ -188,7 +188,8 @@ class MappingTest {
     }
 
     @Test
-    @DisplayName("BR-60: an employee with no meal unit above is unassigned and cannot register")
+    @DisplayName(
+        "BR-60: with no fallback meal unit set, an employee with no meal unit cannot register")
     void noMealUnit() {
       EmployeeMealAssignment a = Mapping.resolveEmployeeMealAssignment("L4b", null, null, INDEX);
       assertThat(a.mealUnitId()).isNull();
@@ -197,10 +198,12 @@ class MappingTest {
     }
 
     @Test
-    @DisplayName("BR-63: an employee under an invalid meal unit is unassigned and cannot register")
+    @DisplayName(
+        "BR-63: with no fallback meal unit set, an employee under an invalid one cannot register")
     void invalidMealUnit() {
       EmployeeMealAssignment a = Mapping.resolveEmployeeMealAssignment("L2x", null, null, INDEX);
-      assertThat(a.mealUnitId()).isEqualTo("L2x");
+      assertThat(a.mealUnitId()).isNull();
+      assertThat(a.ownMealUnitId()).isEqualTo("L2x");
       assertThat(a.status()).isEqualTo(MealStatus.INVALID_MEAL_UNIT);
       assertThat(a.missing()).containsExactly("floor", "canteen");
       assertThat(a.canRegister()).isFalse();
@@ -240,6 +243,200 @@ class MappingTest {
       assertThat(a.canRegister()).isTrue();
       assertThat(a.missingCostCenter()).isTrue();
       assertThat(a.costCenterId()).isNull();
+    }
+  }
+
+  /**
+   * CR 2026-11-04: the same tree as {@link #INDEX} plus a valid meal unit FB (floor F7, canteen C1)
+   * picked as the fallback, a canteen C2 on L3b, and a meal unit M3 under L3b with a floor (F3) but
+   * whose canteen comes from L3b.
+   */
+  @Nested
+  @DisplayName("BR-60/BR-63 (CR 2026-11-04): fallback meal unit")
+  class Fallback {
+    private final OrgIndex withFallback =
+        OrgIndex.of(
+            List.of(
+                new OrgNode("L1", null, false, null, "C1", null),
+                new OrgNode("L2", "L1", false, "F1", "C1", "K1"),
+                new OrgNode("FB", "L2", true, "F7", null, null),
+                new OrgNode("L4", "L2", true, "F2", null, null),
+                node("L6", "L4"),
+                new OrgNode("L3b", "L2", false, null, "C2", null),
+                node("L4b", "L3b"),
+                new OrgNode("L1y", null, false, null, null, null),
+                new OrgNode("L2y", "L1y", true, null, null, null),
+                node("L3y", "L1y"),
+                new OrgNode("L1z", null, true, null, "C3", null),
+                node("L2z", "L1z")),
+            "FB");
+
+    @Test
+    @DisplayName(
+        "BR-60: an employee with a canteen but no meal unit registers into the fallback meal unit")
+    void noMealUnitGoesToFallback() {
+      OrgIndex index =
+          OrgIndex.of(
+              List.of(
+                  new OrgNode("R", null, false, "F1", "C1", "K1"),
+                  new OrgNode("FB", "R", true, "F7", null, null),
+                  node("D", "R")),
+              "FB");
+      EmployeeMealAssignment a = Mapping.resolveEmployeeMealAssignment("D", null, null, index);
+      assertThat(a.canRegister()).isTrue();
+      assertThat(a.viaFallback()).isTrue();
+      assertThat(a.status()).isEqualTo(MealStatus.NO_MEAL_UNIT);
+      assertThat(a.ownMealUnitId()).isNull();
+      assertThat(a.mealUnitId()).isEqualTo("FB");
+      assertThat(a.floorId()).isEqualTo("F7");
+      assertThat(a.canteenId()).isEqualTo("C1");
+      assertThat(a.costCenterId()).isEqualTo("K1");
+    }
+
+    @Test
+    @DisplayName(
+        "BR-15: the menu canteen is the department's own, even when the fallback's differs")
+    void departmentCanteen() {
+      EmployeeMealAssignment a =
+          Mapping.resolveEmployeeMealAssignment("L4b", null, null, withFallback);
+      assertThat(a.viaFallback()).isTrue();
+      assertThat(a.mealUnitId()).isEqualTo("FB");
+      assertThat(a.canteenId()).isEqualTo("C2");
+      assertThat(a.floorId()).isEqualTo("F7");
+    }
+
+    @Test
+    @DisplayName(
+        "BR-63: an employee whose meal unit has a canteen but no floor goes to the fallback")
+    void invalidUnitWithCanteen() {
+      EmployeeMealAssignment a =
+          Mapping.resolveEmployeeMealAssignment("L2z", null, null, withFallback);
+      assertThat(a.status()).isEqualTo(MealStatus.INVALID_MEAL_UNIT);
+      assertThat(a.missing()).containsExactly("floor");
+      assertThat(a.ownMealUnitId()).isEqualTo("L1z");
+      assertThat(a.mealUnitId()).isEqualTo("FB");
+      assertThat(a.canteenId()).isEqualTo("C3");
+      assertThat(a.canRegister()).isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-63: an employee whose department has no canteen cannot register")
+    void noCanteen() {
+      EmployeeMealAssignment noUnit =
+          Mapping.resolveEmployeeMealAssignment("L3y", null, null, withFallback);
+      assertThat(noUnit.canRegister()).isFalse();
+      assertThat(noUnit.viaFallback()).isFalse();
+      assertThat(noUnit.mealUnitId()).isNull();
+      assertThat(noUnit.canteenId()).isNull();
+      EmployeeMealAssignment invalidUnit =
+          Mapping.resolveEmployeeMealAssignment("L2y", null, null, withFallback);
+      assertThat(invalidUnit.canRegister()).isFalse();
+      assertThat(invalidUnit.missing()).containsExactly("floor", "canteen");
+    }
+
+    @Test
+    @DisplayName("BR-63: a valid meal unit keeps its employees; the fallback does not apply")
+    void validUnitUnchanged() {
+      EmployeeMealAssignment a =
+          Mapping.resolveEmployeeMealAssignment("L6", null, null, withFallback);
+      assertThat(a.viaFallback()).isFalse();
+      assertThat(a.mealUnitId()).isEqualTo("L4");
+      assertThat(a.floorId()).isEqualTo("F2");
+    }
+
+    @Test
+    @DisplayName("BR-63: an employee floor override applies at the fallback meal unit too")
+    void floorOverride() {
+      EmployeeMealAssignment a =
+          Mapping.resolveEmployeeMealAssignment("L4b", "F9", null, withFallback);
+      assertThat(a.mealUnitId()).isEqualTo("FB");
+      assertThat(a.floorId()).isEqualTo("F9");
+      assertThat(a.floorSource()).isEqualTo(FloorSource.OVERRIDE);
+    }
+
+    @Test
+    @DisplayName(
+        "BR-60: the fallback serves every canteen; it needs a floor but no canteen of its own")
+    void fallbackWithoutCanteen() {
+      OrgIndex index =
+          OrgIndex.of(
+              List.of(
+                  node("R", null),
+                  new OrgNode("FB", "R", true, "F7", null, null),
+                  new OrgNode("A", "R", false, null, "CA", null),
+                  new OrgNode("B", "R", false, null, "CB", null)),
+              "FB");
+      EmployeeMealAssignment a = Mapping.resolveEmployeeMealAssignment("A", null, null, index);
+      EmployeeMealAssignment b = Mapping.resolveEmployeeMealAssignment("B", null, null, index);
+      assertThat(List.of(a, b)).allMatch(x -> x.canRegister() && "FB".equals(x.mealUnitId()));
+      assertThat(List.of(a.floorId(), b.floorId())).containsOnly("F7");
+      assertThat(a.canteenId()).isEqualTo("CA");
+      assertThat(b.canteenId()).isEqualTo("CB");
+    }
+
+    @Test
+    @DisplayName("BR-63: the fallback meal unit is valid with a floor and no canteen")
+    void fallbackValidWithFloorOnly() {
+      MealUnitMapping fb = Mapping.resolveMealUnitMapping("FB", withFallback);
+      assertThat(fb.valid()).isTrue();
+      assertThat(fb.floorId()).isEqualTo("F7");
+      assertThat(fb.missing()).isEmpty();
+      // Without the fallback flag the same node still lacks a canteen.
+      OrgIndex notFallback =
+          OrgIndex.of(List.of(new OrgNode("FB", null, true, "F7", null, null)), null);
+      assertThat(Mapping.resolveMealUnitMapping("FB", notFallback).missing())
+          .containsExactly("canteen");
+      OrgIndex noFloor =
+          OrgIndex.of(List.of(new OrgNode("FB", null, true, null, null, null)), "FB");
+      assertThat(Mapping.resolveMealUnitMapping("FB", noFloor).valid()).isFalse();
+    }
+
+    @Test
+    @DisplayName(
+        "BR-63: employees under the fallback meal unit are OK there with their department's canteen")
+    void ownFallbackUsesDepartmentCanteen() {
+      OrgIndex index =
+          OrgIndex.of(
+              List.of(
+                  node("R", null),
+                  new OrgNode("FB", "R", true, "F7", null, null),
+                  new OrgNode("D", "FB", false, null, "CD", null),
+                  node("E", "FB")),
+              "FB");
+      EmployeeMealAssignment d = Mapping.resolveEmployeeMealAssignment("D", null, null, index);
+      assertThat(d.status()).isEqualTo(MealStatus.OK);
+      assertThat(d.viaFallback()).isFalse();
+      assertThat(d.mealUnitId()).isEqualTo("FB");
+      assertThat(d.floorId()).isEqualTo("F7");
+      assertThat(d.canteenId()).isEqualTo("CD");
+      // No canteen in their department: still blocked (CR 2026-11-04).
+      EmployeeMealAssignment e = Mapping.resolveEmployeeMealAssignment("E", null, null, index);
+      assertThat(e.canRegister()).isFalse();
+      assertThat(e.missing()).containsExactly("canteen");
+    }
+
+    @Test
+    @DisplayName("BR-60: a fallback that is no longer a meal unit, or has no floor, is ignored")
+    void unusableFallback() {
+      OrgIndex notMealUnit =
+          OrgIndex.of(
+              List.of(
+                  new OrgNode("R", null, false, "F1", "C1", null),
+                  new OrgNode("FB", "R", false, null, null, null),
+                  node("D", "R")),
+              "FB");
+      assertThat(notMealUnit.fallbackMealUnitId()).isNull();
+      assertThat(Mapping.resolveEmployeeMealAssignment("D", null, null, notMealUnit).canRegister())
+          .isFalse();
+      OrgIndex noFloor =
+          OrgIndex.of(
+              List.of(
+                  new OrgNode("R", null, false, null, "C1", null),
+                  new OrgNode("FB", "R", true, null, null, null),
+                  node("D", "R")),
+              "FB");
+      assertThat(Mapping.resolveEmployeeMealAssignment("D", null, null, noFloor).canRegister())
+          .isFalse();
     }
   }
 }

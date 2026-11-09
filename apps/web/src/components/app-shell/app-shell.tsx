@@ -244,7 +244,7 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden">
+      <aside className="hidden bg-card shadow-block md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden">
         {/* The app name stays put while a long menu scrolls under it (no shadow, by choice). */}
         <div className="sticky top-0 z-10 bg-card px-4 py-5">
           <p className="text-lg font-semibold">{t('app.name')}</p>

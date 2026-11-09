@@ -3,7 +3,9 @@ package vn.pnj.meal.api.dmp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +39,9 @@ class MockDmpClientTest {
         .contains(
             "on-time",
             "late",
+            "late-record",
             "forgot-to-check-in",
+            "manager-confirmed",
             "morning-leave",
             "afternoon-leave",
             "api-error",
@@ -93,6 +97,30 @@ class MockDmpClientTest {
     List<DmpClient.AttendanceRecord> records = dmp("forgot-to-check-in").getAttendance(DAY);
     assertThat(records).hasSize(SeedEmployees.COUNT - 13);
     assertThat(records).noneMatch(r -> r.employeeCode().equals("PNJP000010"));
+  }
+
+  @Test
+  @DisplayName("BR-32 late-record: the 08:05 rows only reach DMP at 08:20")
+  void lateRecord() {
+    Instant[] now = {VnTime.vnToUtc(DAY, LocalTime.of(8, 19))};
+    MockDmpClient dmp = new MockDmpClient("late-record", JSON, () -> now[0]);
+    assertThat(dmp.getAttendance(DAY)).noneMatch(r -> r.employeeCode().equals("PNJP000008"));
+    now[0] = VnTime.vnToUtc(DAY, LocalTime.of(8, 20));
+    Map<String, String> byCode = new HashMap<>();
+    dmp.getAttendance(DAY).forEach(r -> byCode.put(r.employeeCode(), hhmm(r)));
+    assertThat(byCode.get("PNJP000008")).isEqualTo("08:05");
+  }
+
+  @Test
+  @DisplayName("BR-30 manager-confirmed: confirmed rows without or with a late check-in")
+  void managerConfirmed() {
+    Map<String, DmpClient.AttendanceRecord> byCode = new HashMap<>();
+    dmp("manager-confirmed").getAttendance(DAY).forEach(r -> byCode.put(r.employeeCode(), r));
+    assertThat(byCode.get("PNJP000008").checkInAt()).isNull();
+    assertThat(byCode.get("PNJP000008").managerConfirmed()).isTrue();
+    assertThat(hhmm(byCode.get("PNJP000015"))).isEqualTo("08:25");
+    assertThat(byCode.get("PNJP000015").managerConfirmed()).isTrue();
+    assertThat(byCode.get("PNJP000007").managerConfirmed()).isFalse();
   }
 
   @Test

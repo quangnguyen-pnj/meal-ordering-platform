@@ -9,6 +9,34 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/admin/attendance/sync" : {
+      "post" : {
+        "operationId" : "rerun",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RerunBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RerunResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "attendance-controller" ]
+      }
+    },
     "/api/admin/desserts" : {
       "get" : {
         "operationId" : "listDesserts",
@@ -1546,6 +1574,113 @@
         "tags" : [ "supplier-controller" ]
       }
     },
+    "/api/admin/today" : {
+      "get" : {
+        "operationId" : "view",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "date",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "orgUnitId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminTodayView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "today-controller" ]
+      }
+    },
+    "/api/admin/today/employees/{code}/meals" : {
+      "put" : {
+        "operationId" : "editMeals",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MealsBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TodayEditResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "today-controller" ]
+      }
+    },
+    "/api/admin/today/employees/{code}/presence" : {
+      "post" : {
+        "operationId" : "confirmPresence",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PresenceBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TodayPresence"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "today-controller" ]
+      }
+    },
     "/api/auth/entra/callback" : {
       "get" : {
         "operationId" : "entraCallback",
@@ -2438,6 +2573,49 @@
   },
   "components" : {
     "schemas" : {
+      "AdminTodayView" : {
+        "type" : "object",
+        "properties" : {
+          "attendance" : {
+            "$ref" : "#/components/schemas/AttendanceStatus"
+          },
+          "canConfirmPresence" : {
+            "type" : "boolean"
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lockAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "menus" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TodayMenu"
+            }
+          },
+          "now" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TodayRow"
+            }
+          },
+          "summary" : {
+            "$ref" : "#/components/schemas/TodaySummary"
+          },
+          "window" : {
+            "type" : "string",
+            "enum" : [ "ON_BEHALF", "EXTRA", "CLOSED" ]
+          }
+        },
+        "required" : [ "attendance", "canConfirmPresence", "date", "lockAt", "menus", "now", "rows", "summary", "window" ]
+      },
       "ApiErrorBody" : {
         "type" : "object",
         "properties" : {
@@ -2472,6 +2650,44 @@
         },
         "required" : [ "archivedAt", "id" ]
       },
+      "AttendanceStatus" : {
+        "type" : "object",
+        "properties" : {
+          "cutoff" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CutoffSummary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "cutoffAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lastAttendanceSync" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/SyncRunSummary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "lastLeaveSync" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/SyncRunSummary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "servingDay" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "cutoff", "cutoffAt", "date", "lastAttendanceSync", "lastLeaveSync", "servingDay" ]
+      },
       "BannerView" : {
         "type" : "object",
         "properties" : {
@@ -2480,7 +2696,7 @@
           },
           "kind" : {
             "type" : "string",
-            "enum" : [ "MENU_NOT_PUBLISHED", "NOTIFICATION" ]
+            "enum" : [ "MENU_NOT_PUBLISHED", "ATTENDANCE_SYNC_FAILED", "ATTENDANCE_CUTOFF_HELD", "NOTIFICATION" ]
           },
           "notificationId" : {
             "type" : "string"
@@ -2535,6 +2751,10 @@
       "Canteens" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -2546,7 +2766,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "items", "upcomingWeekStart" ]
+        "required" : [ "currentWeekStart", "items", "upcomingWeekStart" ]
       },
       "Change" : {
         "type" : "object",
@@ -2672,6 +2892,54 @@
         },
         "required" : [ "id" ]
       },
+      "CutoffResult" : {
+        "type" : "object",
+        "properties" : {
+          "cancelledCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "CANCELLED", "HELD_SYNC_FAILED", "HELD_TOO_FEW_PRESENT" ]
+          },
+          "presentWithMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "withMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "cancelledCount", "outcome", "presentWithMeals", "withMeals" ]
+      },
+      "CutoffSummary" : {
+        "type" : "object",
+        "properties" : {
+          "cancelledCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "CANCELLED", "HELD_SYNC_FAILED", "HELD_TOO_FEW_PRESENT" ]
+          },
+          "presentWithMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "runAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "withMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "cancelledCount", "outcome", "presentWithMeals", "runAt", "withMeals" ]
+      },
       "DayBody" : {
         "type" : "object",
         "properties" : {
@@ -2718,6 +2986,13 @@
       "DayOpen" : {
         "type" : "object",
         "properties" : {
+          "attendance" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/MyAttendanceView"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "canteenName" : {
             "type" : "string"
           },
@@ -2744,7 +3019,7 @@
             "enum" : [ "DAY" ]
           }
         },
-        "required" : [ "canteenName", "closeAt", "date", "day", "forecastTaken", "now", "state" ]
+        "required" : [ "attendance", "canteenName", "closeAt", "date", "day", "forecastTaken", "now", "state" ]
       },
       "DaySelectionBody" : {
         "type" : "object",
@@ -3135,6 +3410,9 @@
       "EmployeeMappingView" : {
         "type" : "object",
         "properties" : {
+          "canRegister" : {
+            "type" : "boolean"
+          },
           "canteenId" : {
             "type" : [ "string", "null" ]
           },
@@ -3202,9 +3480,12 @@
           "status" : {
             "type" : "string",
             "enum" : [ "ACTIVE", "LEFT" ]
+          },
+          "viaFallback" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status" ]
+        "required" : [ "canRegister", "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status", "viaFallback" ]
       },
       "ExtraBody" : {
         "type" : "object",
@@ -3766,6 +4047,39 @@
         },
         "required" : [ "items" ]
       },
+      "LeaveFlag" : {
+        "type" : "object",
+        "properties" : {
+          "dayType" : {
+            "type" : "string",
+            "enum" : [ "FULL", "AM", "PM" ]
+          },
+          "leaveTypeName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "dayType", "leaveTypeName" ]
+      },
+      "LeaveResult" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "flags" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "SUCCESS", "FAILED" ]
+          },
+          "syncRunId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "error", "flags", "status", "syncRunId" ]
+      },
       "LibraryImportError" : {
         "type" : "object",
         "properties" : {
@@ -3923,6 +4237,28 @@
           }
         },
         "required" : [ "active", "code", "id", "name", "usageCount" ]
+      },
+      "MealsBody" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LineBody"
+            },
+            "maxItems" : 50,
+            "minItems" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 1
+          }
+        },
+        "required" : [ "date", "lines", "reason" ]
       },
       "MenuDayView" : {
         "type" : "object",
@@ -4137,6 +4473,40 @@
         },
         "required" : [ "actual", "max", "min", "typeId", "typeName" ]
       },
+      "MyAttendanceView" : {
+        "type" : "object",
+        "properties" : {
+          "checkedInInTime" : {
+            "type" : "boolean"
+          },
+          "confirmedByAdmin" : {
+            "type" : "boolean"
+          },
+          "confirmedInDmp" : {
+            "type" : "boolean"
+          },
+          "cutoffAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "firstCheckInAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "leave" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LeaveFlag"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "UNKNOWN", "PRESENT", "PROVISIONAL_ABSENT", "ABSENT" ]
+          }
+        },
+        "required" : [ "checkedInInTime", "confirmedByAdmin", "confirmedInDmp", "cutoffAt", "firstCheckInAt", "leave", "state" ]
+      },
       "MyDayRegistrationView" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/DayUnassigned"
@@ -4321,6 +4691,9 @@
           "id" : {
             "type" : "string"
           },
+          "isFallbackMealUnit" : {
+            "type" : "boolean"
+          },
           "isMealUnit" : {
             "type" : "boolean"
           },
@@ -4347,7 +4720,7 @@
             "$ref" : "#/components/schemas/ResolvedView"
           }
         },
-        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
+        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isFallbackMealUnit", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
       },
       "Own" : {
         "type" : "object",
@@ -4394,6 +4767,20 @@
           }
         },
         "required" : [ "employeeCode", "pin" ]
+      },
+      "PresenceBody" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "date" ]
       },
       "ProgressUnit" : {
         "type" : "object",
@@ -4551,6 +4938,34 @@
           }
         },
         "required" : [ "from" ]
+      },
+      "RerunBody" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "date" ]
+      },
+      "RerunResult" : {
+        "type" : "object",
+        "properties" : {
+          "attendance" : {
+            "$ref" : "#/components/schemas/SyncResult"
+          },
+          "cutoff" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CutoffResult"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "leave" : {
+            "$ref" : "#/components/schemas/LeaveResult"
+          }
+        },
+        "required" : [ "attendance", "cutoff", "leave" ]
       },
       "ResetPinBody" : {
         "type" : "object",
@@ -4836,6 +5251,62 @@
         },
         "required" : [ "id", "name", "unitPrice" ]
       },
+      "SyncResult" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "present" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "records" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "restored" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "SUCCESS", "FAILED" ]
+          },
+          "syncRunId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "error", "present", "records", "restored", "status", "syncRunId" ]
+      },
+      "SyncRunSummary" : {
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "finishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "recordCount" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "startedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "RUNNING", "SUCCESS", "FAILED" ]
+          }
+        },
+        "required" : [ "error", "finishedAt", "id", "recordCount", "startedAt", "status" ]
+      },
       "SyncRunView" : {
         "type" : "object",
         "properties" : {
@@ -4925,6 +5396,194 @@
         },
         "required" : [ "eating", "key", "meals", "name" ]
       },
+      "TodayEditResult" : {
+        "type" : "object",
+        "properties" : {
+          "after" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "before" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "employeeCode" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "after", "before", "date", "employeeCode" ]
+      },
+      "TodayLine" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "forecast" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "menuItemId" : {
+            "type" : "string"
+          },
+          "onMenu" : {
+            "type" : "boolean"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "displayName", "forecast", "menuItemId", "onMenu", "quantity" ]
+      },
+      "TodayMenu" : {
+        "type" : "object",
+        "properties" : {
+          "canteenId" : {
+            "type" : "string"
+          },
+          "canteenName" : {
+            "type" : "string"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GridItem"
+            }
+          }
+        },
+        "required" : [ "canteenId", "canteenName", "items" ]
+      },
+      "TodayPresence" : {
+        "type" : "object",
+        "properties" : {
+          "checkedInInTime" : {
+            "type" : "boolean"
+          },
+          "confirmReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "confirmedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "confirmedByName" : {
+            "type" : [ "string", "null" ]
+          },
+          "confirmedInDmp" : {
+            "type" : "boolean"
+          },
+          "firstCheckInAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "UNKNOWN", "PRESENT", "PROVISIONAL_ABSENT", "ABSENT" ]
+          }
+        },
+        "required" : [ "checkedInInTime", "confirmReason", "confirmedAt", "confirmedByName", "confirmedInDmp", "firstCheckInAt", "state" ]
+      },
+      "TodayRow" : {
+        "type" : "object",
+        "properties" : {
+          "actualTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "canteenId" : {
+            "type" : [ "string", "null" ]
+          },
+          "cases" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "PROVISIONALLY_CANCELLED", "CANCELLED_ABSENT", "NOT_EATING", "REDUCED", "ADDED", "DISH_CHANGED", "EXTRA", "PRESENCE_CONFIRMED_BY_ADMIN", "PRESENCE_CONFIRMED_IN_DMP", "ON_LEAVE_WITH_MEALS" ]
+            }
+          },
+          "employeeCode" : {
+            "type" : "string"
+          },
+          "forecastTotal" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "leave" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LeaveFlag"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TodayLine"
+            }
+          },
+          "mealsCount" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "orgPath" : {
+            "type" : "string"
+          },
+          "presence" : {
+            "$ref" : "#/components/schemas/TodayPresence"
+          }
+        },
+        "required" : [ "actualTotal", "canteenId", "cases", "employeeCode", "forecastTotal", "leave", "lines", "mealsCount", "name", "orgPath", "presence" ]
+      },
+      "TodaySummary" : {
+        "type" : "object",
+        "properties" : {
+          "actualMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cases" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "countedMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "employees" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "forecastMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "present" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "provisionallyCancelled" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "withMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "actualMeals", "cases", "countedMeals", "employees", "forecastMeals", "present", "provisionallyCancelled", "withMeals" ]
+      },
       "UnitOption" : {
         "type" : "object",
         "properties" : {
@@ -4967,6 +5626,10 @@
       "Units" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -4978,7 +5641,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "items", "upcomingWeekStart" ]
+        "required" : [ "currentWeekStart", "items", "upcomingWeekStart" ]
       },
       "UserBody" : {
         "type" : "object",
@@ -5039,6 +5702,10 @@
           "canteenName" : {
             "type" : "string"
           },
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "NOT_PUBLISHED" ]
@@ -5048,7 +5715,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "state", "weekStart" ]
+        "required" : [ "canteenName", "currentWeekStart", "state", "weekStart" ]
       },
       "WeekPublished" : {
         "type" : "object",
@@ -5059,6 +5726,10 @@
           "closeAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
           },
           "days" : {
             "type" : "array",
@@ -5085,7 +5756,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
+        "required" : [ "canteenName", "closeAt", "currentWeekStart", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
       },
       "WeekSaveBody" : {
         "type" : "object",
@@ -5107,6 +5778,10 @@
       "WeekUnassigned" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "UNASSIGNED" ]
@@ -5116,7 +5791,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "state", "weekStart" ]
+        "required" : [ "currentWeekStart", "state", "weekStart" ]
       }
     }
   }

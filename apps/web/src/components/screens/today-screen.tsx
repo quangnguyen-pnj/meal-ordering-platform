@@ -1,6 +1,10 @@
 'use client';
 
-import type { MyDayRegistrationView, SaveRegistrationResult } from '@/lib/api-types';
+import type {
+  MyAttendanceView,
+  MyDayRegistrationView,
+  SaveRegistrationResult,
+} from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -41,7 +45,7 @@ export function formatMinutes(total: number): string {
 /**
  * /today (BR-23, BR-24): today's forecast and current meals, desserts and the countdown to the
  * lock; add, change or "Not eating today" until then, read-only afterwards with a hint to contact
- * an admin. Attendance status and the leave flag join in P3.
+ * an admin. On day D itself it also shows attendance (BR-30 to BR-33) and the leave flag (BR-35).
  */
 export function TodayScreen() {
   const qc = useQueryClient();
@@ -102,7 +106,7 @@ export function TodayScreen() {
         {view && day ? (
           <>
             <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
-              <div className="rounded-lg bg-card p-4 shadow-block">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <dt className="text-xs text-muted-foreground">{t('today.forecastLabel')}</dt>
                 <dd className="text-xl font-semibold tabular-nums">
                   {day.forecastTotal === null
@@ -110,13 +114,15 @@ export function TodayScreen() {
                     : t('today.meals', { count: day.forecastTotal })}
                 </dd>
               </div>
-              <div className="rounded-lg bg-card p-4 shadow-block">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <dt className="text-xs text-muted-foreground">{t('today.actualLabel')}</dt>
                 <dd className="text-xl font-semibold tabular-nums">
                   {t('today.meals', { count: day.actualTotal })}
                 </dd>
               </div>
             </dl>
+
+            {view.attendance ? <AttendanceBlock attendance={view.attendance} /> : null}
 
             {!locked && left !== null ? (
               <Alert role="timer">
@@ -163,5 +169,45 @@ export function TodayScreen() {
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/** BR-30 to BR-35 for the employee: their presence, what restored it, and a leave flag. */
+function AttendanceBlock({ attendance }: { attendance: MyAttendanceView }) {
+  const cutoff = formatVnTime(attendance.cutoffAt);
+  const notes: string[] = [];
+  if (attendance.firstCheckInAt) {
+    notes.push(t('today.checkedInAt', { time: formatVnTime(attendance.firstCheckInAt) }));
+  } else if (attendance.state === 'UNKNOWN') {
+    notes.push(t('today.beforeCutoff', { cutoff }));
+  }
+  if (attendance.confirmedInDmp) notes.push(t('today.confirmedInDmp'));
+  if (attendance.confirmedByAdmin) notes.push(t('today.confirmedByAdmin'));
+  if (attendance.leave) {
+    notes.push(
+      t(`today.leave.${attendance.leave.dayType}`, { name: attendance.leave.leaveTypeName }),
+    );
+  }
+  return (
+    <section
+      aria-label={t('today.attendanceTitle')}
+      className="flex max-w-xl flex-col gap-1 rounded-lg bg-muted/50 p-4 text-sm"
+    >
+      <h2 className="font-medium">{t('today.attendanceTitle')}</h2>
+      <p
+        className={
+          attendance.state === 'PROVISIONAL_ABSENT' || attendance.state === 'ABSENT'
+            ? 'text-destructive'
+            : ''
+        }
+      >
+        {t(`today.attendance.${attendance.state}`, { cutoff })}
+      </p>
+      {notes.map((n) => (
+        <p key={n} className="text-muted-foreground">
+          {n}
+        </p>
+      ))}
+    </section>
   );
 }

@@ -606,6 +606,67 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Rejected:** `SEED_ON_START=true` in `.env.example` (does not fix `.env` files already copied, and makes `pnpm dev` seed on every start); a separate `COMPOSE_SEED_ON_START` variable (one more variable for a development-only stack).
 - **Checked:** with the existing `.env` (`SEED_ON_START=false`), `docker compose config` shows `SEED_ON_START: "true"` for `api`, and after recreating the api on an already seeded database the log shows `Seed complete` with the same counts (1,700 employees, 4 role assignments), `PNJP000001` signs in with the initial PIN, and the PIN `PNJP000003` had already changed is kept.
 
+## Spec change v1.3: presence confirmed in DMP (2026-10-30)
+
+- **Request (product owner):** production managers confirm in DMP, before finalization, that an employee who forgot to check in or arrived late is at work. They tick a box; the arrival time does not matter, and no reason is needed. DMP takes time-clock data every 5 minutes.
+- **Choices (product owner, 2026-10-30):** a DMP confirmation counts as present (BR-30) and restores the meals automatically when it arrives before finalization, even for an arrival after 08:10 (BR-32). One that arrives after finalization adds nothing: it shows on the review list (BR-41) and the HC admin decides on an adjustment (BR-46). Confirming in the meal system (BR-33) stays as a fallback with an optional reason, still audited; AGENTS rule 6 names this exception.
+- **Open:** how DMP exposes the confirmation in `/api/attendance` (Q32). Only the documents changed; the code comes with P3.
+
+## Phase 3 – Attendance and day-D processing (2026-11-01)
+
+### Rules (`apps/api/meal-rules`, package `attendance`)
+
+- `AttendanceRules`: `checkInInTime` / `isPresent` (BR-30, v1.3: a check-in by the cutoff, or a manager's DMP confirmation whatever the time), `earliestCheckIn`, `afterSync` (BR-32: present per DMP becomes `PRESENT`; nothing else changes, so a check-in after 08:10 never restores and a sync never takes presence back; `ABSENT` is final), `cancelledAtCutoff` (BR-31), `mealsCount`, `safetyCheck` (BR-34), and the schedule checks `isPollDue`, `isCutoffDue`, `canConfirmPresence`. Every time comes in as an argument; the cutoff, poll start, interval and threshold are settings.
+- **The cutoff is the last accepted minute** (08:10:59 counts), like `registration.close` (Q30).
+- `DayCases.casesFor` (BR-41) gives the cases of one employee's day: provisionally cancelled, not eating, reduced, added (also without a forecast), dish changed, extra, presence confirmed by an admin, confirmed in DMP without a check-in in time, full-day or morning leave with meals. No difference cases before the forecast is taken. Only full-day and morning leave count as "on leave with meals"; afternoon leave keeps lunch (Q33, product owner 2026-11-01).
+
+### Data (Flyway V5)
+
+- **Registrations are never touched by attendance.** `DailyPresence` (one row per employee and day) holds the state; meals of a `PROVISIONAL_ABSENT` employee simply stop counting (plan 6.3: "actual is computed from active registrations and day-D presence"). A restore or an admin confirmation changes the presence row only, so nothing has to be rebuilt.
+- `DailyPresence` keeps the earliest check-in seen, the first sync that saw a DMP confirmation (`dmpConfirmedAt`), when it was provisionally cancelled and restored, and the admin confirmation (who, when, optional reason).
+- `LeaveFlag` (BR-35): one flag per employee and day; a flag DMP stops returning gets `removedAt`, never deleted (rule 7). Morning plus afternoon on the same day is a full day.
+- `AttendanceDay` (new, not in plan 6.3): the cutoff run of a factory's day, with its outcome (`CANCELLED`, `HELD_SYNC_FAILED`, `HELD_TOO_FEW_PRESENT`) and counts. It makes the cutoff run once, and it is what the BR-34 warning and the sync panel read.
+- `SyncRun` gets `factoryId` and `date`, so the latest attendance run of a day can be found.
+
+### Sync, cutoff and jobs
+
+- **`AttendanceService.syncAttendance`** reads the whole day (DMP has no time filter), keeps the earliest check-in and any confirmation per person, then writes in one transaction under a per-day advisory lock. Every run writes a `SyncRun`; a failed read writes nothing else. Employee codes DMP returns that are not in the factory are counted in `details.unknownEmployees`.
+- **One `poll-attendance` job every minute** (`Jobs.pollAttendance`, ShedLock) does whatever is due on a serving day: a sync from `attendance.pollStart` every `attendance.pollIntervalMin`, and at the cutoff a fresh sync first, then the cutoff run. The plan's separate `provisional-cancel` job is that second step, so the two always run in order. `sync-leave` runs at minute 30 of every hour, today to 14 days ahead.
+- **A missed cutoff is caught up by requests** (`/admin/today`, `/today`), without calling DMP: with no successful sync it is held (BR-34).
+- **After a held cutoff only the HC admin's re-run cancels** (Q29). `POST /api/admin/attendance/sync` (`sync.manage`) syncs attendance and leave now and evaluates a held cutoff again; DMP failing answers `502 DMP_UNAVAILABLE`.
+- **Audit (BR-70):** every automatic provisional cancellation and restore per employee (`presence.provisionallyCancelled`, `presence.restored` with the source, no actor), each cutoff run (`attendance.cutoff`), admin confirmations (`presence.confirmed`, reason optional), admin edits (`registration.adminEdit` with the reason) and manual sync triggers.
+- **Until finalization exists (P4)** polling, confirmation and edits after the lock end with day D (Q31, `TODO(BR-43)`). The "DMP confirmation after finalization" exit criterion moved to P4 in the plan.
+
+### DMP
+
+- `HttpDmpClient.getAttendance` (`/api/attendance`, `fromDate = toDate` as dd-MM-yyyy, `companyCode` when set, pages of 500) and `getLeave` (`/api/daily-forecast?hasLeave=true`, ISO dates, `pageSize`). The parsers accept a Spring page, a `data`/`items` wrapper or an array; trust `last`/`totalPages` when present, else a short page ends. Date-times without an offset are Vietnam time (A7); a bare `07:45` takes the row's date. Field names are best guesses until `/v3/api-docs` is checked (Q17, Q32).
+- `AttendanceRecord` gains `managerConfirmed`; a confirmed row may have no check-in. `NOT_IMPLEMENTED` is gone from `DmpException`.
+- **Mock scenarios** `late-record` (08:05 rows that reach DMP at 08:20) and `manager-confirmed` (forgot to check in, or checked in at 08:25, then confirmed). An override's `arrivesAt` hides a row until that time of day D; the mock reads the API clock for it, fake time included.
+
+### API
+
+- `GET /api/admin/today?date&orgUnitId` (`presence.confirm`, list scope): everyone in scope with meals or a forecast on the day, with lines (current and forecast), presence, leave flag and cases, a summary, the day's menus and the sync status. The matrix row "Confirm presence; edit from 08:00 to finalization" is one action, so the list uses it too.
+- `POST /api/admin/today/employees/{code}/presence` (`presence.confirm`, employee scope): BR-33 with an optional reason; confirming twice changes nothing.
+- `PUT /api/admin/today/employees/{code}/meals` (`presence.confirm`, employee scope): BR-24, a day's complete selection after the lock with a required reason; meals added this way are flagged extra with that reason (BR-25). Before the lock it answers `409 INVALID_STATE` (register on behalf instead).
+- `/registrations/me/day` adds `attendance` on day D itself: state, check-in, whether DMP or an admin confirmed, the cutoff and the leave flag. No reason and no admin name (BR-27 spirit: the employee sees what happened, not who said what).
+- **Banners for HC admins:** `ATTENDANCE_SYNC_FAILED` while today's latest sync failed, `ATTENDANCE_CUTOFF_HELD` while the cutoff is held.
+
+### Web
+
+- `/admin/today` (now available in the navigation): date, search and org filter; sync panel with the re-run button for `sync.manage` roles; summary cards; "Tất cả" and "Ngoại lệ" tabs (provisionally cancelled first); presence badges with check-in time and confirmations; "Xác nhận có mặt" dialog with an optional reason; "Sửa suất" dialog with steppers and a required reason, shown only after the lock.
+- `/today` shows a "Chấm công" block on day D: present, not yet (with the cutoff), provisionally cancelled (ask your manager), DMP or admin confirmation, leave flag.
+
+### Tests
+
+- `AttendanceRulesTest`, `DayCasesTest` (BR display names); `MockDmpClientTest`, `HttpDmpClientTest` (attendance and leave against a local fake DMP); `AttendanceTest` walks the exit criteria with fake time and one scenario per serving day, plus admin confirmation, edits after the lock, scope and 403s. `SecretsTest` reads `/api/admin/today`.
+- The test database is shared by every test class, so `AttendanceTest` cancels its registrations at the end; otherwise the BR-36 leaver count of `RegistrationTest` saw them.
+
+## Spec change v1.4: attendance after a held cutoff and after finalization (2026-11-01)
+
+- **Q29 (product owner):** after a held cutoff (BR-34) only the HC admin's re-run cancels. This is what P3 already does (`AttendanceService.runCutoff` re-evaluates only with `reevaluate`); polls keep recording and restoring meanwhile.
+- **After finalization (product owner):** the poll and the HC admin's re-run go on until `close.adjustmentDeadline` (10:30) but only record; nothing is restored and late DMP confirmations or check-ins are cases to review. No sync runs for the day after the deadline. Built in P4, with finalization; until then the P3 bound (end of day D, Q31) stays.
+- **Q33 (product owner):** only full-day and morning leave count as "on leave with meals".
+
 ## Late and in-week menu publishing (2026-11-03)
 
 - **Request (product owner):** a menu published inside its own week (e.g. week 45's menu published during week 45) must not count as a forecast; every registration of that week is an actual one. A menu published late but before the week starts (Friday to Sunday of week N-1) gets the closeAt the HC admin picks, instead of always publish + 24 hours.
@@ -624,3 +685,41 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Rule (`Deadlines.isWeekOver`, BR-04 in the plan):** a week can no longer be published once its last serving day has locked (`day.lockTime` on that day; Sunday for a week with no serving day). Both publish endpoints answer `409 WEEK_OVER` (new error code, Java and `packages/shared`); the save-and-publish endpoint checks before writing the draft. Saving a draft is still allowed.
 - **API:** `MenuWeekView.weekOver`. The builder hides the publish button, the closeAt line and the late/in-week badges for such a week and shows a warning.
 - **Known gap:** `weekOver` in the view is computed from the stored (or default) serving days; turning Saturday on in the builder only counts once the draft is saved.
+
+## Fallback meal unit: register without a meal unit (CR 2026-11-04)
+
+- **Request (product owner):** let employees register even when no meal unit ("đầu mối nhận cơm") is set for them; their meals gather at one place until the HC admin gives them a meal unit. Only a department with no canteen blocks registration, and the employee contacts the administration staff in charge of meals to set one.
+- **Answers taken (product owner, 2026-11-04):**
+  - The gathering place is an existing meal unit the HC admin picks, not a virtual unit.
+  - It applies to employees with no meal unit and to employees whose meal unit lacks a floor. An employee whose department resolves no canteen still cannot register.
+  - The menu stays the canteen of the employee's department (own meal unit's canteen first, else the nearest one at or above the employee).
+  - When the employee gets a meal unit later, days not yet snapshotted follow the new meal unit; forecast lines already written keep the fallback (BR-64). Registrations store no meal unit, so this needs no migration of data.
+- **Data:** `OrgUnit.isFallbackMealUnit` (V5): at most one per factory (partial unique index), only on a meal unit (check constraint).
+- **Rule (`Mapping.resolveEmployeeMealAssignment`):** `EmployeeMealAssignment.mealUnitId` is now the unit the box goes to (own or fallback); `ownMealUnitId` is the nearest flagged node; `viaFallback` says the fallback applies. `MealStatus` still describes the employee's own mapping (NO_MEAL_UNIT / INVALID_MEAL_UNIT), so the "unassigned" list keeps showing them for the HC admin to fix. A fallback that is no longer a meal unit or resolves no floor is ignored (old behaviour). `OrgIndex` carries the fallback id, so every caller (forecast snapshot, menu, registrations, admin lists) picks it up without change.
+- **API:** `PATCH /admin/org/units/{id}` takes `isFallbackMealUnit`. Setting it moves the fallback (the previous node is cleared, both audited as `orgUnit.mapping.updated`). It is refused with 400 on `isFallbackMealUnit` when the node is not a meal unit, or resolves no floor after the change. It needs no canteen: it takes the meals of every canteen (product owner, 2026-11-05, Q28). Unflagging the meal unit clears the fallback with it. `OrgUnitView.isFallbackMealUnit`; `EmployeeMappingView.canRegister` and `viaFallback` (its `mealUnitId`/`mealUnitName` stay the employee's own meal unit; floor and canteen are where the meals go).
+- **Web:** `/admin/org` has a "Đầu mối nhận cơm tập trung" checkbox on every meal unit, a badge in the tree, and status lines that say when employees fall back to it. The "Chưa đăng ký cơm được" tab says per employee whether they can still order at the fallback. The employee's "cannot register" message now asks them to contact the administration staff to set their department's canteen.
+- **Seed:** no fallback is set, so the seeded "unassigned" employees still show the old behaviour until the HC admin picks one (see `docs/demo-cr-2026-11-04.md`).
+- **One place for every canteen (product owner, 2026-11-05, Q28):** unplaced meals gather at the one fallback whatever canteen (supplier) cooks them; all that matters is that the employee gets lunch. Each line keeps the employee's canteen, so each supplier still knows what it cooks, and the fallback's floor says where it is picked up. The fallback needs a floor but no canteen.
+- **The fallback is a valid meal unit with a floor alone (2026-11-05):** a meal unit picked as fallback with a floor and no canteen was still shown as "Đầu mối thiếu nhà ăn" (red badge, "chưa đăng ký cơm được" status), because BR-63 validity asked for both. `Mapping.resolveMealUnitMapping` now counts the fallback valid with a floor (`OrgUnitView.mealUnitValid`), and the fallback's own employees are OK there with their department's canteen (`resolveEmployeeMealAssignment`), so they leave the "Chưa đăng ký cơm được" list. Those whose department has no canteen stay blocked. On `/admin/org` the fallback's canteen reads "Mọi nhà ăn" and its status says it needs no canteen.
+- **Why the fallback checkbox can be refused (2026-11-05):** the 400 on `isFallbackMealUnit` (`noFloor`, `notMealUnit`) showed the generic "Dữ liệu chưa hợp lệ" and the checkbox stayed unticked, so the HC admin could not tell what was missing. `/admin/org` now names the reason (pick a floor first / answer "Có" first). An API older than this CR answers the same request with 400 "Nothing to update": restart the API after pulling the branch.
+- **Rejected:** a virtual "Chưa phân đầu mối" unit per canteen (the product owner chose an existing meal unit); a fallback per canteen (Q28: one place for all).
+
+## Merge main into P3 (2026-11-09)
+
+- **Migration:** main's fallback meal unit took Flyway V5 (`V5__fallback_meal_unit.sql`), so the P3 attendance migration is now `V6__p3_attendance.sql`. A local database that already applied the old P3 V5 fails Flyway validation; reset it (`pnpm db:local` with a fresh data directory, then `pnpm db:seed`).
+- **Open questions:** main's Q27 (past weeks) and Q28 (fallback for every canteen) keep their numbers; the branch's Q27 (how DMP exposes the manager's confirmation) is now **Q32** and Q28 (afternoon leave is no case) is now **Q33**, in code comments, tests, plan and docs.
+- **Main's own red checks fixed in the merge:** `nav.test.ts` still expected the master-data screens in the "admin" group after main moved them to "masterdata" (it now checks both groups and the new order); `app-shell.tsx` had an unused `asideScrolled` after its shadow was commented out (renamed `_asideScrolled`).
+
+## Date picker on /admin/today (2026-11-09)
+
+- **Request:** the browser's `<input type="date">` looks different on every browser and does not match the rest of the UI.
+- **Choice:** `components/ui/calendar.tsx` (shadcn/ui Calendar on `react-day-picker` v9, Vietnamese locale, weeks from Monday) and `components/ui/date-picker.tsx` (Popover + Calendar). The value stays a `YYYY-MM-DD` string; it shows as dd/MM/yyyy. The date is built from local fields, so there is no timezone shift, and no code reads the clock (the picker only builds a `Date` from a given string).
+- **Used in:** `/admin/today` only; other screens pick days with their own buttons.
+- **Rejected:** a hand-written calendar (more code to keep, no keyboard and screen-reader support); keeping the native input.
+
+## CR 2026-11-09: week picker names the week being viewed
+
+- **Request (product owner):** make clear which week the week picker shows; the current week reads "tuần hiện tại". (Opening every screen on the current week was considered and not done: menu, print and the registration progress tabs work on the coming week, and `/week` opens on the week open for registration, J1.)
+- **Web:** `WeekNav` shows "Tuần 46 · tuần hiện tại", "· tuần sau" or "· tuần trước" when the viewed week is the current week, the next or the previous one; other weeks show only the number. Copy is in `common.weekRelative` (`vi.ts`).
+- **API:** the current week comes from the server clock (fake time in dev and tests), never from the browser. `Deadlines.currentWeekStart(now)` (pure, in `meal-rules`); `currentWeekStart` is added to `GET /admin/menu/canteens`, `GET /admin/registrations/units` and every `MyWeekView` state (`GET/PUT /registrations/me/week`). `openapi.json` and `openapi.d.ts` regenerated.
+- **No rule changed:** default weeks, deadlines and the "Về tuần sắp tới" link are as before. No new data, so no migration, no audit and nothing for `docs/security.md`.

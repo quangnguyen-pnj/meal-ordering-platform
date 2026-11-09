@@ -278,5 +278,16 @@ class CloseAtTest {
       assertThat(Deadlines.upcomingWeekStart(at("2026-11-02", "00:00")))
           .isEqualTo(LocalDate.of(2026, 11, 9));
     }
+
+    @Test
+    @DisplayName("BR-06: the current week is the Vietnam week that contains now")
+    void current() {
+      assertThat(Deadlines.currentWeekStart(at("2026-10-26", "12:00")))
+          .isEqualTo(LocalDate.of(2026, 10, 26));
+      // Sunday 23:30 VN still belongs to the week that started on Monday 26/10.
+      assertThat(Deadlines.currentWeekStart(at("2026-11-01", "23:30")))
+          .isEqualTo(LocalDate.of(2026, 10, 26));
+      assertThat(Deadlines.currentWeekStart(at("2026-11-02", "00:00"))).isEqualTo(WEEK_START);
+    }
   }
 }

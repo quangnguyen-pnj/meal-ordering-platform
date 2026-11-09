@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,12 +16,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import vn.pnj.meal.api.config.AppProperties;
+import vn.pnj.meal.rules.VnTime;
 
 /** HttpDmpClient against a local fake DMP; never the real one (plan 7.1 rule 8). */
 @DisplayName("HttpDmpClient")
 class HttpDmpClientTest {
   private HttpServer server;
   private final List<String> calls = new CopyOnWriteArrayList<>();
+  private final List<String> queries = new CopyOnWriteArrayList<>();
 
   @AfterEach
   void stop() {
@@ -53,6 +56,9 @@ class HttpDmpClientTest {
                   + " "
                   + exchange.getRequestHeaders().getFirst("Authorization"));
           String query = exchange.getRequestURI().getRawQuery();
+          if (query != null) {
+            queries.add(query);
+          }
           Reply reply = handler.handle(query == null ? path : path + "?" + query);
           byte[] body = reply.body().getBytes(StandardCharsets.UTF_8);
           exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -67,18 +73,6 @@ class HttpDmpClientTest {
 
   private interface Handler {
     Reply handle(String path);
-  }
-
-  @Test
-  @DisplayName("leaves attendance and leave to P3")
-  void notImplemented() throws IOException {
-    start(path -> new Reply(200, "{}"));
-    assertThatThrownBy(() -> client().getAttendance(LocalDate.of(2026, 10, 19)))
-        .isInstanceOf(DmpException.class)
-        .hasMessageContaining("P3");
-    assertThatThrownBy(
-            () -> client().getLeave(LocalDate.of(2026, 10, 19), LocalDate.of(2026, 10, 20)))
-        .hasMessageContaining("P3");
   }
 
   private static Reply login(String path) {
@@ -221,5 +215,94 @@ class HttpDmpClientTest {
         .isInstanceOfSatisfying(
             DmpException.class, e -> assertThat(e.kind()).isEqualTo(DmpException.Kind.API_ERROR));
     assertThat(calls.stream().filter(c -> c.startsWith("GET"))).hasSize(3);
+  }
+
+  @Test
+  @DisplayName("BR-30: reads attendance of one day page by page, with check-ins and confirmations")
+  void attendance() throws IOException {
+    start(
+        path -> {
+          Reply auth = login(path);
+          if (auth != null) {
+            return auth;
+          }
+          return path.contains("page=0")
+              ? new Reply(
+                  200,
+                  """
+                  {"content":[
+                    {"employeeId":"PNJP1","workDate":"2026-11-03","checkIn":"2026-11-03T07:45:10"},
+                    {"employeeId":"PNJP1","workDate":"2026-11-03","checkInTime":"12:30"},
+                    {"employeeCode":"PNJP2","checkIn":null,"isConfirmed":true},
+                    {"employeeId":"PNJP3","checkIn":"03-11-2026 08:15:00","confirmStatus":"CONFIRMED"},
+                    {"employeeId":"PNJP4","workDate":"2026-11-02","checkIn":"07:40"},
+                    {"employeeId":"PNJP5","checkIn":null},
+                    {"checkIn":"07:00"}
+                  ],"number":0,"totalPages":2,"last":false}
+                  """)
+              : new Reply(
+                  200,
+                  "{\"content\":[{\"employeeId\":\"PNJP6\",\"checkIn\":\"2026-11-03T00:50:00Z\"}],"
+                      + "\"number\":1,\"totalPages\":2}");
+        });
+    LocalDate day = LocalDate.of(2026, 11, 3);
+    assertThat(client().getAttendance(day))
+        .containsExactly(
+            new DmpClient.AttendanceRecord(
+                "PNJP1", VnTime.vnToUtc(day, LocalTime.of(7, 45, 10)), false),
+            new DmpClient.AttendanceRecord(
+                "PNJP1", VnTime.vnToUtc(day, LocalTime.of(12, 30)), false),
+            new DmpClient.AttendanceRecord("PNJP2", null, true),
+            new DmpClient.AttendanceRecord("PNJP3", VnTime.vnToUtc(day, LocalTime.of(8, 15)), true),
+            new DmpClient.AttendanceRecord(
+                "PNJP6", VnTime.vnToUtc(day, LocalTime.of(7, 50)), false));
+    assertThat(calls.stream().filter(c -> c.startsWith("GET"))).hasSize(2);
+    assertThat(queries)
+        .anyMatch(
+            q ->
+                q.contains(
+                    "fromDate=03-11-2026&toDate=03-11-2026&companyCode=PNJP&page=0&size=500"));
+  }
+
+  @Test
+  @DisplayName("BR-35: reads leave flags with their day type; rows without leave are dropped")
+  void leave() throws IOException {
+    start(
+        path -> {
+          Reply auth = login(path);
+          if (auth != null) {
+            return auth;
+          }
+          return new Reply(
+              200,
+              """
+              {"content":[
+                {"employeeCode":"PNJP1","forecastDate":"2026-11-03","restStatus":"P",
+                 "leaveTypeName":"Nghỉ phép năm","leaveDayType":"AM"},
+                {"employeeCode":"PNJP2","forecastDate":"2026-11-04","leaveDayType":"PM"},
+                {"employeeCode":"PNJP3","forecastDate":"2026-11-04","leaveTypeName":"Ốm"},
+                {"employeeCode":"PNJP4","forecastDate":"2026-11-04"}
+              ],"last":true}
+              """);
+        });
+    assertThat(client().getLeave(LocalDate.of(2026, 11, 3), LocalDate.of(2026, 11, 17)))
+        .containsExactly(
+            new DmpClient.LeaveRecord(
+                "PNJP1", LocalDate.of(2026, 11, 3), DmpClient.LeaveDayType.AM, "Nghỉ phép năm"),
+            new DmpClient.LeaveRecord(
+                "PNJP2", LocalDate.of(2026, 11, 4), DmpClient.LeaveDayType.PM, "Nghỉ phép"),
+            new DmpClient.LeaveRecord(
+                "PNJP3", LocalDate.of(2026, 11, 4), DmpClient.LeaveDayType.FULL, "Ốm"));
+    assertThat(queries)
+        .anyMatch(q -> q.contains("fromDate=2026-11-03&toDate=2026-11-17&hasLeave=true"));
+  }
+
+  @Test
+  @DisplayName("an attendance response without rows fails the read")
+  void attendanceNotRows() throws IOException {
+    start(path -> login(path) != null ? login(path) : new Reply(200, "{\"total\":0}"));
+    assertThatThrownBy(() -> client().getAttendance(LocalDate.of(2026, 11, 3)))
+        .isInstanceOf(DmpException.class)
+        .hasMessageContaining("did not return rows");
   }
 }

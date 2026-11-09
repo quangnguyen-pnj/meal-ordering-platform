@@ -66,6 +66,7 @@ export const vi = {
     showPin: 'Hiện mã PIN',
     hidePin: 'Ẩn mã PIN',
     weekNumber: 'Tuần {week}',
+    weekRelative: { current: 'tuần hiện tại', next: 'tuần sau', previous: 'tuần trước' },
     orgFilter: 'Lọc theo đơn vị',
     orgLevelAll: 'Tất cả {level}',
   },
@@ -125,6 +126,15 @@ export const vi = {
     expand: 'Xem chi tiết',
     collapse: 'Thu gọn',
     openMenu: 'Mở Thực đơn tuần',
+    attendanceSyncFailed:
+      'Lấy dữ liệu chấm công ngày {date} từ DMP thất bại lúc {at}. Hệ thống chưa hủy suất ăn nào; hãy chạy lại đồng bộ.',
+    attendanceCutoffHeld: {
+      HELD_SYNC_FAILED:
+        'Ngày {date}: chưa có dữ liệu chấm công nên hệ thống không hủy tạm thời suất ăn nào lúc chốt chấm công. Hãy chạy lại đồng bộ hoặc sửa từng suất.',
+      HELD_TOO_FEW_PRESENT:
+        'Ngày {date}: chỉ {present}/{total} người có suất ăn đã chấm công, dưới ngưỡng an toàn, nên hệ thống không hủy hàng loạt. Hãy kiểm tra và chạy lại đồng bộ hoặc sửa từng suất.',
+    },
+    openAdminToday: 'Mở Hôm nay (quản trị)',
     reselect: 'Chọn lại món',
     lockTimeFallback: 'giờ khóa',
     notifications: {
@@ -283,8 +293,10 @@ export const vi = {
     noForecast:
       'Thực đơn công bố trong tuần nên không có dự trù. Mỗi ngày đăng ký được đến {lock} sáng ngày đó; mọi suất đều tính là đăng ký thực tế.',
     notPublished: 'Thực đơn tuần này của {canteen} chưa được công bố.',
+    // CR 2026-11-04: only a department without a canteen (or a factory with no fallback meal
+    // unit) blocks registration.
     unassigned:
-      'Bạn chưa thuộc đầu mối nhận cơm nào nên chưa thể đăng ký. Vui lòng liên hệ phòng Hành chánh.',
+      'Phòng ban của bạn chưa được thiết lập nhà ăn nên chưa thể đặt cơm. Vui lòng liên hệ nhân viên Hành chánh phụ trách đặt cơm để thiết lập nhà ăn cho phòng ban của bạn.',
     noDessert: 'Không có tráng miệng',
     dessert: 'Tráng miệng: {list}',
     save: 'Lưu đăng ký',
@@ -339,6 +351,105 @@ export const vi = {
     actualLabel: 'Hiện tại',
     noForecast: 'Chưa chốt',
     meals: '{count} suất',
+    attendanceTitle: 'Chấm công',
+    attendance: {
+      UNKNOWN: 'Chưa ghi nhận chấm công.',
+      PRESENT: 'Đã ghi nhận có mặt.',
+      PROVISIONAL_ABSENT:
+        'Chưa chấm công trước {cutoff}: suất ăn của bạn đang tạm hủy. Nếu bạn đã đi làm, hãy báo quản lý xác nhận có mặt.',
+      ABSENT: 'Vắng mặt: suất ăn đã bị hủy.',
+    },
+    checkedInAt: 'Giờ vào: {time}.',
+    beforeCutoff: 'Cần chấm công trước {cutoff} để giữ suất ăn.',
+    confirmedInDmp: 'Quản lý đã xác nhận bạn có mặt trên DMP.',
+    confirmedByAdmin: 'Quản trị đã xác nhận bạn có mặt.',
+    leave: {
+      FULL: 'Có đơn nghỉ cả ngày ({name}).',
+      AM: 'Có đơn nghỉ buổi sáng ({name}).',
+      PM: 'Có đơn nghỉ buổi chiều ({name}).',
+    },
+  },
+  adminToday: {
+    title: 'Hôm nay (quản trị)',
+    intro:
+      'Suất ăn, chấm công và nghỉ phép trong ngày của các đơn vị bạn phụ trách. Xác nhận có mặt cho người quên chấm công hoặc đi trễ; sau {lock} sửa suất ăn kèm lý do.',
+    date: 'Ngày',
+    datePlaceholder: 'Chọn ngày',
+    tabs: { all: 'Tất cả', exceptions: 'Ngoại lệ ({count})' },
+    summary: {
+      withMeals: 'Người có suất',
+      present: 'Đã có mặt',
+      provisional: 'Tạm hủy',
+      counted: 'Suất tính',
+      forecast: 'Dự trù',
+    },
+    sync: {
+      title: 'Đồng bộ chấm công',
+      never: 'Chưa đồng bộ lần nào trong ngày.',
+      last: 'Lần gần nhất: {at} · {status}',
+      status: { RUNNING: 'đang chạy', SUCCESS: 'thành công', FAILED: 'thất bại' },
+      error: 'Lỗi: {error}',
+      cutoffPending: 'Chốt chấm công lúc {cutoff}: chưa chạy.',
+      cutoff: {
+        CANCELLED: 'Chốt chấm công lúc {at}: tạm hủy suất của {count} người.',
+        HELD_SYNC_FAILED:
+          'Chốt chấm công lúc {at}: không hủy vì chưa có dữ liệu chấm công (BR-34).',
+        HELD_TOO_FEW_PRESENT:
+          'Chốt chấm công lúc {at}: không hủy vì chỉ {present}/{total} người có suất đã chấm công (BR-34).',
+      },
+      leave: 'Nghỉ phép cập nhật lúc {at}.',
+      rerun: 'Chạy lại đồng bộ',
+      rerunning: 'Đang đồng bộ…',
+      rerunDone: 'Đã đồng bộ chấm công và nghỉ phép.',
+      notServing: 'Ngày này không phục vụ bữa trưa.',
+    },
+    columns: {
+      meals: 'Suất ăn',
+      presence: 'Chấm công',
+      cases: 'Ngoại lệ',
+    },
+    forecastShort: 'dự trù {count}',
+    noMeal: 'Không ăn',
+    notOnMenu: 'không còn trên thực đơn',
+    presence: {
+      UNKNOWN: 'Chưa chấm công',
+      PRESENT: 'Có mặt',
+      PROVISIONAL_ABSENT: 'Tạm hủy',
+      ABSENT: 'Vắng',
+    },
+    checkIn: 'Vào {time}',
+    confirmedInDmp: 'QL xác nhận (DMP)',
+    confirmedBy: '{name} xác nhận lúc {time}',
+    leave: { FULL: 'Nghỉ cả ngày', AM: 'Nghỉ sáng', PM: 'Nghỉ chiều' },
+    cases: {
+      PROVISIONALLY_CANCELLED: 'Tạm hủy do chưa chấm công',
+      CANCELLED_ABSENT: 'Đã hủy do vắng',
+      NOT_EATING: 'Không ăn',
+      REDUCED: 'Giảm suất',
+      ADDED: 'Thêm suất',
+      DISH_CHANGED: 'Đổi món',
+      EXTRA: 'Phát sinh',
+      PRESENCE_CONFIRMED_BY_ADMIN: 'Quản trị xác nhận có mặt',
+      PRESENCE_CONFIRMED_IN_DMP: 'QL xác nhận trên DMP',
+      ON_LEAVE_WITH_MEALS: 'Có đơn nghỉ nhưng vẫn có suất',
+    },
+    confirm: 'Xác nhận có mặt',
+    confirmTitle: 'Xác nhận {name} có mặt',
+    confirmDescription:
+      'Dùng khi nhân viên quên chấm công hoặc đi trễ. Suất ăn sẽ được khôi phục. Lý do không bắt buộc.',
+    reason: 'Lý do',
+    reasonOptional: 'Lý do (không bắt buộc)',
+    confirmed: 'Đã xác nhận {name} có mặt.',
+    edit: 'Sửa suất',
+    editTitle: 'Sửa suất ăn của {name}',
+    editDescription:
+      'Sau {lock} chỉ quản trị được sửa, kèm lý do. Suất thêm mới được đánh dấu phát sinh.',
+    editBeforeLock: 'Trước {lock}, hãy đăng ký thay ở màn Đăng ký tuần.',
+    reasonRequired: 'Vui lòng nhập lý do.',
+    edited: 'Đã lưu suất ăn của {name}.',
+    empty: 'Không có ai có suất ăn hoặc dự trù trong ngày này.',
+    noExceptions: 'Không có ngoại lệ.',
+    noMatch: 'Không có ai phù hợp.',
   },
   team: {
     title: 'Đơn vị của tôi',
@@ -428,10 +539,10 @@ export const vi = {
       CLOSED: 'Đã khóa',
     },
     skipped:
-      '{other} người thuộc nhà ăn khác và {cannot} người chưa đăng ký cơm được (chưa có đầu mối hợp lệ) không hiện trong bảng.',
+      '{other} người thuộc nhà ăn khác và {cannot} người chưa đặt cơm được (chưa có nhà ăn hoặc đầu mối nhận cơm hợp lệ) không hiện trong bảng.',
     noEmployees: 'Đơn vị này không có nhân viên đăng ký được.',
     addExtra: 'Thêm suất bổ sung',
-    extraTitle: 'Thêm suất bổ sung cho {name} ngày {date}',
+    extraTitle: 'Thêm suất bổ sung',
     extraDish: 'Món',
     extraQuantity: 'Số suất',
     extraReason: 'Lý do (bắt buộc)',
@@ -467,7 +578,7 @@ export const vi = {
       OVER_LIMIT: 'vượt giới hạn',
       NOT_SERVING: 'ngày không phục vụ',
       NOT_IN_UNIT: 'không thuộc đơn vị này',
-      CANNOT_REGISTER: 'chưa có đầu mối nhận cơm hợp lệ',
+      CANNOT_REGISTER: 'chưa có nhà ăn hoặc đầu mối nhận cơm hợp lệ',
       LEFT: 'đã nghỉ việc',
       DUPLICATE_ROW: 'trùng dòng',
     },
@@ -515,6 +626,7 @@ export const vi = {
     // "Đầu mối nhận cơm" is the UI name of the BRQ "đơn vị suất ăn" (BR-60).
     mealUnit: 'Đầu mối nhận cơm',
     mealUnitBadge: 'Đầu mối nhận cơm · {count} người',
+    fallbackBadge: 'Đầu mối tập trung',
     mealUnitInvalidBadge: 'Đầu mối thiếu {missing} · {count} người',
     noMealUnitBadge: 'Chưa có đầu mối · {count} người',
     followsMealUnit: 'nhận cơm theo',
@@ -535,7 +647,7 @@ export const vi = {
     isMealUnitNo: 'Không',
     isMealUnitNoHintParent: 'Nhân viên ở đây nhận cơm theo đầu mối cấp trên: {name}.',
     isMealUnitNoHintNone:
-      'Cấp trên không có đầu mối nhận cơm nào, nên nhân viên ở đây sẽ chưa đăng ký cơm được.',
+      'Cấp trên không có đầu mối nhận cơm nào, nên suất cơm của nhân viên ở đây sẽ giao về đầu mối tập trung (nếu đã chọn).',
     statusTitle: 'Hiện trạng',
     statusOwn: 'Đầu mối của {count} nhân viên, nhận cơm tại {floor} · {canteen}.',
     statusOwnInvalid: 'Đầu mối thiếu {missing}: {count} nhân viên chưa đăng ký cơm được.',
@@ -545,8 +657,30 @@ export const vi = {
       '{count} nhân viên ở đây (gồm cấp dưới) theo đầu mối {name}, nhưng đầu mối này thiếu {missing} nên chưa đăng ký cơm được.',
     statusNone:
       '{count} nhân viên ở đây (gồm cấp dưới) chưa đăng ký cơm được: đơn vị này và cấp trên không có đầu mối nhận cơm.',
+    statusNoneFallback:
+      '{count} nhân viên ở đây (gồm cấp dưới) chưa có đầu mối nhận cơm; suất cơm của họ được giao về đầu mối tập trung {name}, tại {floor} · {canteen}.',
+    statusFallbackOwn:
+      'Đầu mối tập trung, nhận cơm tại {floor}. Nhận suất của mọi nhà ăn nên không cần thiết lập nhà ăn.',
+    statusNoCanteen:
+      '{count} nhân viên ở đây (gồm cấp dưới) chưa đặt cơm được: phòng ban chưa được thiết lập nhà ăn.',
+    statusInvalidFallback:
+      '{count} nhân viên ở đây (gồm cấp dưới) theo đầu mối {name}, nhưng đầu mối này thiếu {missing}; suất cơm của họ được giao về đầu mối tập trung {fallback}.',
     statusNoneEmpty:
       'Đơn vị này và cấp trên không có đầu mối nhận cơm. Hiện chưa có nhân viên nào bị ảnh hưởng.',
+    fallbackQuestion: 'Đầu mối nhận cơm tập trung',
+    fallbackLabel: 'Dùng đơn vị này làm đầu mối nhận cơm tập trung',
+    fallbackHint:
+      'Nhân viên có nhà ăn nhưng chưa có đầu mối nhận cơm (hoặc đầu mối thiếu tầng) vẫn đặt cơm được; suất cơm của họ giao về đây cho đến khi được gán đầu mối. Đầu mối tập trung nhận suất của mọi nhà ăn (nhà cung cấp), chỉ cần có tầng nhận cơm. Mỗi nhà máy chỉ có một đầu mối tập trung; chọn đơn vị này sẽ bỏ chọn đơn vị cũ.',
+    fallbackAnyCanteen: 'Mọi nhà ăn',
+    fallbackErrors: {
+      noFloor:
+        'Chưa chọn được làm đầu mối tập trung: đơn vị này chưa có tầng nhận cơm. Hãy chọn Tầng bên dưới trước, rồi tick lại.',
+      notMealUnit:
+        'Chưa chọn được làm đầu mối tập trung: đơn vị này chưa là đầu mối nhận cơm. Hãy chọn "Có" ở câu hỏi đầu mối trước.',
+    },
+    fallbackCurrent: 'Đầu mối tập trung hiện tại: {name}.',
+    fallbackNone:
+      'Chưa có đầu mối tập trung: nhân viên chưa có đầu mối nhận cơm sẽ chưa đặt cơm được.',
     statusOthersBelow: '{count} nhân viên khác thuộc các đầu mối riêng bên dưới.',
     appliesToBelow: 'Áp dụng cho đầu mối bên dưới chưa tự gán: {names}.',
     andMore: '{names} và {count} đầu mối khác',
@@ -579,6 +713,8 @@ export const vi = {
     filterTree: 'Lọc theo tên hoặc mã đơn vị',
     reasonNoMealUnit: 'Chưa có đầu mối nhận cơm ở đơn vị này hoặc cấp trên',
     reasonInvalid: 'Đầu mối nhận cơm thiếu {missing}',
+    reasonViaFallback: 'vẫn đặt cơm được, nhận tại đầu mối tập trung',
+    reasonCannotRegister: 'chưa đặt cơm được',
     missingParts: { floor: 'tầng', canteen: 'nhà ăn' },
     emptyList: 'Không có nhân viên nào.',
     path: 'Đơn vị',

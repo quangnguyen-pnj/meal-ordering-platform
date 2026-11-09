@@ -1162,5 +1162,6 @@ class MenuTest extends IntegrationTest {
     String res = read(hc, "/api/admin/menu/canteens");
     assertThat(JsonPath.<List<String>>read(res, "$.items[*].code")).contains("CT-GV");
     assertThat(JsonPath.<String>read(res, "$.upcomingWeekStart")).isEqualTo("2027-03-08");
+    assertThat(JsonPath.<String>read(res, "$.currentWeekStart")).isEqualTo("2027-03-01");
   }
 }

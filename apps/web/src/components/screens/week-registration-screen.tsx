@@ -52,6 +52,11 @@ export function WeekRegistrationScreen() {
   // The week the API picked on first load (J1); WeekNav offers a way back to it.
   const [homeWeek, setHomeWeek] = useState<string | null>(null);
   if (!homeWeek && !weekStart && current) setHomeWeek(current);
+  // Kept across week changes so the label does not flicker while the next week loads.
+  const [thisWeek, setThisWeek] = useState<string | null>(null);
+  if (data?.currentWeekStart && data.currentWeekStart !== thisWeek) {
+    setThisWeek(data.currentWeekStart);
+  }
   const [confirm, confirmDialog] = useConfirm();
   const [selectedTab, setSelectedTab] = useState<Tab>('actual');
   const forecastTaken = published?.forecastTaken ?? false;
@@ -164,6 +169,7 @@ export function WeekRegistrationScreen() {
               weekStart={current}
               onChange={(next) => void go(next)}
               homeWeekStart={homeWeek ?? undefined}
+              currentWeekStart={thisWeek ?? undefined}
             />
           ) : null}
         </div>

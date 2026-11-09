@@ -30,6 +30,8 @@ Spec gaps found while building. Each lists the safest option currently implement
 | Q24 | Should employees who did not register the old dish also see that a dish was replaced after closeAt (e.g. on the menu), and should a replacement before closeAt show the red note too? | Administration dept | P3 | Only the employees whose meal moved see the red note, and only for a replacement at or after closeAt (product owner, 2026-10-23). Everyone affected still gets the in-app notice at any time. |
 | Q25 | The DMP-supplied employee cost center is kept as the default when no org node above the employee has a cost center. Should those employees instead be listed as "missing cost center" until a node is mapped? | Accounting | P6 | DMP value as the default (safest: no cost is lost). The "missing cost center" list shows employees with neither. |
 | Q26 | Should a dish type that is still used by dishes be deactivated, and does the pick-up floor need an end date (temporary moves)? | Administration dept | P3 | A type can be deactivated; its dishes stay and can still be put on menus. The pick-up floor has no end date; it is removed by hand. |
+| Q32 | How does a manager's presence confirmation in DMP appear in `/api/attendance`: a flag field, a record with the confirmation time, or a made-up check-in time? Can a manager withdraw it, and how long after the tick does it reach the API (DMP pulls from the time clock every 5 minutes)? | DMP team (`/v3/api-docs`) | Real sync | Built in P3: any confirmation for day D counts as present whatever its time (BR-30, product owner 2026-10-30). `DmpParsers.parseAttendancePage` reads the likely flags (`managerConfirmed`, `isManagerConfirmed`, `confirmedByManager`, `isConfirmed`, `confirmed`, `confirmStatus`, `confirmationStatus`: true, 1, "Y", "CONFIRMED", "APPROVED") and keeps a confirmed row without a check-in. A withdrawal is ignored: a sync never takes presence back, so the meals stay. `TODO(BR-32)`. |
+| Q30 | BR-30: is a check-in at 08:10:30 "no later than 08:10"? | Administration dept | P4 | Yes: like `registration.close`, the cutoff is the last accepted minute, so the whole 08:10 minute counts and 08:11:00 does not. The provisional-cancel run still starts at 08:10:00; a check-in later that minute is restored by the next sync (BR-32). |
 
 ## Resolved
 
@@ -39,8 +41,26 @@ Spec gaps found while building. Each lists the safest option currently implement
 
 **Answer (product owner, 2026-10-23):** cost center follows the org structure. Each centre or department has its own cost center and every cost of its employees adds up there. The per-employee override is no longer used; the DMP value stays as the default when no node has one (Q25).
 
-| #   | Question | Needs answer from | Before | Behaviour before the answer |
-| --- | -------- | ----------------- | ------ | --------------------------- |
-| Q27 | BR-04: may the HC admin publish the menu of a week that is already over (e.g. week 44 seen from week 45)? Every serving day has locked, so nobody could register on it. | Product owner | — | Allowed: it became an in-week publish with no forecast and no day open. |
+| Q33 | BR-41 lists "on leave but still has meals" as a case. Should an afternoon leave count, when BR-35 says afternoon leave keeps lunch? | Administration dept | P4 | Every leave flag with meals was a case. |
+
+**Answer (product owner, 2026-11-01):** only full-day and morning leave are cases; afternoon leave keeps lunch and is not one (`DayCases.leavesOutLunch`, `DayCasesTest`, `AttendanceTest.afternoonLeave`).
+
+| Q29 | BR-34: after the cutoff was held (sync failed or under 50%), should a later automatic sync that succeeds cancel by itself, or only the HC admin's re-run? | Administration dept | P4 | Only the re-run. |
+
+**Answer (product owner, 2026-11-01):** only the HC admin's re-run cancels after a hold (plan v1.4). Polling goes on meanwhile, every `attendance.pollIntervalMin`, recording check-ins and restoring meals, but never cancels.
+
+| Q31 | Until finalization exists (P4), when do the poll, the admin's presence confirmation and edits after the lock end? And what happens to attendance after finalization? | Administration dept | P4 | Until day D ends in Vietnam time, like the extras window (Q20). `TODO(BR-43)`. |
+
+**Answer (product owner, 2026-11-01):** after finalization the automatic poll and the HC admin's re-run continue until `close.adjustmentDeadline` (10:30) but only record: nothing is restored, and late DMP confirmations or check-ins become cases to review. From the deadline on, no sync runs for that day (plan v1.4, built in P4). Until P4 the day-end bound stays (`TODO(BR-43)`).
+
+| #   | Question                                                                                                                                                                | Needs answer from | Before | Behaviour before the answer                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ----------------------------------------------------------------------- |
+| Q27 | BR-04: may the HC admin publish the menu of a week that is already over (e.g. week 44 seen from week 45)? Every serving day has locked, so nobody could register on it. | Product owner     | —      | Allowed: it became an in-week publish with no forecast and no day open. |
 
 **Answer (product owner, 2026-11-04):** no. Publishing is refused with `409 WEEK_OVER` once every serving day of the week has locked (from 08:00 of its last serving day; a week with no serving day, from 08:00 Sunday). The builder hides "Công bố" and says why; a draft can still be saved.
+
+| #   | Question                                                                                                                                                                                                                                       | Needs answer from   | Before         | Behaviour before the answer                                                                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Q28 | BR-60 fallback meal unit (CR 2026-11-04): when an employee's department eats at canteen A but the fallback meal unit sits under canteen B, which canteen's box carries their meal? Go Vap has one canteen in the MVP, so it cannot happen yet. | Administration dept | Second canteen | The employee sees canteen A's menu and their lines carry canteen A with the fallback meal unit's floor. `TODO(BR-60)` in `Mapping.resolveEmployeeMealAssignment`. One fallback per factory, not per canteen. |
+
+**Answer (product owner, 2026-11-05):** unplaced meals gather at the one fallback meal unit whatever the canteen (supplier); what matters is that the employee gets lunch. Implemented: one fallback per factory, it needs a floor but no canteen, and each line keeps the employee's canteen so each supplier knows what it cooks.

@@ -79,6 +79,7 @@ public class OrgService {
       @Nullable String parentId,
       boolean active,
       boolean isMealUnit,
+      boolean isFallbackMealUnit,
       Own own,
       ResolvedView resolved,
       @Nullable String mealUnitId,
@@ -132,6 +133,7 @@ public class OrgService {
                     n.parentId(),
                     n.active(),
                     n.isMealUnit(),
+                    n.isFallbackMealUnit(),
                     new Own(n.floorId(), n.canteenId(), n.costCenterId()),
                     new ResolvedView(
                         ResolvedValueView.of(
@@ -155,6 +157,7 @@ public class OrgService {
    */
   public record UnitPatch(
       Boolean isMealUnit,
+      Boolean isFallbackMealUnit,
       boolean setFloor,
       String floorId,
       boolean setCanteen,
@@ -167,6 +170,7 @@ public class OrgService {
   private record UnitRow(
       String factoryId,
       boolean isMealUnit,
+      boolean isFallbackMealUnit,
       String floorId,
       String canteenId,
       String costCenterId) {}
@@ -177,7 +181,8 @@ public class OrgService {
     UnitRow unit =
         jdbc.sql(
                 """
-                SELECT "factoryId", "isMealUnit", "floorId", "canteenId", "costCenterId"
+                SELECT "factoryId", "isMealUnit", "isFallbackMealUnit", "floorId", "canteenId",
+                       "costCenterId"
                 FROM "OrgUnit" WHERE id = :id FOR UPDATE
                 """)
             .param("id", unitId)
@@ -204,18 +209,59 @@ public class OrgService {
         patch.setCostCenter(),
         unit.costCenterId(),
         patch.costCenterId());
+    boolean isMealUnit = (boolean) after.getOrDefault("isMealUnit", unit.isMealUnit());
+    // CR 2026-11-04: only a meal unit can be the fallback; unflagging it clears the fallback too.
+    boolean fallback =
+        isMealUnit
+            && (patch.isFallbackMealUnit() != null
+                ? patch.isFallbackMealUnit()
+                : unit.isFallbackMealUnit());
+    if (Boolean.TRUE.equals(patch.isFallbackMealUnit()) && !isMealUnit) {
+      throw ApiException.invalid(
+          "Only a meal unit can be the fallback meal unit",
+          List.of(Map.of("path", "isFallbackMealUnit", "message", "notMealUnit")));
+    }
+    String previousFallbackId = null;
+    if (fallback != unit.isFallbackMealUnit()) {
+      before.put("isFallbackMealUnit", unit.isFallbackMealUnit());
+      after.put("isFallbackMealUnit", fallback);
+      if (fallback) {
+        previousFallbackId =
+            jdbc.sql(
+                    """
+                    SELECT id FROM "OrgUnit"
+                    WHERE "factoryId" = :factoryId AND "isFallbackMealUnit" AND id <> :id
+                    FOR UPDATE
+                    """)
+                .param("factoryId", factoryId)
+                .param("id", unitId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+      }
+    }
     if (after.isEmpty()) {
       return new UnitUpdated(false, 0);
     }
 
-    boolean isMealUnit = (boolean) after.getOrDefault("isMealUnit", unit.isMealUnit());
+    if (previousFallbackId != null) {
+      jdbc.sql("UPDATE \"OrgUnit\" SET \"isFallbackMealUnit\" = false WHERE id = :id")
+          .param("id", previousFallbackId)
+          .update();
+      audit.log(
+          AuditService.Entry.of(actorId, "orgUnit.mapping.updated", "OrgUnit", previousFallbackId)
+              .withBefore(Map.of("isFallbackMealUnit", true))
+              .withAfter(Map.of("isFallbackMealUnit", false, "replacedBy", unitId)));
+    }
     jdbc.sql(
             """
-            UPDATE "OrgUnit" SET "isMealUnit" = :isMealUnit, "floorId" = :floorId,
+            UPDATE "OrgUnit" SET "isMealUnit" = :isMealUnit,
+                   "isFallbackMealUnit" = :isFallbackMealUnit, "floorId" = :floorId,
                    "canteenId" = :canteenId, "costCenterId" = :costCenterId
             WHERE id = :id
             """)
         .param("isMealUnit", isMealUnit)
+        .param("isFallbackMealUnit", fallback)
         .param("floorId", after.containsKey("floorId") ? patch.floorId() : unit.floorId())
         .param("canteenId", after.containsKey("canteenId") ? patch.canteenId() : unit.canteenId())
         .param(
@@ -223,6 +269,15 @@ public class OrgService {
             after.containsKey("costCenterId") ? patch.costCenterId() : unit.costCenterId())
         .param("id", unitId)
         .update();
+    if (fallback
+        && Mapping.resolve(unitId, Field.FLOOR, org.load(factoryId).index()).value() == null) {
+      // Rolls the update back: the fallback is a place to pick meals up, so it needs a floor. It
+      // takes meals of every canteen, so it needs no canteen of its own (product owner,
+      // 2026-11-05).
+      throw ApiException.invalid(
+          "The fallback meal unit needs a floor",
+          List.of(Map.of("path", "isFallbackMealUnit", "message", "noFloor")));
+    }
     audit.log(
         AuditService.Entry.of(actorId, "orgUnit.mapping.updated", "OrgUnit", unitId)
             .withBefore(before)
@@ -264,7 +319,11 @@ public class OrgService {
     }
   }
 
-  /** BR-60 / BR-63: employees who cannot register (no meal unit, or an invalid one). */
+  /**
+   * BR-60 / BR-63: employees with no meal unit or an invalid one. Since CR 2026-11-04 those with a
+   * canteen register into the fallback meal unit ({@code canRegister}); the list still shows them
+   * so the HC admin can give them a meal unit.
+   */
   @Transactional(readOnly = true)
   public List<EmployeeMappingView> unassigned(String factoryId) {
     return employees.describeActive(factoryId).stream()

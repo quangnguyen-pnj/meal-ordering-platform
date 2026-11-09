@@ -9,6 +9,8 @@ import { t } from '@/messages';
 
 export interface UnitsResponse {
   items: RegistrationUnitOption[];
+  /** The current week (Monday) by server time. */
+  currentWeekStart: string;
   /** The coming week by server time. */
   upcomingWeekStart: string;
 }

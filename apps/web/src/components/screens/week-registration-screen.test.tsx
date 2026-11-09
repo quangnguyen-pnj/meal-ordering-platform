@@ -34,6 +34,7 @@ const day = (date: string, quantity: number, forecast: number | null): MyDayView
 const week = (forecastTaken: boolean, noForecast = false): MyRegistrationWeekView => ({
   state: 'PUBLISHED',
   weekStart: '2026-11-02',
+  currentWeekStart: '2026-11-02',
   canteenName: 'Nhà ăn A',
   closeAt: '2026-10-29T17:00:00.000Z',
   forecastTaken,
@@ -56,6 +57,15 @@ const show = (view: MyRegistrationWeekView) => {
     </QueryClientProvider>,
   );
 };
+
+describe('WeekRegistrationScreen week label', () => {
+  it('names the week being viewed relative to the current one', async () => {
+    show(week(false));
+    expect(await screen.findByText('Tuần 45 · tuần hiện tại')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Tuần sau' }));
+    expect(await screen.findByText('Tuần 46 · tuần sau')).toBeInTheDocument();
+  });
+});
 
 describe('WeekRegistrationScreen tabs', () => {
   it('BR-07: before closeAt only "Đăng ký dự trù" exists and holds the steppers', async () => {

@@ -1,5 +1,5 @@
 {
-  "_comment": "Scenarios for MockDmpClient (DMP_MODE=mock, pick one with DMP_MOCK_SCENARIO). Employee selectors: 'employees' lists codes, 'range' is an inclusive [from, to] pair of employee codes. Times are Vietnam local HH:mm.",
+  "_comment": "Scenarios for MockDmpClient (DMP_MODE=mock, pick one with DMP_MOCK_SCENARIO). Employee selectors: 'employees' lists codes, 'range' is an inclusive [from, to] pair of employee codes. Times are Vietnam local HH:mm. In an override, 'managerConfirmed' marks a manager's presence confirmation in DMP (BR-30, v1.3) and 'arrivesAt' hides the row until that time of day D, as when DMP receives it late.",
   "scenarios": {
     "on-time": {
       "description": "Everyone checks in at 07:45.",
@@ -8,17 +8,61 @@
     "late": {
       "description": "PNJP000008-PNJP000020 check in at 08:15, after the 08:10 cutoff (BR-30).",
       "defaultCheckIn": "07:45",
-      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": "08:15" }]
+      "overrides": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "checkIn": "08:15"
+        }
+      ]
+    },
+    "late-record": {
+      "description": "PNJP000008-PNJP000020 check in at 08:05, but the rows only reach DMP at 08:20 (BR-32 automatic restore).",
+      "defaultCheckIn": "07:45",
+      "overrides": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "checkIn": "08:05",
+          "arrivesAt": "08:20"
+        }
+      ]
     },
     "forgot-to-check-in": {
       "description": "PNJP000008-PNJP000020 have no attendance record at all.",
       "defaultCheckIn": "07:45",
-      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": null }]
+      "overrides": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "checkIn": null
+        }
+      ]
+    },
+    "manager-confirmed": {
+      "description": "PNJP000008-PNJP000014 forgot to check in and PNJP000015-PNJP000020 check in at 08:25; their manager confirms them in DMP, which the sync sees from 08:20 (BR-30, BR-32, v1.3).",
+      "defaultCheckIn": "07:45",
+      "overrides": [
+        {
+          "range": ["PNJP000008", "PNJP000014"],
+          "checkIn": null,
+          "managerConfirmed": true,
+          "arrivesAt": "08:20"
+        },
+        {
+          "range": ["PNJP000015", "PNJP000020"],
+          "checkIn": "08:25",
+          "managerConfirmed": true,
+          "arrivesAt": "08:25"
+        }
+      ]
     },
     "morning-leave": {
       "description": "PNJP000008-PNJP000020 are on morning leave and arrive at 13:00 (BR-35).",
       "defaultCheckIn": "07:45",
-      "overrides": [{ "range": ["PNJP000008", "PNJP000020"], "checkIn": "13:00" }],
+      "overrides": [
+        {
+          "range": ["PNJP000008", "PNJP000020"],
+          "checkIn": "13:00"
+        }
+      ],
       "leave": [
         {
           "range": ["PNJP000008", "PNJP000020"],

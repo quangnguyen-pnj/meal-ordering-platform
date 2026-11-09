@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +176,11 @@ public class RegistrationsController {
   @GetMapping("/admin/registrations/units")
   Units units(ListScope scope, RequestPrincipal p) {
     // Screens default to the coming week by server time (fake time in dev and tests).
-    return new Units(admin.units(scope, p.factoryId()), Deadlines.upcomingWeekStart(clock.now()));
+    Instant now = clock.now();
+    return new Units(
+        admin.units(scope, p.factoryId()),
+        Deadlines.currentWeekStart(now),
+        Deadlines.upcomingWeekStart(now));
   }
 
   @RequirePermission(action = Action.REGISTRATION_ON_BEHALF, scope = ScopeType.LIST)

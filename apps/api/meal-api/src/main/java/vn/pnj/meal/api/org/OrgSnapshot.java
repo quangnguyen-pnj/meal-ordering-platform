@@ -31,7 +31,8 @@ public final class OrgSnapshot {
       String floorId,
       String canteenId,
       String costCenterId,
-      boolean active) {
+      boolean active,
+      boolean isFallbackMealUnit) {
 
     OrgNode toRuleNode() {
       return new OrgNode(id, parentId, isMealUnit, floorId, canteenId, costCenterId);
@@ -45,7 +46,10 @@ public final class OrgSnapshot {
   public OrgSnapshot(List<Node> nodes) {
     this.nodes = List.copyOf(nodes);
     this.byId = nodes.stream().collect(Collectors.toMap(Node::id, Function.identity()));
-    this.index = OrgIndex.of(nodes.stream().map(Node::toRuleNode).toList());
+    this.index =
+        OrgIndex.of(
+            nodes.stream().map(Node::toRuleNode).toList(),
+            nodes.stream().filter(Node::isFallbackMealUnit).map(Node::id).findFirst().orElse(null));
   }
 
   public List<Node> nodes() {

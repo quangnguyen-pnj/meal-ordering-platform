@@ -14,22 +14,23 @@ import vn.pnj.meal.api.support.IntegrationTest;
 
 /**
  * Flyway builds the same schema the legacy Prisma migrations built (V1..V3 are copies), plus the
- * ShedLock table of the Java jobs (V4).
+ * ShedLock table of the Java jobs (V4), the fallback meal-unit flag (V5, CR 2026-11-04) and the P3
+ * attendance tables (V6).
  */
 class MigrationTest extends IntegrationTest {
   @Autowired JdbcClient jdbc;
 
   @Test
-  void appliesTheBaselineMigrationsAndShedLock() {
+  void appliesTheBaselineMigrationsShedLockAndAttendance() {
     List<String> versions =
         jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
             .query(String.class)
             .list();
-    assertThat(versions).containsExactly("1", "2", "3", "4");
+    assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6");
   }
 
   @Test
-  void createsEveryTableOfTheLegacySchema() {
+  void createsEveryTableOfTheLegacySchemaAndP3() {
     List<String> tables =
         jdbc.sql(
                 "SELECT table_name FROM information_schema.tables"
@@ -61,7 +62,10 @@ class MigrationTest extends IntegrationTest {
             "Notification",
             "MappingImport",
             "DishType",
-            "shedlock");
+            "shedlock",
+            "DailyPresence",
+            "LeaveFlag",
+            "AttendanceDay");
   }
 
   @Test

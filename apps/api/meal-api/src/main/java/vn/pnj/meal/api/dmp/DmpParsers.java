@@ -1,12 +1,15 @@
 package vn.pnj.meal.api.dmp;
 
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
+import vn.pnj.meal.rules.VnTime;
 
 /**
  * Response parsing for the DMP endpoints used from P1 (plan section 5). Swagger has no field
@@ -18,6 +21,9 @@ import tools.jackson.databind.JsonNode;
 final class DmpParsers {
   private static final Pattern ISO_DATE = Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})");
   private static final Pattern DMY_DATE = Pattern.compile("^(\\d{2})-(\\d{2})-(\\d{4})$");
+  private static final Pattern TIME =
+      Pattern.compile(
+          "(?:^|[T ])(\\d{1,2}):(\\d{2})(?::(\\d{2}))?(?:\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})?$");
 
   private DmpParsers() {}
 
@@ -163,5 +169,181 @@ final class DmpParsers {
                 && number.isNumber()
                 && number.asDouble() + 1 >= totalPages.asDouble());
     return new EmployeePage(List.copyOf(items), last);
+  }
+
+  /**
+   * A DMP date-time as a UTC instant. Values without an offset are Vietnam local time (assumption
+   * A7): {@code 2026-11-03T07:45:00}, {@code 03-11-2026 07:45}, or a bare {@code 07:45[:00]} on
+   * {@code day}. A value with an offset or {@code Z} keeps it. Null when absent or unreadable.
+   */
+  static Instant toInstant(String value, LocalDate day) {
+    if (value == null) {
+      return null;
+    }
+    Matcher time = TIME.matcher(value);
+    if (!time.find()) {
+      return null;
+    }
+    String datePart = value.substring(0, time.start()).strip();
+    LocalDate date = datePart.isEmpty() ? day : toDate(datePart);
+    if (date == null) {
+      return null;
+    }
+    int hour = Integer.parseInt(time.group(1));
+    int minute = Integer.parseInt(time.group(2));
+    int second = time.group(3) == null ? 0 : Integer.parseInt(time.group(3));
+    if (hour > 23 || minute > 59 || second > 59) {
+      throw new DmpException(
+          DmpException.Kind.API_ERROR, "DMP returned an impossible time: " + value);
+    }
+    LocalTime local = LocalTime.of(hour, minute, second);
+    String offset = time.group(4);
+    if (offset == null) {
+      return VnTime.vnToUtc(date, local);
+    }
+    return date.atTime(local)
+        .atOffset(java.time.ZoneOffset.of(offset.equals("Z") ? "Z" : normalizeOffset(offset)))
+        .toInstant();
+  }
+
+  private static String normalizeOffset(String offset) {
+    return offset.length() == 5 ? offset.substring(0, 3) + ":" + offset.substring(3) : offset;
+  }
+
+  /** A JSON true, 1, "true", "1", "Y" or a status that reads as confirmed. */
+  private static boolean truthy(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return false;
+    }
+    if (value.isBoolean()) {
+      return value.asBoolean();
+    }
+    if (value.isNumber()) {
+      return value.asInt() == 1;
+    }
+    String text =
+        value.isString() ? value.asString().strip().toUpperCase(java.util.Locale.ROOT) : "";
+    return List.of("TRUE", "1", "Y", "YES", "CONFIRMED", "APPROVED").contains(text);
+  }
+
+  record Page<T>(List<T> items, boolean last) {}
+
+  /**
+   * The rows of a paged DMP response: a Spring Page ({@code content}, {@code last}, {@code
+   * number}/{@code totalPages}), or a {@code data}/{@code items} wrapper, or a bare array. The last
+   * page is the one that says so, is empty, or is shorter than {@code pageSize}.
+   */
+  private static Page<JsonNode> rows(JsonNode body, String endpoint, int pageSize) {
+    JsonNode content = null;
+    if (body != null && body.isArray()) {
+      content = body;
+    } else if (body != null && body.isObject()) {
+      content = firstPresent(body, "content", "data", "items");
+    }
+    if (content == null || !content.isArray()) {
+      throw new DmpException(
+          DmpException.Kind.API_ERROR, "DMP " + endpoint + " did not return rows");
+    }
+    List<JsonNode> items = new ArrayList<>();
+    content.forEach(items::add);
+    if (body.isArray() || items.isEmpty()) {
+      return new Page<>(items, true);
+    }
+    JsonNode totalPages = body.get("totalPages");
+    JsonNode number = body.get("number");
+    boolean last;
+    if (body.path("last").isBoolean()) {
+      last = body.get("last").asBoolean();
+    } else if (totalPages != null && totalPages.isNumber() && number != null && number.isNumber()) {
+      last = number.asDouble() + 1 >= totalPages.asDouble();
+    } else {
+      last = items.size() < pageSize;
+    }
+    return new Page<>(items, last);
+  }
+
+  /**
+   * One page of GET /api/attendance (plan section 5): one person can have several rows. Rows of
+   * another day are dropped. A row without a check-in is kept only when it carries a manager's
+   * confirmation.
+   *
+   * <p>TODO(BR-32): the confirmation field is unknown (open question Q32); every likely name is
+   * read.
+   */
+  static Page<DmpClient.AttendanceRecord> parseAttendancePage(
+      JsonNode body, LocalDate day, int pageSize) {
+    Page<JsonNode> page = rows(body, "/api/attendance", pageSize);
+    List<DmpClient.AttendanceRecord> out = new ArrayList<>();
+    for (JsonNode row : page.items()) {
+      if (!row.isObject()) {
+        continue;
+      }
+      String code = pick(row, "employeeId", "employeeCode");
+      if (code == null) {
+        continue;
+      }
+      LocalDate rowDate = toDate(pick(row, "workDate", "attendanceDate", "date"));
+      if (rowDate != null && !rowDate.equals(day)) {
+        continue;
+      }
+      LocalDate onDay = rowDate != null ? rowDate : day;
+      Instant checkIn =
+          toInstant(
+              pick(row, "checkIn", "checkInTime", "checkinTime", "timeIn", "inTime", "firstIn"),
+              onDay);
+      boolean confirmed = false;
+      for (String key :
+          List.of(
+              "managerConfirmed",
+              "isManagerConfirmed",
+              "confirmedByManager",
+              "isConfirmed",
+              "confirmed",
+              "confirmStatus",
+              "confirmationStatus")) {
+        confirmed |= truthy(row.get(key));
+      }
+      if (checkIn != null || confirmed) {
+        out.add(new DmpClient.AttendanceRecord(code, checkIn, confirmed));
+      }
+    }
+    return new Page<>(List.copyOf(out), page.last());
+  }
+
+  /** {@code leaveDayType} FULL, AM or PM, with the likely spellings; FULL when unknown. */
+  static DmpClient.LeaveDayType toLeaveDayType(String value) {
+    String v = value == null ? "" : value.strip().toUpperCase(java.util.Locale.ROOT);
+    if (v.equals("AM") || v.contains("MORNING") || v.contains("SANG") || v.contains("SÁNG")) {
+      return DmpClient.LeaveDayType.AM;
+    }
+    if (v.equals("PM") || v.contains("AFTERNOON") || v.contains("CHIEU") || v.contains("CHIỀU")) {
+      return DmpClient.LeaveDayType.PM;
+    }
+    return DmpClient.LeaveDayType.FULL;
+  }
+
+  /**
+   * One page of GET /api/daily-forecast?hasLeave=true (plan section 5): restStatus, leaveTypeName,
+   * leaveDayType. Flags only (BR-35). Rows without any leave information are dropped.
+   */
+  static Page<DmpClient.LeaveRecord> parseLeavePage(JsonNode body, int pageSize) {
+    Page<JsonNode> page = rows(body, "/api/daily-forecast", pageSize);
+    List<DmpClient.LeaveRecord> out = new ArrayList<>();
+    for (JsonNode row : page.items()) {
+      if (!row.isObject()) {
+        continue;
+      }
+      String code = pick(row, "employeeCode", "employeeId");
+      LocalDate date = toDate(pick(row, "forecastDate", "workDate", "date"));
+      String dayType = pick(row, "leaveDayType", "dayType");
+      String typeName = pick(row, "leaveTypeName", "restStatus");
+      if (code == null || date == null || (dayType == null && typeName == null)) {
+        continue;
+      }
+      out.add(
+          new DmpClient.LeaveRecord(
+              code, date, toLeaveDayType(dayType), typeName != null ? typeName : "Nghỉ phép"));
+    }
+    return new Page<>(List.copyOf(out), page.last());
   }
 }

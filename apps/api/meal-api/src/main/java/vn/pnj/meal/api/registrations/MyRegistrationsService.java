@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.pnj.meal.api.access.RequestPrincipal;
+import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.audit.AuditService;
 import vn.pnj.meal.api.clock.ClockService;
 import vn.pnj.meal.api.common.ApiException;
@@ -33,6 +34,7 @@ import vn.pnj.meal.api.registrations.RegistrationViews.DayUnassigned;
 import vn.pnj.meal.api.registrations.RegistrationViews.HistoryDayView;
 import vn.pnj.meal.api.registrations.RegistrationViews.HistoryMeal;
 import vn.pnj.meal.api.registrations.RegistrationViews.HistoryView;
+import vn.pnj.meal.api.registrations.RegistrationViews.MyAttendanceView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyDayRegistrationView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyDayView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyWeekView;
@@ -46,6 +48,7 @@ import vn.pnj.meal.api.registrations.RegistrationViews.WeekUnassigned;
 import vn.pnj.meal.api.settings.SettingKey;
 import vn.pnj.meal.api.settings.SettingsService;
 import vn.pnj.meal.rules.VnTime;
+import vn.pnj.meal.rules.attendance.AttendanceRules;
 import vn.pnj.meal.rules.deadline.Deadlines;
 import vn.pnj.meal.rules.menu.MenuRules;
 import vn.pnj.meal.rules.registration.RegistrationRules;
@@ -67,6 +70,7 @@ public class MyRegistrationsService {
   private final SettingsService settings;
   private final AuditService audit;
   private final ClockService clock;
+  private final AttendanceService attendance;
 
   public MyRegistrationsService(
       JdbcClient jdbc,
@@ -75,7 +79,8 @@ public class MyRegistrationsService {
       ForecastService forecast,
       SettingsService settings,
       AuditService audit,
-      ClockService clock) {
+      ClockService clock,
+      AttendanceService attendance) {
     this.jdbc = jdbc;
     this.tx = tx;
     this.store = store;
@@ -83,6 +88,7 @@ public class MyRegistrationsService {
     this.settings = settings;
     this.audit = audit;
     this.clock = clock;
+    this.attendance = attendance;
   }
 
   /**
@@ -109,9 +115,10 @@ public class MyRegistrationsService {
   public MyWeekView week(RequestPrincipal p, LocalDate weekStart) {
     assertMonday(weekStart);
     forecast.catchUp(p.factoryId());
+    LocalDate currentWeekStart = Deadlines.currentWeekStart(clock.now());
     Employee me = store.employee(p.factoryId(), p.employeeId());
     if (!me.assignment().canRegister() || me.assignment().canteenId() == null) {
-      return new WeekUnassigned(weekStart);
+      return new WeekUnassigned(weekStart, currentWeekStart);
     }
     LoadedWeek week = store.loadWeek(me.assignment().canteenId(), weekStart);
     if (week == null || !week.published()) {
@@ -120,7 +127,7 @@ public class MyRegistrationsService {
               .param("id", me.assignment().canteenId())
               .query(String.class)
               .single();
-      return new WeekNotPublished(weekStart, canteenName);
+      return new WeekNotPublished(weekStart, currentWeekStart, canteenName);
     }
     List<LoadedDay> serving = week.servingDays();
     List<RegRow> rows =
@@ -146,6 +153,7 @@ public class MyRegistrationsService {
             .toList();
     return new WeekPublished(
         weekStart,
+        currentWeekStart,
         week.canteenName(),
         week.closeAt(),
         week.closedAt() != null,
@@ -185,9 +193,36 @@ public class MyRegistrationsService {
               .<MyDayRegistrationView>map(
                   d ->
                       new DayOpen(
-                          target, w.canteenName(), w.closeAt(), w.forecastTaken(), d, clock.now()))
+                          target,
+                          w.canteenName(),
+                          w.closeAt(),
+                          w.forecastTaken(),
+                          d,
+                          clock.now(),
+                          myAttendance(p, target)))
               .orElseGet(() -> new DayNoMenu(target, w.canteenName()));
     };
+  }
+
+  /** BR-30 to BR-35: the caller's own presence and leave flag, on day D itself only. */
+  private MyAttendanceView myAttendance(RequestPrincipal p, LocalDate date) {
+    if (!date.equals(VnTime.vnDateOf(clock.now()))) {
+      return null;
+    }
+    attendance.catchUpCutoff(p.factoryId(), date);
+    LocalTime cutoff = attendance.cutoffTime(p.factoryId());
+    AttendanceService.Presence presence =
+        attendance
+            .presenceOf(List.of(p.employeeId()), date)
+            .getOrDefault(p.employeeId(), AttendanceService.Presence.NONE);
+    return new MyAttendanceView(
+        presence.state(),
+        presence.firstCheckInAt(),
+        AttendanceRules.checkInInTime(presence.firstCheckInAt(), date, cutoff),
+        presence.dmpConfirmedAt() != null,
+        presence.confirmedByAdmin(),
+        AttendanceRules.cutoffAt(date, cutoff),
+        attendance.leaveOf(List.of(p.employeeId()), date).get(p.employeeId()));
   }
 
   public SaveResult<MyDayRegistrationView> saveDay(

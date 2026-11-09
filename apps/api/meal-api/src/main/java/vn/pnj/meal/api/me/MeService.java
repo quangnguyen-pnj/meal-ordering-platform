@@ -14,11 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 import vn.pnj.meal.api.access.RequestPrincipal;
+import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.clock.ClockService;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.db.SqlTime;
 import vn.pnj.meal.api.settings.SettingKey;
 import vn.pnj.meal.api.settings.SettingsService;
+import vn.pnj.meal.rules.VnTime;
 import vn.pnj.meal.rules.deadline.Deadlines;
 import vn.pnj.meal.rules.deadline.WeekdayTime;
 
@@ -31,36 +33,53 @@ public class MeService {
   private final JsonMapper json;
   private final SettingsService settings;
   private final ClockService clock;
+  private final AttendanceService attendance;
 
-  public MeService(JdbcClient jdbc, JsonMapper json, SettingsService settings, ClockService clock) {
+  public MeService(
+      JdbcClient jdbc,
+      JsonMapper json,
+      SettingsService settings,
+      ClockService clock,
+      AttendanceService attendance) {
     this.jdbc = jdbc;
     this.json = json;
     this.settings = settings;
     this.clock = clock;
+    this.attendance = attendance;
   }
 
   /**
-   * @param kind message key in the web messages file: MENU_NOT_PUBLISHED or NOTIFICATION
+   * @param kind message key in the web messages file: MENU_NOT_PUBLISHED, ATTENDANCE_SYNC_FAILED,
+   *     ATTENDANCE_CUTOFF_HELD or NOTIFICATION
    * @param notificationId NOTIFICATION banners only: the notification to mark read
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record BannerView(
       String id,
       @Schema(allowableValues = {"info", "warning", "error"}) String severity,
-      @Schema(allowableValues = {"MENU_NOT_PUBLISHED", "NOTIFICATION"}) String kind,
+      @Schema(
+              allowableValues = {
+                "MENU_NOT_PUBLISHED",
+                "ATTENDANCE_SYNC_FAILED",
+                "ATTENDANCE_CUTOFF_HELD",
+                "NOTIFICATION"
+              })
+          String kind,
       Object params,
       @Nullable String notificationId,
       @Nullable String notificationType) {}
 
   /**
-   * Banners for the shared layout (plan section 4): BR-06 "menu not published" for HC admins,
-   * computed on every request, and the caller's unread in-app notices (BR-14).
+   * Banners for the shared layout (plan section 4): for HC admins BR-06 "menu not published" and
+   * today's attendance warnings (BR-34), computed on every request; and the caller's unread in-app
+   * notices (BR-14).
    */
   @Transactional(readOnly = true)
   public List<BannerView> banners(RequestPrincipal p) {
     List<BannerView> banners = new ArrayList<>();
     if (p.hcFactoryIds().contains(p.factoryId())) {
       banners.addAll(menuWarnings(p.factoryId()));
+      banners.addAll(attendanceWarnings(p.factoryId()));
     }
     jdbc.sql(
             """
@@ -119,6 +138,47 @@ public class MeService {
                   null);
             })
         .toList();
+  }
+
+  /**
+   * BR-34 / plan section 4: today's latest attendance sync failed, or the cutoff run kept every
+   * meal. Both stay until a later sync succeeds or a re-run cancels.
+   */
+  public List<BannerView> attendanceWarnings(String factoryId) {
+    LocalDate today = VnTime.vnDateOf(clock.now());
+    AttendanceService.AttendanceStatus status = attendance.status(factoryId, today);
+    if (!status.servingDay()) {
+      return List.of();
+    }
+    List<BannerView> out = new ArrayList<>();
+    AttendanceService.SyncRunSummary sync = status.lastAttendanceSync();
+    if (sync != null && sync.status().equals("FAILED")) {
+      out.add(
+          new BannerView(
+              "attendance-sync-failed:" + today,
+              "error",
+              "ATTENDANCE_SYNC_FAILED",
+              Map.of("date", today.toString(), "at", sync.startedAt().toString()),
+              null,
+              null));
+    }
+    AttendanceService.CutoffSummary cutoff = status.cutoff();
+    if (cutoff != null && !cutoff.outcome().equals("CANCELLED")) {
+      Map<String, Object> params = new LinkedHashMap<>();
+      params.put("date", today.toString());
+      params.put("outcome", cutoff.outcome());
+      params.put("withMeals", cutoff.withMeals());
+      params.put("presentWithMeals", cutoff.presentWithMeals());
+      out.add(
+          new BannerView(
+              "attendance-cutoff-held:" + today,
+              "warning",
+              "ATTENDANCE_CUTOFF_HELD",
+              params,
+              null,
+              null));
+    }
+    return out;
   }
 
   public record Read(String id) {}

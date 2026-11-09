@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/admin/attendance/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rerun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/desserts": {
         parameters: {
             query?: never;
@@ -724,6 +740,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/today/employees/{code}/meals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["editMeals"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/today/employees/{code}/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmPresence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/entra/callback": {
         parameters: {
             query?: never;
@@ -1144,6 +1208,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminTodayView: {
+            attendance: components["schemas"]["AttendanceStatus"];
+            canConfirmPresence: boolean;
+            /** Format: date */
+            date: string;
+            /** Format: date-time */
+            lockAt: string;
+            menus: components["schemas"]["TodayMenu"][];
+            /** Format: date-time */
+            now: string;
+            rows: components["schemas"]["TodayRow"][];
+            summary: components["schemas"]["TodaySummary"];
+            /** @enum {string} */
+            window: "ON_BEHALF" | "EXTRA" | "CLOSED";
+        };
         ApiErrorBody: {
             /** @enum {string} */
             code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "WEEK_OVER" | "DMP_UNAVAILABLE" | "INTERNAL";
@@ -1158,10 +1237,20 @@ export interface components {
             archivedAt: string;
             id: string;
         };
+        AttendanceStatus: {
+            cutoff: components["schemas"]["CutoffSummary"] | null;
+            /** Format: date-time */
+            cutoffAt: string;
+            /** Format: date */
+            date: string;
+            lastAttendanceSync: components["schemas"]["SyncRunSummary"] | null;
+            lastLeaveSync: components["schemas"]["SyncRunSummary"] | null;
+            servingDay: boolean;
+        };
         BannerView: {
             id: string;
             /** @enum {string} */
-            kind: "MENU_NOT_PUBLISHED" | "NOTIFICATION";
+            kind: "MENU_NOT_PUBLISHED" | "ATTENDANCE_SYNC_FAILED" | "ATTENDANCE_CUTOFF_HELD" | "NOTIFICATION";
             notificationId?: string;
             notificationType?: string;
             params: {
@@ -1180,6 +1269,8 @@ export interface components {
             name: string;
         };
         Canteens: {
+            /** Format: date */
+            currentWeekStart: string;
             items: components["schemas"]["CanteenOption"][];
             /** Format: date */
             upcomingWeekStart: string;
@@ -1227,6 +1318,28 @@ export interface components {
         Created: {
             id: string;
         };
+        CutoffResult: {
+            /** Format: int32 */
+            cancelledCount: number;
+            /** @enum {string} */
+            outcome: "CANCELLED" | "HELD_SYNC_FAILED" | "HELD_TOO_FEW_PRESENT";
+            /** Format: int32 */
+            presentWithMeals: number;
+            /** Format: int32 */
+            withMeals: number;
+        };
+        CutoffSummary: {
+            /** Format: int32 */
+            cancelledCount: number;
+            /** @enum {string} */
+            outcome: "CANCELLED" | "HELD_SYNC_FAILED" | "HELD_TOO_FEW_PRESENT";
+            /** Format: int32 */
+            presentWithMeals: number;
+            /** Format: date-time */
+            runAt: string;
+            /** Format: int32 */
+            withMeals: number;
+        };
         DayBody: {
             date: string;
             dessertIds: string[];
@@ -1241,6 +1354,7 @@ export interface components {
             state: "NO_MENU";
         };
         DayOpen: {
+            attendance: components["schemas"]["MyAttendanceView"] | null;
             canteenName: string;
             /** Format: date-time */
             closeAt: string;
@@ -1380,6 +1494,7 @@ export interface components {
             updated: number;
         };
         EmployeeMappingView: {
+            canRegister: boolean;
             canteenId: string | null;
             canteenName: string | null;
             costCenterId: string | null;
@@ -1403,6 +1518,7 @@ export interface components {
             roles: string[];
             /** @enum {string} */
             status: "ACTIVE" | "LEFT";
+            viaFallback: boolean;
         };
         ExtraBody: {
             date: string;
@@ -1585,6 +1701,19 @@ export interface components {
         ItemsSyncRunView: {
             items: components["schemas"]["SyncRunView"][];
         };
+        LeaveFlag: {
+            /** @enum {string} */
+            dayType: "FULL" | "AM" | "PM";
+            leaveTypeName: string;
+        };
+        LeaveResult: {
+            error: string | null;
+            /** Format: int32 */
+            flags: number;
+            /** @enum {string} */
+            status: "SUCCESS" | "FAILED";
+            syncRunId: string;
+        };
         LibraryImportError: {
             /** @enum {string} */
             code: "KIND_INVALID" | "NAME_REQUIRED" | "NAME_TOO_LONG" | "TYPE_REQUIRED" | "TYPE_UNKNOWN" | "DUPLICATE_IN_FILE";
@@ -1643,6 +1772,11 @@ export interface components {
             source?: "DMP" | "MANUAL";
             /** Format: int32 */
             usageCount: number;
+        };
+        MealsBody: {
+            date: string;
+            lines: components["schemas"]["LineBody"][];
+            reason: string;
         };
         MenuDayView: {
             /** Format: date */
@@ -1719,6 +1853,18 @@ export interface components {
             typeId: string;
             typeName: string;
         };
+        MyAttendanceView: {
+            checkedInInTime: boolean;
+            confirmedByAdmin: boolean;
+            confirmedInDmp: boolean;
+            /** Format: date-time */
+            cutoffAt: string;
+            /** Format: date-time */
+            firstCheckInAt: string | null;
+            leave: components["schemas"]["LeaveFlag"] | null;
+            /** @enum {string} */
+            state: "UNKNOWN" | "PRESENT" | "PROVISIONAL_ABSENT" | "ABSENT";
+        };
         MyDayRegistrationView: components["schemas"]["DayUnassigned"] | components["schemas"]["DayNoMenu"] | components["schemas"]["DayOpen"];
         MyDayView: {
             /** Format: int32 */
@@ -1775,6 +1921,7 @@ export interface components {
             dmpCode: string;
             dmpLevelName: string;
             id: string;
+            isFallbackMealUnit: boolean;
             isMealUnit: boolean;
             /** Format: int32 */
             level: number;
@@ -1798,6 +1945,10 @@ export interface components {
         PinLoginBody: {
             employeeCode: string;
             pin: string;
+        };
+        PresenceBody: {
+            date: string;
+            reason?: string;
         };
         ProgressUnit: {
             canteenName: string | null;
@@ -1853,6 +2004,14 @@ export interface components {
         };
         ReplacedFrom: {
             from: string;
+        };
+        RerunBody: {
+            date: string;
+        };
+        RerunResult: {
+            attendance: components["schemas"]["SyncResult"];
+            cutoff: components["schemas"]["CutoffResult"] | null;
+            leave: components["schemas"]["LeaveResult"];
         };
         ResetPinBody: {
             reason?: string;
@@ -1945,6 +2104,30 @@ export interface components {
             name: string;
             unitPrice: number;
         };
+        SyncResult: {
+            error: string | null;
+            /** Format: int32 */
+            present: number;
+            /** Format: int32 */
+            records: number;
+            /** Format: int32 */
+            restored: number;
+            /** @enum {string} */
+            status: "SUCCESS" | "FAILED";
+            syncRunId: string;
+        };
+        SyncRunSummary: {
+            error: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            id: string;
+            /** Format: int32 */
+            recordCount: number | null;
+            /** Format: date-time */
+            startedAt: string;
+            /** @enum {string} */
+            status: "RUNNING" | "SUCCESS" | "FAILED";
+        };
         SyncRunView: {
             details: Record<string, never>;
             error: string;
@@ -1976,6 +2159,76 @@ export interface components {
             meals: components["schemas"]["TeamMeal"][];
             name: string;
         };
+        TodayEditResult: {
+            after: {
+                [key: string]: number;
+            };
+            before: {
+                [key: string]: number;
+            };
+            /** Format: date */
+            date: string;
+            employeeCode: string;
+        };
+        TodayLine: {
+            displayName: string;
+            /** Format: int32 */
+            forecast: number;
+            menuItemId: string;
+            onMenu: boolean;
+            /** Format: int32 */
+            quantity: number;
+        };
+        TodayMenu: {
+            canteenId: string;
+            canteenName: string;
+            items: components["schemas"]["GridItem"][];
+        };
+        TodayPresence: {
+            checkedInInTime: boolean;
+            confirmReason: string | null;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            confirmedByName: string | null;
+            confirmedInDmp: boolean;
+            /** Format: date-time */
+            firstCheckInAt: string | null;
+            /** @enum {string} */
+            state: "UNKNOWN" | "PRESENT" | "PROVISIONAL_ABSENT" | "ABSENT";
+        };
+        TodayRow: {
+            /** Format: int32 */
+            actualTotal: number;
+            canteenId: string | null;
+            cases: ("PROVISIONALLY_CANCELLED" | "CANCELLED_ABSENT" | "NOT_EATING" | "REDUCED" | "ADDED" | "DISH_CHANGED" | "EXTRA" | "PRESENCE_CONFIRMED_BY_ADMIN" | "PRESENCE_CONFIRMED_IN_DMP" | "ON_LEAVE_WITH_MEALS")[];
+            employeeCode: string;
+            /** Format: int32 */
+            forecastTotal: number | null;
+            leave: components["schemas"]["LeaveFlag"] | null;
+            lines: components["schemas"]["TodayLine"][];
+            mealsCount: boolean;
+            name: string;
+            orgPath: string;
+            presence: components["schemas"]["TodayPresence"];
+        };
+        TodaySummary: {
+            /** Format: int32 */
+            actualMeals: number;
+            /** Format: int32 */
+            cases: number;
+            /** Format: int32 */
+            countedMeals: number;
+            /** Format: int32 */
+            employees: number;
+            /** Format: int32 */
+            forecastMeals: number;
+            /** Format: int32 */
+            present: number;
+            /** Format: int32 */
+            provisionallyCancelled: number;
+            /** Format: int32 */
+            withMeals: number;
+        };
         UnitOption: {
             /** Format: int32 */
             employeeCount: number;
@@ -1992,6 +2245,8 @@ export interface components {
             mealUnitsRecomputed: number;
         };
         Units: {
+            /** Format: date */
+            currentWeekStart: string;
             items: components["schemas"]["UnitOption"][];
             /** Format: date */
             upcomingWeekStart: string;
@@ -2011,6 +2266,8 @@ export interface components {
         };
         WeekNotPublished: {
             canteenName: string;
+            /** Format: date */
+            currentWeekStart: string;
             /** @enum {string} */
             state: "NOT_PUBLISHED";
             /** Format: date */
@@ -2020,6 +2277,8 @@ export interface components {
             canteenName: string;
             /** Format: date-time */
             closeAt: string;
+            /** Format: date */
+            currentWeekStart: string;
             days: components["schemas"]["MyDayView"][];
             forecastTaken: boolean;
             noForecast: boolean;
@@ -2035,6 +2294,8 @@ export interface components {
             weekStart: string;
         };
         WeekUnassigned: {
+            /** Format: date */
+            currentWeekStart: string;
             /** @enum {string} */
             state: "UNASSIGNED";
             /** Format: date */
@@ -2049,6 +2310,30 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    rerun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerunBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RerunResult"];
+                };
+            };
+        };
+    };
     listDesserts: {
         parameters: {
             query: {
@@ -3283,6 +3568,81 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupplierView"];
+                };
+            };
+        };
+    };
+    view: {
+        parameters: {
+            query?: {
+                date?: string;
+                orgUnitId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminTodayView"];
+                };
+            };
+        };
+    };
+    editMeals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealsBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TodayEditResult"];
+                };
+            };
+        };
+    };
+    confirmPresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresenceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TodayPresence"];
                 };
             };
         };

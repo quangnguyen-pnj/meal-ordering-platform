@@ -149,6 +149,11 @@ public final class Deadlines {
     return VnTime.vnToUtc(dayInPreviousWeek(weekStart, rule), rule.time());
   }
 
+  /** The Monday of the current Vietnam week, so the UI can label "this week" without a clock. */
+  public static LocalDate currentWeekStart(Instant now) {
+    return VnTime.mondayOf(VnTime.vnDateOf(now));
+  }
+
   /** BR-06: the week the warning is about: the Monday after the current Vietnam week. */
   public static LocalDate upcomingWeekStart(Instant now) {
     return VnTime.mondayOf(VnTime.vnDateOf(now)).plusDays(7);
