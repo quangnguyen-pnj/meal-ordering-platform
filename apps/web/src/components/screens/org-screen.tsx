@@ -196,11 +196,14 @@ function TreeTab() {
     if (n.isMealUnit) {
       const count = mealCounts.get(n.id) ?? 0;
       return (
-        <Badge variant={n.mealUnitValid ? 'secondary' : 'destructive'}>
-          {n.mealUnitValid
-            ? t('org.mealUnitBadge', { count })
-            : t('org.mealUnitInvalidBadge', { missing: missingParts(n), count })}
-        </Badge>
+        <>
+          <Badge variant={n.mealUnitValid ? 'secondary' : 'destructive'}>
+            {n.mealUnitValid
+              ? t('org.mealUnitBadge', { count })
+              : t('org.mealUnitInvalidBadge', { missing: missingParts(n), count })}
+          </Badge>
+          {n.isFallbackMealUnit ? <Badge>{t('org.fallbackBadge')}</Badge> : null}
+        </>
       );
     }
     if (n.mealUnitId) {
@@ -290,7 +293,7 @@ function TreeTab() {
           <div
             role="group"
             aria-label={t('org.viewLabel')}
-            className="flex rounded-md border p-0.5"
+            className="flex rounded-md border p-0.5 gap-1"
           >
             {(['tree', 'mealUnits'] as const).map((v) => (
               <Button
@@ -400,7 +403,11 @@ function MealUnitList({
               <TableCell>{nodePath(n.id, idx)}</TableCell>
               <TableCell>{mealCounts.get(n.id) ?? 0}</TableCell>
               <TableCell>{nameOr(n.resolved.floor.id, floorName)}</TableCell>
-              <TableCell>{nameOr(n.resolved.canteen.id, canteenName)}</TableCell>
+              <TableCell>
+                {n.isFallbackMealUnit && n.resolved.canteen.id === null
+                  ? t('org.fallbackAnyCanteen')
+                  : nameOr(n.resolved.canteen.id, canteenName)}
+              </TableCell>
               <TableCell>
                 {n.mealUnitValid ? (
                   <Badge variant="success">{t('org.mealUnitOk')}</Badge>
@@ -426,6 +433,15 @@ function MealUnitList({
   );
 }
 
+/** CR 2026-11-04: the factory's fallback meal unit, when one is set and valid. */
+function fallbackMealUnit(idx: OrgTreeIndex): OrgUnitView | undefined {
+  for (const n of idx.byId.values()) {
+    // The API counts it valid with a floor alone: it serves every canteen (Q28).
+    if (n.isFallbackMealUnit && n.isMealUnit && n.mealUnitValid) return n;
+  }
+  return undefined;
+}
+
 /** BR-60 / BR-63: where the employees of this node get their meal, in words. */
 function mealStatus(
   node: OrgUnitView,
@@ -437,12 +453,53 @@ function mealStatus(
   const count = below.get(node.mealUnitId) ?? 0;
   const others = [...below.values()].reduce((a, b) => a + b, 0) - count;
   const mealUnit = node.mealUnitId ? idx.byId.get(node.mealUnitId) : undefined;
+  // CR 2026-11-04: employees with a canteen but no usable meal unit go to the fallback meal unit.
+  const fallback = fallbackMealUnit(idx);
 
   let text: string;
   let warn: boolean;
   if (!mealUnit) {
-    text = count > 0 ? t('org.statusNone', { count }) : t('org.statusNoneEmpty');
     warn = count > 0;
+    if (count === 0) text = t('org.statusNoneEmpty');
+    else if (node.resolved.canteen.id === null) text = t('org.statusNoCanteen', { count });
+    else if (fallback)
+      text = t('org.statusNoneFallback', {
+        count,
+        name: fallback.name,
+        floor: floorName(fallback.resolved.floor.id),
+        canteen: canteenName(node.resolved.canteen.id),
+      });
+    else text = t('org.statusNone', { count });
+  } else if (!mealUnit.mealUnitValid && fallback && mealUnit.resolved.floor.id === null) {
+    warn = true;
+    text =
+      mealUnit.resolved.canteen.id === null && node.resolved.canteen.id === null
+        ? t('org.statusNoCanteen', { count })
+        : t('org.statusInvalidFallback', {
+            count,
+            name: mealUnit.name,
+            missing: missingParts(mealUnit),
+            fallback: fallback.name,
+          });
+  } else if (mealUnit === fallback && mealUnit.resolved.canteen.id === null) {
+    // The fallback meal unit with a floor but no canteen: its employees order from their
+    // department's canteen; only those whose department has none are blocked.
+    const own = mealUnit.id === node.id;
+    const floor = floorName(mealUnit.resolved.floor.id);
+    warn = count > 0 && node.resolved.canteen.id === null;
+    if (own) {
+      text = t('org.statusFallbackOwn', { floor });
+      if (warn) text = `${text} ${t('org.statusNoCanteen', { count })}`;
+    } else {
+      text = warn
+        ? t('org.statusNoCanteen', { count })
+        : t('org.statusInherited', {
+            count,
+            name: mealUnit.name,
+            floor,
+            canteen: canteenName(node.resolved.canteen.id),
+          });
+    }
   } else {
     const own = mealUnit.id === node.id;
     const place = {
@@ -485,6 +542,18 @@ function reachHint(node: OrgUnitView, key: 'floorId' | 'canteenId', idx: OrgTree
   };
 }
 
+/** CR 2026-11-04: say why a node cannot be the fallback, instead of the generic 400 text. */
+function updateErrorText(error: unknown): string {
+  if (error instanceof ApiError && Array.isArray(error.details)) {
+    const detail = (error.details as Array<{ path?: string; message?: string }>).find(
+      (d) => d.path === 'isFallbackMealUnit',
+    );
+    if (detail?.message === 'noFloor') return t('org.fallbackErrors.noFloor');
+    if (detail?.message === 'notMealUnit') return t('org.fallbackErrors.notMealUnit');
+  }
+  return apiErrorText(error);
+}
+
 function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
   const qc = useQueryClient();
   const floors = useMaster('floors');
@@ -522,8 +591,8 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
   const change = (patch: OrgUnitUpdate, label: string) => {
     const [key] = Object.keys(patch) as Array<keyof OrgUnitUpdate>;
     const revert: OrgUnitUpdate =
-      key === 'isMealUnit'
-        ? { isMealUnit: node.isMealUnit }
+      key === 'isMealUnit' || key === 'isFallbackMealUnit'
+        ? { [key]: node[key] }
         : { [key as 'floorId']: node.own[key as 'floorId'] };
     update.mutate({ patch, label, revert });
   };
@@ -635,6 +704,32 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
           <span className="font-medium">{t('org.statusTitle')}: </span>
           {status.text}
         </Alert>
+        {node.isMealUnit ? (
+          <fieldset className="flex flex-col gap-1" disabled={update.isPending}>
+            <legend className="mb-1 text-sm font-medium">{t('org.fallbackQuestion')}</legend>
+            <label className="flex min-h-11 items-start gap-2 py-1 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 accent-primary"
+                checked={node.isFallbackMealUnit}
+                onChange={(e) =>
+                  change({ isFallbackMealUnit: e.target.checked }, t('org.fallbackQuestion'))
+                }
+              />
+              <span>
+                <span className="font-medium">{t('org.fallbackLabel')}</span>
+                <span className="block text-muted-foreground">{t('org.fallbackHint')}</span>
+                {node.isFallbackMealUnit ? null : (
+                  <span className="block text-muted-foreground">
+                    {fallbackMealUnit(idx)
+                      ? t('org.fallbackCurrent', { name: fallbackMealUnit(idx)!.name })
+                      : t('org.fallbackNone')}
+                  </span>
+                )}
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
         {field(
           'floorId',
           'floor',
@@ -727,7 +822,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
           </Button>
         </form>
       </section>
-      {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
+      {error ? <Alert variant="destructive">{updateErrorText(error)}</Alert> : null}
     </div>
   );
 }
@@ -741,12 +836,16 @@ function EmployeeList({ path, showReason = false }: { path: string; showReason?:
   const { pageItems, pagination } = usePagination(items);
   if (list.error) return <Alert variant="destructive">{apiErrorText(list.error)}</Alert>;
   if (list.isLoading) return <LoadingRows rows={6} />;
-  const reason = (e: EmployeeMappingView) =>
-    e.mealStatus === 'NO_MEAL_UNIT'
-      ? t('org.reasonNoMealUnit')
-      : t('org.reasonInvalid', {
-          missing: e.missing.map((m) => vi.org.missingParts[m]).join(', '),
-        });
+  const reason = (e: EmployeeMappingView) => {
+    const why =
+      e.mealStatus === 'NO_MEAL_UNIT'
+        ? t('org.reasonNoMealUnit')
+        : t('org.reasonInvalid', {
+            missing: e.missing.map((m) => vi.org.missingParts[m]).join(', '),
+          });
+    // CR 2026-11-04: say whether they can still order (at the fallback meal unit) or not.
+    return `${why}: ${e.viaFallback ? t('org.reasonViaFallback') : t('org.reasonCannotRegister')}`;
+  };
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">{t('common.total', { count: items.length })}</p>

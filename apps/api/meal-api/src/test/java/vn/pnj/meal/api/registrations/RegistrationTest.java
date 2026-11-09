@@ -133,6 +133,7 @@ class RegistrationTest extends IntegrationTest {
   @AfterAll
   void cleanUp() {
     clock.clearFakeTime();
+    jdbc.sql("UPDATE \"OrgUnit\" SET \"isFallbackMealUnit\" = false").update();
     // The plain mock DMP brings the leaver back for the other test classes.
     jobs.syncOrgEmployees();
   }
@@ -331,6 +332,18 @@ class RegistrationTest extends IntegrationTest {
     String res = read(a, "/api/registrations/me/week");
     assertThat(at(res, "$.state").toString()).isEqualTo("PUBLISHED");
     assertThat(at(res, "$.weekStart").toString()).isEqualTo(N);
+  }
+
+  @Test
+  @Order(5)
+  @DisplayName(
+      "BR-60 (CR 2026-11-04): once a fallback meal unit is set, an employee with no meal unit"
+          + " registers")
+  void unassignedRegistersIntoFallback() throws Exception {
+    expect(200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_BV", "{'isFallbackMealUnit':true}");
+    String week = myWeek(unassigned, N);
+    assertThat(at(week, "$.state").toString()).isEqualTo("PUBLISHED");
+    saveDay(unassigned, MON, lines(line(N, MON, "ca", 1)), 200);
   }
 
   // --- P2 exit criterion: the bulk grid
@@ -633,6 +646,16 @@ class RegistrationTest extends IntegrationTest {
         .containsEntry("canteenId", "ct_gv");
     String employeeB = employeeId(b);
     assertThat(forecast).noneMatch(l -> l.get("employeeId").equals(employeeB));
+    // CR 2026-11-04: an employee with no meal unit is counted at the fallback meal unit.
+    String unassignedId = employeeId(Demo.UNASSIGNED);
+    assertThat(forecast.stream().filter(l -> l.get("employeeId").equals(unassignedId)))
+        .singleElement()
+        .satisfies(
+            l ->
+                assertThat(l)
+                    .containsEntry("mealUnitId", "ou_BV")
+                    .containsEntry("floorId", "fl_T1")
+                    .containsEntry("canteenId", "ct_gv"));
     assertThat(
             count(
                 "SELECT count(*) FROM \"AuditLog\" WHERE action = 'forecast.snapshot' AND \"entityId\" = :id",

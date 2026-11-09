@@ -10,17 +10,35 @@ import java.util.Set;
 /** An org tree indexed by node id. */
 public final class OrgIndex {
   private final Map<String, OrgNode> byId;
+  private final String fallbackMealUnitId;
 
-  private OrgIndex(Map<String, OrgNode> byId) {
+  private OrgIndex(Map<String, OrgNode> byId, String fallbackMealUnitId) {
     this.byId = byId;
+    this.fallbackMealUnitId = fallbackMealUnitId;
   }
 
   public static OrgIndex of(Iterable<OrgNode> nodes) {
+    return of(nodes, null);
+  }
+
+  /**
+   * @param fallbackMealUnitId the factory's fallback meal unit ("đầu mối nhận cơm tập trung", CR
+   *     2026-11-04), or null when the HC admin has not picked one
+   */
+  public static OrgIndex of(Iterable<OrgNode> nodes, String fallbackMealUnitId) {
     Map<String, OrgNode> map = new HashMap<>();
     for (OrgNode node : nodes) {
       map.put(node.id(), node);
     }
-    return new OrgIndex(map);
+    return new OrgIndex(map, fallbackMealUnitId);
+  }
+
+  /**
+   * The fallback meal unit, or null when none is set or it is no longer a meal unit of this tree.
+   */
+  public String fallbackMealUnitId() {
+    OrgNode node = fallbackMealUnitId == null ? null : byId.get(fallbackMealUnitId);
+    return node != null && node.isMealUnit() ? node.id() : null;
   }
 
   public OrgNode get(String id) {

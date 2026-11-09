@@ -414,7 +414,7 @@ class AttendanceTest extends IntegrationTest {
     tickAt(pm, day, "07:30");
     tickAt(pm, day, "08:10");
     assertThat(state(AFFECTED, day)).isEqualTo("PRESENT");
-    // Q28: afternoon leave keeps lunch, so it is no case to review.
+    // Q33: afternoon leave keeps lunch, so it is no case to review.
     Cookie hc = signInReady(Demo.HC_ADMIN);
     String view = read(hc, "/api/admin/today?date=" + day);
     assertThat(

@@ -3,8 +3,11 @@ package vn.pnj.meal.api.menu;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -102,17 +105,46 @@ public class MenuController {
     return menus.save(p.employeeId(), p.factoryId(), body.input());
   }
 
+  /**
+   * @param closeAt BR-04: the closeAt the HC admin picks for a late publish; ignored otherwise
+   */
+  public record PublishWeekBody(
+      @NotNull @Size(min = 1) String canteenId,
+      @NotNull String weekStart,
+      @NotNull @Size(min = 1, max = 7) List<@NotNull @Valid DayBody> days,
+      @Nullable Instant closeAt) {
+
+    MenuService.WeekInput input() {
+      return new WeekBody(canteenId, weekStart, days, null).input();
+    }
+  }
+
   /** Saves the submitted days and publishes in one step (no separate draft save needed). */
   @RequirePermission(action = Action.MENU_MANAGE, scope = ScopeType.FACTORY)
   @PostMapping("/admin/menu/weeks/publish")
-  MenuWeekView saveAndPublish(@Valid @RequestBody WeekBody body, RequestPrincipal p) {
-    return menus.saveAndPublish(p.employeeId(), p.factoryId(), body.input());
+  MenuWeekView saveAndPublish(@Valid @RequestBody PublishWeekBody body, RequestPrincipal p) {
+    return menus.saveAndPublish(
+        p.employeeId(), p.factoryId(), body.input(), millis(body.closeAt()));
   }
+
+  /**
+   * @param closeAt BR-04: the closeAt the HC admin picks for a late publish; ignored otherwise
+   */
+  public record PublishBody(@Nullable Instant closeAt) {}
 
   @RequirePermission(action = Action.MENU_MANAGE, scope = ScopeType.FACTORY)
   @PostMapping("/admin/menu/weeks/{id}/publish")
-  MenuWeekView publish(@PathVariable String id, RequestPrincipal p) {
-    return menus.publish(p.employeeId(), p.factoryId(), id);
+  MenuWeekView publish(
+      @PathVariable String id,
+      @RequestBody(required = false) @Nullable PublishBody body,
+      RequestPrincipal p) {
+    return menus.publish(
+        p.employeeId(), p.factoryId(), id, body == null ? null : millis(body.closeAt()));
+  }
+
+  /** Timestamps are stored to the millisecond ({@code TIMESTAMP(3)}). */
+  private static @Nullable Instant millis(@Nullable Instant at) {
+    return at == null ? null : at.truncatedTo(ChronoUnit.MILLIS);
   }
 
   /** The signed-in employee's published menu (BR-02, BR-15). */

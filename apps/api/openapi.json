@@ -813,7 +813,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/WeekBody"
+                "$ref" : "#/components/schemas/PublishWeekBody"
               }
             }
           },
@@ -845,6 +845,15 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishBody"
+              }
+            }
+          }
+        },
         "responses" : {
           "200" : {
             "content" : {
@@ -2612,7 +2621,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "DMP_UNAVAILABLE", "INTERNAL" ]
+            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "WEEK_OVER", "DMP_UNAVAILABLE", "INTERNAL" ]
           },
           "details" : { },
           "lockedUntil" : {
@@ -3397,6 +3406,9 @@
       "EmployeeMappingView" : {
         "type" : "object",
         "properties" : {
+          "canRegister" : {
+            "type" : "boolean"
+          },
           "canteenId" : {
             "type" : [ "string", "null" ]
           },
@@ -3464,9 +3476,12 @@
           "status" : {
             "type" : "string",
             "enum" : [ "ACTIVE", "LEFT" ]
+          },
+          "viaFallback" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status" ]
+        "required" : [ "canRegister", "canteenId", "canteenName", "costCenterId", "costCenterName", "costCenterSource", "employeeCode", "floorId", "floorName", "floorOverrideId", "floorSource", "mealStatus", "mealUnitId", "mealUnitName", "missing", "name", "orgPath", "orgUnitId", "roles", "status", "viaFallback" ]
       },
       "ExtraBody" : {
         "type" : "object",
@@ -4375,8 +4390,9 @@
           "id" : {
             "type" : [ "string", "null" ]
           },
-          "latePublish" : {
-            "type" : "boolean"
+          "latestCloseAt" : {
+            "type" : "string",
+            "format" : "date-time"
           },
           "lockedDates" : {
             "type" : "array",
@@ -4384,6 +4400,10 @@
               "type" : "string",
               "format" : "date"
             }
+          },
+          "publishWindow" : {
+            "type" : "string",
+            "enum" : [ "ON_TIME", "LATE", "IN_WEEK" ]
           },
           "publishedAt" : {
             "type" : [ "string", "null" ],
@@ -4393,12 +4413,15 @@
             "type" : "string",
             "enum" : [ "DRAFT", "PUBLISHED", "CLOSED", "NEW" ]
           },
+          "weekOver" : {
+            "type" : "boolean"
+          },
           "weekStart" : {
             "type" : "string",
             "format" : "date"
           }
         },
-        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latePublish", "lockedDates", "publishedAt", "status", "weekStart" ]
+        "required" : [ "canteenId", "canteenName", "closeAt", "closeAtIsExpected", "days", "id", "latestCloseAt", "lockedDates", "publishWindow", "publishedAt", "status", "weekOver", "weekStart" ]
       },
       "MixCheck" : {
         "type" : "object",
@@ -4664,6 +4687,9 @@
           "id" : {
             "type" : "string"
           },
+          "isFallbackMealUnit" : {
+            "type" : "boolean"
+          },
           "isMealUnit" : {
             "type" : "boolean"
           },
@@ -4690,7 +4716,7 @@
             "$ref" : "#/components/schemas/ResolvedView"
           }
         },
-        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
+        "required" : [ "active", "deptAdmins", "directHeadcount", "dmpCode", "dmpLevelName", "id", "isFallbackMealUnit", "isMealUnit", "level", "mealUnitId", "mealUnitValid", "name", "own", "parentId", "resolved" ]
       },
       "Own" : {
         "type" : "object",
@@ -4804,6 +4830,42 @@
           }
         },
         "required" : [ "units", "weekStart" ]
+      },
+      "PublishBody" : {
+        "type" : "object",
+        "properties" : {
+          "closeAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "closeAt" ]
+      },
+      "PublishWeekBody" : {
+        "type" : "object",
+        "properties" : {
+          "canteenId" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 1
+          },
+          "closeAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DayBody"
+            },
+            "maxItems" : 7,
+            "minItems" : 1
+          },
+          "weekStart" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "canteenId", "days", "weekStart" ]
       },
       "Read" : {
         "type" : "object",
@@ -5662,6 +5724,9 @@
           "forecastTaken" : {
             "type" : "boolean"
           },
+          "noForecast" : {
+            "type" : "boolean"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "PUBLISHED" ]
@@ -5675,7 +5740,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "state", "totalMeals", "weekStart" ]
+        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
       },
       "WeekSaveBody" : {
         "type" : "object",

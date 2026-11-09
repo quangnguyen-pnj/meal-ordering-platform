@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const isWindows = process.platform === 'win32';
 const command = process.env.MAVEN_CMD ?? path.join(apiRoot, isWindows ? 'mvnw.cmd' : 'mvnw');
-// With shell: true, Node passes the command to cmd.exe unquoted, so a path with a space
-// (e.g. "D:\Web Programming\...") would be split at the space.
+// With shell: true Node joins the command and arguments unquoted, so cmd.exe would split a path
+// that contains spaces (e.g. "D:\Web Programming\...").
 const shellCommand = isWindows ? `"${command}"` : command;
 
 const result = spawnSync(shellCommand, ['-B', ...process.argv.slice(2)], {

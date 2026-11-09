@@ -12,7 +12,9 @@ const view = {
   publishedAt: null,
   closeAt: '2027-02-25T17:00:00.000Z',
   closeAtIsExpected: false,
-  latePublish: false,
+  publishWindow: 'ON_TIME',
+  latestCloseAt: '2027-02-28T17:00:00.000Z',
+  weekOver: false,
   lockedDates: [],
   days: [
     {

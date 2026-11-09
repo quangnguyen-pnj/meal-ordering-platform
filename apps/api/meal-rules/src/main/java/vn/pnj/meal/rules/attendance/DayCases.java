@@ -34,7 +34,7 @@ public final class DayCases {
     PRESENCE_CONFIRMED_BY_ADMIN,
     /** BR-32: a manager confirmed presence in DMP, without a check-in in time. */
     PRESENCE_CONFIRMED_IN_DMP,
-    /** BR-35: a full-day or morning leave while the employee still has lunch (Q28). */
+    /** BR-35: a full-day or morning leave while the employee still has lunch (Q33). */
     ON_LEAVE_WITH_MEALS
   }
 
@@ -63,7 +63,7 @@ public final class DayCases {
   }
 
   /**
-   * BR-41 / Q28 (product owner, 2026-11-01): only full-day and morning leave make "on leave but
+   * BR-41 / Q33 (product owner, 2026-11-01): only full-day and morning leave make "on leave but
    * still has meals" a case. Afternoon leave keeps lunch (BR-35), so it is not one.
    */
   public static boolean leavesOutLunch(LeaveDayType leave) {

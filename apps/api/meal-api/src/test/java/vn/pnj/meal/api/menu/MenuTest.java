@@ -569,7 +569,7 @@ class MenuTest extends IntegrationTest {
     assertThat(JsonPath.<String>read(res, "$.status")).isEqualTo("PUBLISHED");
     assertThat(JsonPath.<String>read(res, "$.closeAt")).isEqualTo("2027-02-25T17:00:00.000Z");
     assertThat(JsonPath.<Boolean>read(res, "$.closeAtIsExpected")).isFalse();
-    assertThat(JsonPath.<Boolean>read(res, "$.latePublish")).isFalse();
+    assertThat(JsonPath.<String>read(res, "$.publishWindow")).isEqualTo("ON_TIME");
     String after =
         jdbc.sql(
                 """
@@ -580,7 +580,7 @@ class MenuTest extends IntegrationTest {
             .query(String.class)
             .single();
     assertThat(JsonPath.<String>read(after, "$.closeAt")).isEqualTo("2027-02-25T17:00:00.000Z");
-    assertThat(JsonPath.<Boolean>read(after, "$.latePublish")).isFalse();
+    assertThat(JsonPath.<String>read(after, "$.publishWindow")).isEqualTo("ON_TIME");
   }
 
   @Test
@@ -865,7 +865,8 @@ class MenuTest extends IntegrationTest {
   @Test
   @Order(50)
   @DisplayName(
-      "BR-04: a menu published on Saturday after the regular close gets closeAt = publish + 24 h")
+      "BR-04: a menu published on Saturday after the regular close takes the closeAt the HC admin"
+          + " picks, no later than 00:00 Monday")
   void latePublish() throws Exception {
     // Saturday; week 2027-03-08 closed regularly Friday 00:00
     moveTo("2027-03-06", "09:30");
@@ -876,17 +877,114 @@ class MenuTest extends IntegrationTest {
             HttpMethod.PUT,
             "/api/admin/menu/weeks",
             week(CANTEEN, "2027-03-08", day("2027-03-08", STANDARD, List.of("chuoi"))));
-    assertThat(JsonPath.<Boolean>read(saved, "$.menu.latePublish")).isTrue();
+    assertThat(JsonPath.<String>read(saved, "$.menu.publishWindow")).isEqualTo("LATE");
+    // The suggestion: publish + registration.latePublishHours (Sunday 09:30 Vietnam time).
+    assertThat(JsonPath.<String>read(saved, "$.menu.closeAt"))
+        .isEqualTo("2027-03-07T02:30:00.000Z");
+    // 00:00 Monday Vietnam time
+    assertThat(JsonPath.<String>read(saved, "$.menu.latestCloseAt"))
+        .isEqualTo("2027-03-07T17:00:00.000Z");
+    String url = "/api/admin/menu/weeks/" + JsonPath.read(saved, "$.menu.id") + "/publish";
+
+    for (String body : List.of("{}", "{'closeAt':'2027-03-06T02:30:00.000Z'}")) {
+      // Missing, or not after the publish time.
+      String res = expect(400, hc, HttpMethod.POST, url, body);
+      assertThat(JsonPath.<String>read(res, "$.details[0].path")).isEqualTo("closeAt");
+    }
+    // Monday 00:01 Vietnam time is inside week N
+    expect(400, hc, HttpMethod.POST, url, "{'closeAt':'2027-03-07T17:01:00.000Z'}");
+
+    // Saturday 17:00 Vietnam time
+    String res = expect(200, hc, HttpMethod.POST, url, "{'closeAt':'2027-03-06T10:00:00.000Z'}");
+    assertThat(JsonPath.<String>read(res, "$.closeAt")).isEqualTo("2027-03-06T10:00:00.000Z");
+    assertThat(JsonPath.<String>read(res, "$.publishWindow")).isEqualTo("LATE");
+    assertThat(JsonPath.<String>read(res, "$.status")).isEqualTo("PUBLISHED");
+  }
+
+  @Test
+  @Order(51)
+  @DisplayName(
+      "BR-04: a menu published inside its own week has no forecast: the empty snapshot is taken"
+          + " at publish and every meal counts as actual")
+  void inWeekPublish() throws Exception {
+    // Wednesday of week 2027-03-15
+    moveTo("2027-03-17", "10:00");
     String res =
         expect(
             200,
             hc,
             HttpMethod.POST,
+            "/api/admin/menu/weeks/publish",
+            // A closeAt sent by a page loaded before Monday is ignored.
+            "{'canteenId':'%s','weekStart':'2027-03-15','closeAt':'2027-03-14T10:00:00.000Z','days':[%s]}"
+                .formatted(CANTEEN, day("2027-03-18", STANDARD, List.of("chuoi"))));
+    assertThat(JsonPath.<String>read(res, "$.publishWindow")).isEqualTo("IN_WEEK");
+    // closeAt = publish time (10:00 Vietnam time)
+    assertThat(JsonPath.<String>read(res, "$.closeAt")).isEqualTo("2027-03-17T03:00:00.000Z");
+    assertThat(JsonPath.<String>read(res, "$.status")).isEqualTo("CLOSED");
+    String id = JsonPath.read(res, "$.id");
+    assertThat(
+            jdbc.sql("SELECT \"closedAt\" IS NOT NULL FROM \"MenuWeek\" WHERE id = :id")
+                .param("id", id)
+                .query(Boolean.class)
+                .single())
+        .isTrue();
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM \"ForecastLine\" WHERE \"menuWeekId\" = :id")
+                .param("id", id)
+                .query(Integer.class)
+                .single())
+        .isZero();
+    String after =
+        jdbc.sql(
+                """
+                SELECT after::text FROM "AuditLog" WHERE action = 'menu.published'
+                  AND "entityId" = :id
+                """)
+            .param("id", id)
+            .query(String.class)
+            .single();
+    assertThat(JsonPath.<String>read(after, "$.publishWindow")).isEqualTo("IN_WEEK");
+    // Back to the Saturday of latePublish for the later tests.
+    moveTo("2027-03-06", "09:30");
+  }
+
+  @Test
+  @Order(52)
+  @DisplayName(
+      "BR-04: a week whose serving days have all locked cannot be published (409 WEEK_OVER)")
+  void weekOver() throws Exception {
+    // Friday 09:00 of week 2027-03-22: Friday locked at 08:00
+    moveTo("2027-03-26", "09:00");
+    String body =
+        week(
+            CANTEEN,
+            "2027-03-22",
+            day("2027-03-22", STANDARD, List.of("chuoi")),
+            day("2027-03-26", STANDARD, List.of("chuoi")));
+    String res = expect(409, hc, HttpMethod.POST, "/api/admin/menu/weeks/publish", body);
+    assertThat(JsonPath.<String>read(res, "$.code")).isEqualTo("WEEK_OVER");
+    // Refused before the draft was written.
+    String view = read(hc, "/api/admin/menu/weeks?canteenId=" + CANTEEN + "&weekStart=2027-03-22");
+    assertThat(JsonPath.<String>read(view, "$.status")).isEqualTo("NEW");
+    assertThat(JsonPath.<Boolean>read(view, "$.weekOver")).isTrue();
+
+    // A saved draft is refused the same way.
+    String saved = expect(200, hc, HttpMethod.PUT, "/api/admin/menu/weeks", body);
+    String byId =
+        expect(
+            409,
+            hc,
+            HttpMethod.POST,
             "/api/admin/menu/weeks/" + JsonPath.read(saved, "$.menu.id") + "/publish",
             null);
-    // Sunday 09:30 Vietnam time
-    assertThat(JsonPath.<String>read(res, "$.closeAt")).isEqualTo("2027-03-07T02:30:00.000Z");
-    assertThat(JsonPath.<Boolean>read(res, "$.latePublish")).isTrue();
+    assertThat(JsonPath.<String>read(byId, "$.code")).isEqualTo("WEEK_OVER");
+
+    // At 07:59 the same Friday the week could still be published (as an in-week publish).
+    moveTo("2027-03-26", "07:59");
+    String open = read(hc, "/api/admin/menu/weeks?canteenId=" + CANTEEN + "&weekStart=2027-03-22");
+    assertThat(JsonPath.<Boolean>read(open, "$.weekOver")).isFalse();
+    moveTo("2027-03-06", "09:30");
   }
 
   // --- BR-10: Excel import of a canteen library -------------------------------------------------
@@ -915,17 +1013,24 @@ class MenuTest extends IntegrationTest {
 
   @Test
   @Order(60)
-  @DisplayName("BR-10: the template lists the active dish-type codes")
+  @DisplayName(
+      "BR-10: the template lists the active dish-type codes on the right of the same sheet; only"
+          + " \"Nhóm\" is a drop-down")
   void template() throws Exception {
     MockHttpServletResponse res =
         send(hc, HttpMethod.GET, "/api/admin/dish-library/template", null);
     assertThat(res.getStatus()).isEqualTo(200);
     assertThat(res.getHeader("Content-Disposition")).contains("mau-thu-vien-mon.xlsx");
     byte[] file = res.getContentAsByteArray();
-    assertThat(TestXlsx.read(file, 0, 1).getFirst()).containsExactly(HEADER.getFirst());
-    List<String> codes = TestXlsx.read(file, 1, 1).stream().skip(1).map(List::getFirst).toList();
+    List<List<String>> sheet = TestXlsx.read(file, 0, 1, 4, 5, 6);
+    assertThat(sheet.getFirst())
+        .containsExactly(HEADER.getFirst(), "", "Bảng tra: mã loại món", "Tên loại món");
+    List<String> codes =
+        sheet.stream().skip(1).map(r -> r.get(2)).filter(c -> !c.isEmpty()).toList();
     assertThat(codes).contains("MAN", "CHAY", "CHAO");
+    assertThat(sheet).allSatisfy(r -> assertThat(r.get(1)).isEmpty());
     try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(file))) {
+      assertThat(wb.getNumberOfSheets()).isEqualTo(1);
       List<String> lists = new ArrayList<>();
       for (DataValidation v : wb.getSheetAt(0).getDataValidations()) {
         var range = v.getRegions().getCellRangeAddress(0);
@@ -935,11 +1040,11 @@ class MenuTest extends IntegrationTest {
                 : v.getValidationConstraint().getFormula1();
         lists.add(range.formatAsString() + " " + formula);
       }
-      assertThat(lists)
-          .containsExactlyInAnyOrder(
-              "A2:A2001 Món chính,Tráng miệng",
-              "B2:B2001 'Loại món'!$A$2:$A$" + (codes.size() + 1));
+      assertThat(lists).containsExactly("A2:A2001 Món chính,Tráng miệng");
     }
+    // The lookup rows have nothing in A–C, so uploading the template reads only its two examples.
+    String preview = uploadLibraryOk(file, false);
+    assertThat(JsonPath.<Integer>read(preview, "$.rowCount")).isEqualTo(2);
   }
 
   @Test

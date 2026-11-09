@@ -32,15 +32,22 @@ import vn.pnj.meal.rules.org.MappingImport.TargetType;
 /** BR-64: mapping export and the validated, all-or-nothing import. */
 @Service
 public class MappingImportService {
-  /** BR-64 template: one sheet, these columns in this order; row 1 is the header. */
+  /**
+   * BR-64 template: one sheet, these columns in this order; row 1 is the header. Unit names are not
+   * part of it: they are listed read-only on the "Danh mục" sheet (from column G).
+   */
   public static final List<String> TEMPLATE_HEADER =
       List.of(
           "Loại (ORG/EMPLOYEE)",
           "Mã đơn vị / mã nhân viên",
-          "Tên (chỉ để đọc)",
           "Mã tầng",
           "Mã nhà ăn",
           "Mã trung tâm chi phí");
+
+  /** Read-only unit names on the "Danh mục" sheet, as a second table starting at column G. */
+  public static final List<String> UNIT_NAMES_HEADER = List.of("Mã đơn vị", "Tên (đơn vị chỉ đọc)");
+
+  private static final int UNIT_NAMES_COLUMN = 6; // G
 
   private static final String SHEET_NAME = "Mapping";
   private static final int MAX_ROWS = 20_000;
@@ -61,7 +68,7 @@ public class MappingImportService {
   private record UnitExport(
       String dmpCode, String name, int level, String floor, String canteen, String costCenter) {}
 
-  private record EmployeeExport(String employeeCode, String name, String floor) {}
+  private record EmployeeExport(String employeeCode, String floor) {}
 
   private record ListEntry(String code, String name, boolean active) {}
 
@@ -85,7 +92,7 @@ public class MappingImportService {
     List<EmployeeExport> employees =
         jdbc.sql(
                 """
-                SELECT e."employeeCode", e.name, f.code AS floor
+                SELECT e."employeeCode", f.code AS floor
                 FROM "Employee" e JOIN "OrgUnit" o ON o.id = e."orgUnitId"
                 JOIN "Floor" f ON f.id = e."floorOverrideId"
                 WHERE o."factoryId" = :factoryId ORDER BY e."employeeCode"
@@ -95,21 +102,19 @@ public class MappingImportService {
             .list();
 
     XSSFWorkbook workbook = new XSSFWorkbook();
-    Sheet sheet =
-        Xlsx.sheet(workbook, SHEET_NAME, TEMPLATE_HEADER, new int[] {20, 26, 40, 12, 14, 24});
+    Sheet sheet = Xlsx.sheet(workbook, SHEET_NAME, TEMPLATE_HEADER, new int[] {20, 26, 12, 14, 24});
     for (UnitExport u : units) {
       Xlsx.addRow(
           sheet,
           List.of(
               "ORG",
               u.dmpCode(),
-              "  ".repeat(Math.max(0, u.level() - 1)) + u.name(),
               Objects.toString(u.floor(), ""),
               Objects.toString(u.canteen(), ""),
               Objects.toString(u.costCenter(), "")));
     }
     for (EmployeeExport e : employees) {
-      Xlsx.addRow(sheet, List.of("EMPLOYEE", e.employeeCode(), e.name(), e.floor(), "", ""));
+      Xlsx.addRow(sheet, List.of("EMPLOYEE", e.employeeCode(), e.floor(), "", ""));
     }
 
     Sheet lists =
@@ -129,6 +134,14 @@ public class MappingImportService {
         "Trung tâm chi phí",
         "SELECT code, name, active FROM \"CostCenter\" WHERE \"factoryId\" = :f ORDER BY code",
         factoryId);
+    Xlsx.table(
+        lists,
+        UNIT_NAMES_COLUMN,
+        UNIT_NAMES_HEADER,
+        new int[] {26, 40},
+        units.stream()
+            .map(u -> List.of(u.dmpCode(), "  ".repeat(Math.max(0, u.level() - 1)) + u.name()))
+            .toList());
     return Xlsx.bytes(workbook);
   }
 
@@ -142,8 +155,8 @@ public class MappingImportService {
   List<MappingImport.RawRow> parse(byte[] file) {
     return Xlsx.readFirstSheet(
             file,
-            TEMPLATE_HEADER.getFirst(),
-            new int[] {1, 2, 4, 5, 6},
+            TEMPLATE_HEADER,
+            new int[] {1, 2, 3, 4, 5},
             "The file does not use the mapping template",
             MAX_ROWS)
         .stream()

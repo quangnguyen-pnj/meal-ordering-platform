@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import vn.pnj.meal.rules.VnTime;
 
 /** Registration deadlines. Every rule reads its time from a setting and takes {@code now} in. */
@@ -49,19 +50,56 @@ public final class Deadlines {
   }
 
   /**
-   * @param latePublish true when BR-04 applied: the menu was published at or after the regular
-   *     closeAt
+   * When week N's menu was published, relative to its deadlines (BR-03, BR-04).
+   *
+   * <ul>
+   *   <li>{@code ON_TIME}: before the regular closeAt.
+   *   <li>{@code LATE}: from the regular closeAt to 00:00 Monday of week N; the HC admin picks the
+   *       closeAt (product owner, 2026-11-03).
+   *   <li>{@code IN_WEEK}: from 00:00 Monday of week N; there is no forecast, every registration is
+   *       an actual one (product owner, 2026-11-03).
+   * </ul>
    */
-  public record CloseAt(Instant closeAt, boolean latePublish, Instant regularCloseAt) {}
+  public enum PublishWindow {
+    ON_TIME,
+    LATE,
+    IN_WEEK
+  }
+
+  /** 00:00 Monday of week N in Vietnam time: the latest closeAt of a late publish (BR-04). */
+  public static Instant weekStartAt(LocalDate weekStart) {
+    requireMonday(weekStart);
+    return VnTime.vnToUtc(weekStart, LocalTime.MIDNIGHT);
+  }
+
+  public static PublishWindow publishWindow(
+      LocalDate weekStart, Instant publishedAt, WeekdayTime closeRule) {
+    if (publishedAt.isBefore(regularCloseAt(weekStart, closeRule))) {
+      return PublishWindow.ON_TIME;
+    }
+    return isInWeekPublish(weekStart, publishedAt) ? PublishWindow.IN_WEEK : PublishWindow.LATE;
+  }
+
+  /** A menu published from 00:00 Monday of its own week has no forecast (IN_WEEK). */
+  public static boolean isInWeekPublish(LocalDate weekStart, Instant publishedAt) {
+    return !publishedAt.isBefore(weekStartAt(weekStart));
+  }
+
+  /**
+   * @param closeAt for {@code LATE}, the suggested closeAt; the HC admin may pick another one
+   */
+  public record CloseAt(Instant closeAt, PublishWindow window, Instant regularCloseAt) {}
 
   /**
    * BR-03 / BR-04: closeAt of week N, computed once at publish time.
    *
    * <ul>
-   *   <li>Published before the regular closeAt: closeAt is the regular one (a late publish before
-   *       that instant does not extend it, BR-03).
-   *   <li>Still unpublished at the regular closeAt: closeAt = publish time + {@code
-   *       latePublishHours} (BR-04).
+   *   <li>{@code ON_TIME}: closeAt is the regular one (a late publish before that instant does not
+   *       extend it, BR-03).
+   *   <li>{@code LATE}: the HC admin picks closeAt (see {@link #isValidLateCloseAt}); this returns
+   *       the suggestion, publish time + {@code latePublishHours}, at most 00:00 Monday of week N.
+   *   <li>{@code IN_WEEK}: closeAt is the publish time, so the forecast snapshot is taken at once
+   *       and is empty (BR-07).
    * </ul>
    *
    * Per-day locks still apply on top of this (BR-05, see {@link #dayFreeEditDeadline}).
@@ -69,10 +107,27 @@ public final class Deadlines {
   public static CloseAt computeCloseAt(
       LocalDate weekStart, Instant publishedAt, WeekdayTime closeRule, int latePublishHours) {
     Instant regular = regularCloseAt(weekStart, closeRule);
-    if (publishedAt.isBefore(regular)) {
-      return new CloseAt(regular, false, regular);
-    }
-    return new CloseAt(publishedAt.plus(Duration.ofHours(latePublishHours)), true, regular);
+    PublishWindow window = publishWindow(weekStart, publishedAt, closeRule);
+    Instant closeAt =
+        switch (window) {
+          case ON_TIME -> regular;
+          case LATE -> {
+            Instant suggested = publishedAt.plus(Duration.ofHours(latePublishHours));
+            Instant max = weekStartAt(weekStart);
+            yield suggested.isAfter(max) ? max : suggested;
+          }
+          case IN_WEEK -> publishedAt;
+        };
+    return new CloseAt(closeAt, window, regular);
+  }
+
+  /**
+   * BR-04: the closeAt the HC admin picks for a late publish is after the publish time and no later
+   * than 00:00 Monday of week N (exclusive, so the last save is Sunday 23:59:59).
+   */
+  public static boolean isValidLateCloseAt(
+      LocalDate weekStart, Instant publishedAt, Instant closeAt) {
+    return closeAt.isAfter(publishedAt) && !closeAt.isAfter(weekStartAt(weekStart));
   }
 
   /** The instant serving day {@code date} locks for employees ({@code day.lockTime}, 08:00). */
@@ -103,5 +158,19 @@ public final class Deadlines {
   public static boolean isMenuPublishWarningDue(
       Instant now, LocalDate weekStart, WeekdayTime warnRule, boolean published) {
     return !published && !now.isBefore(menuPublishWarnAt(weekStart, warnRule));
+  }
+
+  /**
+   * BR-04 (product owner, 2026-11-04): a week whose serving days have all locked cannot be
+   * published, since nobody could register on it any more (BR-21, BR-24). A week with no serving
+   * day counts as over once its Sunday has locked.
+   *
+   * @param servingDates the serving days of the week, in any order
+   */
+  public static boolean isWeekOver(
+      LocalDate weekStart, List<LocalDate> servingDates, Instant now, LocalTime lockTime) {
+    requireMonday(weekStart);
+    LocalDate last = servingDates.stream().max(LocalDate::compareTo).orElse(weekStart.plusDays(6));
+    return !now.isBefore(dayLockAt(last, lockTime));
   }
 }

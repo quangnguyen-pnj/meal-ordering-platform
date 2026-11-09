@@ -185,12 +185,14 @@ export function WeekRegistrationScreen() {
             <Alert variant={'default'}>
               <p>{t('week.canteen', { canteen: published.canteenName })}</p>
               <p className="font-medium">
-                {forecastTaken
-                  ? t('week.afterClose', { lock: lockTime })
-                  : t('week.beforeClose', {
-                      time: formatCloseAt(published.closeAt),
-                      lock: lockTime,
-                    })}
+                {published.noForecast
+                  ? t('week.noForecast', { lock: lockTime })
+                  : forecastTaken
+                    ? t('week.afterClose', { lock: lockTime })
+                    : t('week.beforeClose', {
+                        time: formatCloseAt(published.closeAt),
+                        lock: lockTime,
+                      })}
               </p>
             </Alert>
 
@@ -209,7 +211,9 @@ export function WeekRegistrationScreen() {
                 {forecastTaken ? (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      {t('week.forecastTable.intro', { time: formatCloseAt(published.closeAt) })}
+                      {published.noForecast
+                        ? t('week.forecastTable.noForecast')
+                        : t('week.forecastTable.intro', { time: formatCloseAt(published.closeAt) })}
                     </p>
                     <ForecastWeekTable days={days} />
                   </>

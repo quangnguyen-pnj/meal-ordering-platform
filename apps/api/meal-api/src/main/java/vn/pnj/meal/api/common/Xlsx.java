@@ -42,12 +42,24 @@ public final class Xlsx {
    */
   public static List<DataRow> readFirstSheet(
       byte[] file, String firstHeader, int[] columns, String templateMessage, int maxRows) {
+    return readFirstSheet(file, List.of(firstHeader), columns, templateMessage, maxRows);
+  }
+
+  /**
+   * As {@link #readFirstSheet(byte[], String, int[], String, int)}, but row 1 must start with every
+   * cell of {@code header}, so a file of an older layout is rejected instead of read wrongly.
+   */
+  public static List<DataRow> readFirstSheet(
+      byte[] file, List<String> header, int[] columns, String templateMessage, int maxRows) {
     try (XSSFWorkbook workbook = open(file)) {
       Sheet sheet = workbook.getNumberOfSheets() == 0 ? null : workbook.getSheetAt(0);
       DataFormatter formatter = new DataFormatter();
       FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-      if (sheet == null || !text(sheet.getRow(0), 1, formatter, evaluator).equals(firstHeader)) {
-        throw fileError(templateMessage, "TEMPLATE_MISMATCH");
+      for (int i = 0; i < header.size(); i++) {
+        if (sheet == null
+            || !text(sheet.getRow(0), i + 1, formatter, evaluator).equals(header.get(i))) {
+          throw fileError(templateMessage, "TEMPLATE_MISMATCH");
+        }
       }
       List<DataRow> rows = new ArrayList<>();
       for (Row row : sheet) {
@@ -149,6 +161,40 @@ public final class Xlsx {
         row.createCell(i).setCellValue(value);
       }
     }
+  }
+
+  /**
+   * Writes a second table into {@code sheet} from 0-based column {@code firstColumn}: a bold header
+   * on row 1, then one row per entry, next to whatever the sheet already holds.
+   */
+  public static void table(
+      Sheet sheet, int firstColumn, List<String> header, int[] widths, List<List<String>> rows) {
+    CellStyle bold = sheet.getWorkbook().createCellStyle();
+    Font font = sheet.getWorkbook().createFont();
+    font.setBold(true);
+    bold.setFont(font);
+    for (int i = 0; i < header.size(); i++) {
+      Cell cell = rowAt(sheet, 0).createCell(firstColumn + i);
+      cell.setCellValue(header.get(i));
+      cell.setCellStyle(bold);
+    }
+    for (int i = 0; i < widths.length; i++) {
+      sheet.setColumnWidth(firstColumn + i, widths[i] * 256);
+    }
+    for (int r = 0; r < rows.size(); r++) {
+      List<String> values = rows.get(r);
+      for (int i = 0; i < values.size(); i++) {
+        String value = values.get(i);
+        if (value != null && !value.isEmpty()) {
+          rowAt(sheet, r + 1).createCell(firstColumn + i).setCellValue(value);
+        }
+      }
+    }
+  }
+
+  private static Row rowAt(Sheet sheet, int index) {
+    Row row = sheet.getRow(index);
+    return row == null ? sheet.createRow(index) : row;
   }
 
   public static byte[] bytes(XSSFWorkbook workbook) {

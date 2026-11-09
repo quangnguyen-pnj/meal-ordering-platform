@@ -6,14 +6,14 @@ Oct 19, 2026 · @Quang · v1.4, aligned with BRQ-MEAL-001 v1.0
 
 - After a held cutoff (BR-34), only the HC admin's re-run cancels; a later automatic sync that succeeds never cancels by itself (Q29).
 - After finalization, attendance is still read until `close.adjustmentDeadline` (10:30), automatically and by the HC admin's re-run, but only to record: nothing is restored, and a DMP confirmation or check-in that arrives then is a case to review (BR-30, BR-32). From the deadline on, no sync runs for that day.
-- "On leave but still has meals" covers full-day and morning leave only (BR-41, Q28).
+- "On leave but still has meals" covers full-day and morning leave only (BR-41, Q33).
 
 **Changes in v1.3 (Oct 30, 2026): presence confirmed in DMP**
 
 - Production managers confirm in DMP that an employee is at work (forgot to check in, or arrived late), by ticking a box; the arrival time does not matter. DMP takes data from the time-clock system every 5 minutes, and the meal system reads the confirmation with attendance (BR-30).
 - A DMP confirmation that arrives before finalization counts as present and restores the meals automatically, even for an arrival after 08:10 (BR-32). One that arrives after finalization adds nothing; it shows as a case to review and the HC admin decides on an adjustment (BR-41, BR-46).
 - Confirming presence in the meal system (BR-33) stays as a fallback, and its reason becomes optional. Who confirmed and when is still audited.
-- How DMP exposes the confirmation in `/api/attendance` is not known yet (Q27).
+- How DMP exposes the confirmation in `/api/attendance` is not known yet (Q32).
 
 **Changes in v1.2 (Oct 28, 2026): backend on Java**
 
@@ -98,8 +98,11 @@ The top row runs once per served week; the bottom row repeats on every serving d
 - **BR-01** The menu for week N can be built from 00:00 Friday of week N-2, right after week N-1's registration closes; in practice it may slip to Monday–Tuesday of week N-1.
 - **BR-02** Registration for week N opens as soon as its menu is published. Employees never see an unpublished menu.
 - **BR-03** Registration closes at the end of Thursday of week N-1 (closeAt). The UI shows 23:59; closeAt is stored as 00:00 Friday, exclusive, so a save at 23:59:59 is accepted. A menu published late but before this time does not extend the close.
-- **BR-04** If the menu is still unpublished at the regular closeAt, closeAt = publish time + 24 hours, computed at publish.
-- **BR-05** If closeAt under BR-04 falls after 08:00 of a serving day, that day still locks at its own 08:00.
+- **BR-04** (changed by the product owner, 2026-11-03) If the menu is still unpublished at the regular closeAt:
+  - Published before 00:00 Monday of week N: the HC admin picks closeAt when publishing, after the publish time and no later than 00:00 Monday of week N. The screen suggests publish time + `registration.latePublishHours` (24 hours), capped at that limit.
+  - Published from 00:00 Monday of week N (inside its own week): there is no forecast. closeAt = publish time and the forecast snapshot is taken at publish, empty, so every registration of that week counts as actual (BR-23) and each day still locks at its own 08:00.
+  - Once every serving day of the week has locked (from 08:00 of its last serving day), the menu can no longer be published (product owner, 2026-11-04).
+- **BR-05** If closeAt falls after 08:00 of a serving day (a menu published inside week N), that day still locks at its own 08:00.
 - **BR-06** From 12:00 Monday of week N-1, if week N's menu is unpublished, the system warns the HC admin on every screen until it is published.
 - **BR-07** At closeAt the system stores an immutable forecast snapshot and enables the weekly forecast export. Registrations stay editable per day under BR-23; every later change is measured against this snapshot. Nothing is deleted; "reset" only means the UI rolls over to the next week.
 - **BR-08** Serving days default to Monday–Friday. The HC admin turns Saturday on per week and marks holidays as "not served".
@@ -164,10 +167,11 @@ BR-20 examples with a menu of Mặn Cá kho, Mặn Thịt kho, Chay, Cháo:
 
 ### 2.7 Org structure, meal units and audit
 
-- **BR-60** Every node in the org tree has a "meal unit" flag set by the HC admin. An employee belongs to the nearest flagged node at or above their own node; if none exists, they cannot register and appear on an "unassigned" list.
+- **BR-60** Every node in the org tree has a "meal unit" flag set by the HC admin. An employee belongs to the nearest flagged node at or above their own node; if none exists, they appear on an "unassigned" list.
+  - (changed by the product owner, 2026-11-04) The HC admin picks one meal unit per factory as the **fallback meal unit** ("đầu mối nhận cơm tập trung"). It gathers the meals of every canteen (supplier) in one place and needs only a floor (product owner, 2026-11-05). An employee whose department resolves a canteen but who has no usable meal unit (none flagged above them, or theirs resolves no floor) still registers; their meals are delivered to the fallback meal unit until they get a meal unit of their own. Only an employee whose department resolves no canteen cannot register, and asks the administration dept to set one. Without a fallback meal unit, the old rule applies: no usable meal unit, no registration.
 - **BR-61** The org tree has up to 6 levels (BRQ MEAL-ATTENDANCE.02). Each node stores its level (1–6) and the DMP level name. Employees attach to their deepest node; screens show the full path.
 - **BR-62** Canteen, floor and cost center are master data managed by the HC admin: add, edit, deactivate, never delete. The HC admin maps any org node to a floor, a canteen and a cost center; a node without a value inherits from the nearest ancestor that has one. If DMP supplies a cost center, it is the default and an admin mapping overrides it.
-- **BR-63** Floor and canteen used for menus, counts, delivery and box labels come from the employee's meal unit. A meal unit that resolves no floor or no canteen is invalid, and its employees appear on the "unassigned" list (BR-60). Cost center is resolved per employee: the employee-level override if set, else the inherited value. Employees without a cost center can still register and appear on a "missing cost center" list.
+- **BR-63** Floor and canteen used for menus, counts, delivery and box labels come from the employee's meal unit. A meal unit that resolves no floor or no canteen is invalid, and its employees appear on the "unassigned" list (BR-60). An employee routed to the fallback meal unit (BR-60) takes the canteen of their own meal unit, else of their department, and the floor of the fallback meal unit (or their own floor override). Cost center is resolved per employee: the employee-level override if set, else the inherited value. Employees without a cost center can still register and appear on a "missing cost center" list.
 - **BR-64** Mapping can be imported from an Excel template (org node code or employee code → floor, canteen and cost center codes). The import validates every row and shows a preview; one invalid row rejects the whole file. Export uses the same template. Every mapping change is audited (BR-70) and never rewrites past data: forecast lines, final lines and adjustment lines store the meal unit, floor, canteen and cost center in effect when they were written.
 - **BR-70** The audit log records every admin action, every change after closeAt, every automatic provisional cancellation and restore, menu publishing and edits, finalization and delivery: who, when, before, after, reason.
 
@@ -289,7 +293,7 @@ The system only reads data from DMP through its existing REST API, by scheduled 
 | Service token | POST /api/auth/login | email, password of the LDAP service account | On startup, on token expiry or on a 401 | JWT without refresh token; the account needs an unscoped role (it, hr or planner) |
 | Employees | GET /api/hr-employees | page, size ≤ 500, sort=employeeId,asc | Daily at 02:00 and on manual trigger | Returns a Spring Page (content, totalElements), no wrapper. Store only employeeId, name, email, unit codes, cost center code if present, leaveStatus, startWDate; drop birth date, phone number, gender |
 | Org structure | GET /api/hierarchy | none | Daily at 02:00 | Returns the full tree, unpaged; fallback /api/dropdown/cctc/\*. Map DMP levels to levels 1–6 (BR-61); check whether nodes carry a cost center code |
-| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization, then record-only until `close.adjustmentDeadline` | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in. Also read the manager's presence confirmation (BR-30, BR-32); its field is not known yet (Q27) |
+| Attendance | GET /api/attendance | fromDate, toDate as dd-MM-yyyy; companyCode; page; size | Every 5 minutes from 07:00 until finalization, then record-only until `close.adjustmentDeadline` | No time filter: fetch the whole day, then keep check-ins ≤ 08:10. One person can have several rows; use the earliest check-in. Also read the manager's presence confirmation (BR-30, BR-32); its field is not known yet (Q32) |
 | Leave | GET /api/daily-forecast | fromDate, toDate as ISO; hasLeave=true; companyCode; page; pageSize | Minute 30 of every hour, window today to 14 days ahead | Use restStatus, leaveTypeName, leaveDayType (FULL, AM, PM); flags only, per BR-35 |
 | Overtime | Not used |  |  | Out of MVP. DMP has 3 overtime sources, none official, none with an approval status |
 
@@ -605,7 +609,7 @@ The plan uses 13 assumptions (A4 withdrawn in v1.1) so agents are never blocked;
 - [ ] Administration dept provides the canteen, floor and cost-center lists and the initial mapping file — before P7.
 - [ ] DMP team provides a read-only LDAP service account with an unscoped role — before P3.
 - [ ] DMP team states the delay for attendance records reaching hr\_attendance — before P3.
-- [ ] DMP team states how a manager's presence confirmation appears in /api/attendance (field, time, can it be withdrawn) — before P3 (Q27).
+- [ ] DMP team states how a manager's presence confirmation appears in /api/attendance (field, time, can it be withdrawn) — before P3 (Q32).
 - [ ] DMP team confirms the leave table holds only approved requests, and the meaning of leaveStatus values — before P3.
 - [ ] Caterer's meal unit price — before P6.
 - [ ] IT creates the Entra ID app registration with an intranet redirect URI, and confirms HR emails match Entra UPNs — before P7 (mock until then).

@@ -267,7 +267,7 @@ final class DmpParsers {
    * another day are dropped. A row without a check-in is kept only when it carries a manager's
    * confirmation.
    *
-   * <p>TODO(BR-32): the confirmation field is unknown (open question Q27); every likely name is
+   * <p>TODO(BR-32): the confirmation field is unknown (open question Q32); every likely name is
    * read.
    */
   static Page<DmpClient.AttendanceRecord> parseAttendancePage(

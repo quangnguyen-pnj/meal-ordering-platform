@@ -155,6 +155,7 @@ public class MyRegistrationsService {
         week.canteenName(),
         week.closeAt(),
         week.closedAt() != null,
+        week.publishedAt() != null && Deadlines.isInWeekPublish(weekStart, week.publishedAt()),
         days,
         days.stream().mapToInt(MyDayView::actualTotal).sum());
   }

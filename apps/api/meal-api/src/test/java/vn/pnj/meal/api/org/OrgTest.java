@@ -109,7 +109,7 @@ class OrgTest extends IntegrationTest {
   }
 
   private static List<String> orgRow(String code, String floor, String canteen, String cc) {
-    return Arrays.asList("ORG", code, "", floor, canteen, cc);
+    return Arrays.asList("ORG", code, floor, canteen, cc);
   }
 
   private static byte[] mappingFile(List<List<String>> rows) throws Exception {
@@ -213,6 +213,88 @@ class OrgTest extends IntegrationTest {
         .allMatch(p -> p.contains("Kho vận"));
   }
 
+  private Map<String, Object> unassignedRow(String employeeCode) throws Exception {
+    List<Map<String, Object>> rows =
+        JsonPath.read(
+            read(hc, "/api/admin/org/unassigned"),
+            "$.items[?(@.employeeCode == '" + employeeCode + "')]");
+    assertThat(rows).hasSize(1);
+    return rows.getFirst();
+  }
+
+  @Test
+  @Order(12)
+  @DisplayName(
+      "BR-60 / BR-63 (CR 2026-11-04): with a fallback meal unit, employees with a canteen but no"
+          + " usable meal unit can register; it moves, audited, and must be a valid meal unit")
+  void fallbackMealUnit() throws Exception {
+    String fallbackAudits =
+        """
+        SELECT count(*) FROM "AuditLog" WHERE action = 'orgUnit.mapping.updated'
+          AND "entityId" IN ('ou_IT', 'ou_BV') AND after::text LIKE '%isFallbackMealUnit%'
+        """;
+    int auditsBefore = jdbc.sql(fallbackAudits).query(Integer.class).single();
+    try {
+      assertThat(unassignedRow(Demo.UNASSIGNED))
+          .containsEntry("canRegister", false)
+          .containsEntry("viaFallback", false);
+
+      // Not a meal unit, or a meal unit with no floor: refused, nothing written.
+      expect(
+          400, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_KHO", "{'isFallbackMealUnit':true}");
+      expect(
+          400, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_XSC", "{'isFallbackMealUnit':true}");
+      assertThat(
+              jdbc.sql("SELECT count(*) FROM \"OrgUnit\" WHERE \"isFallbackMealUnit\"")
+                  .query(Integer.class)
+                  .single())
+          .isZero();
+
+      expect(
+          200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_IT", "{'isFallbackMealUnit':true}");
+      assertThat(byCode(tree(), "IT")).containsEntry("isFallbackMealUnit", true);
+      // Still listed so the HC admin gives them a meal unit, but they register at Phòng IT.
+      assertThat(unassignedRow(Demo.UNASSIGNED))
+          .containsEntry("mealStatus", "NO_MEAL_UNIT")
+          .containsEntry("canRegister", true)
+          .containsEntry("viaFallback", true)
+          .containsEntry("floorId", "fl_T4")
+          .containsEntry("canteenId", "ct_gv");
+      assertThat(unassignedRow(Demo.INVALID_MEAL_UNIT))
+          .containsEntry("mealStatus", "INVALID_MEAL_UNIT")
+          .containsEntry("canRegister", true)
+          .containsEntry("viaFallback", true);
+
+      // Moving it clears the previous one; both nodes are audited.
+      expect(
+          200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_BV", "{'isFallbackMealUnit':true}");
+      List<Map<String, Object>> items = tree();
+      assertThat(byCode(items, "IT")).containsEntry("isFallbackMealUnit", false);
+      assertThat(byCode(items, "BV")).containsEntry("isFallbackMealUnit", true);
+      assertThat(unassignedRow(Demo.UNASSIGNED)).containsEntry("floorId", "fl_T1");
+      // IT set, IT replaced, BV set.
+      assertThat(jdbc.sql(fallbackAudits).query(Integer.class).single())
+          .isEqualTo(auditsBefore + 3);
+
+      // Unflagging the meal unit clears the fallback with it.
+      expect(200, hc, HttpMethod.PATCH, "/api/admin/org/units/ou_BV", "{'isMealUnit':false}");
+      assertThat(byCode(tree(), "BV")).containsEntry("isFallbackMealUnit", false);
+      assertThat(unassignedRow(Demo.UNASSIGNED)).containsEntry("canRegister", false);
+
+      // Plan section 3: only the HC admin manages the org tree.
+      expect(
+          403,
+          deptProd,
+          HttpMethod.PATCH,
+          "/api/admin/org/units/ou_XCT",
+          "{'isFallbackMealUnit':true}");
+    } finally {
+      jdbc.sql("UPDATE \"OrgUnit\" SET \"isFallbackMealUnit\" = false").update();
+      jdbc.sql("UPDATE \"OrgUnit\" SET \"isMealUnit\" = true WHERE id = 'ou_BV'").update();
+      mealUnits.recompute("fac_gv");
+    }
+  }
+
   @Test
   @Order(11)
   @DisplayName("BR-60: flagging a node recomputes meal units at once, and it is audited")
@@ -306,14 +388,42 @@ class OrgTest extends IntegrationTest {
     assertThat(res.getContentType()).contains("spreadsheetml");
     assertThat(res.getHeader("Content-Disposition")).contains("mapping-to-chuc.xlsx");
     exported = res.getContentAsByteArray();
-    List<List<String>> rows = TestXlsx.read(exported, 0, 1, 2, 4, 5, 6);
-    assertThat(rows.getFirst().getFirst())
-        .isEqualTo(MappingImportService.TEMPLATE_HEADER.getFirst());
+    List<List<String>> rows = TestXlsx.read(exported, 0, 1, 2, 3, 4, 5, 6);
+    assertThat(rows.getFirst())
+        .containsExactly(
+            "Loại (ORG/EMPLOYEE)",
+            "Mã đơn vị / mã nhân viên",
+            "Mã tầng",
+            "Mã nhà ăn",
+            "Mã trung tâm chi phí",
+            "");
+    rows = TestXlsx.read(exported, 0, 1, 2, 3, 4, 5);
     assertThat(rows).contains(List.of("ORG", "XCT", "T2", "", "CC03"));
     assertThat(rows).contains(List.of("ORG", "PNJP-GV", "", "CT-GV", ""));
     assertThat(rows.stream().filter(r -> r.getFirst().equals("ORG")))
         .hasSize(jdbc.sql("SELECT count(*) FROM \"OrgUnit\"").query(Integer.class).single());
     assertThat(TestXlsx.sheetName(exported, 1)).isEqualTo("Danh mục");
+  }
+
+  @Test
+  @Order(30)
+  @DisplayName("BR-64: unit names are listed read-only on the Danh mục sheet from column G")
+  void exportUnitNames() throws Exception {
+    byte[] file =
+        send(hc, HttpMethod.GET, "/api/admin/org/mapping/export", null).getContentAsByteArray();
+    List<List<String>> names = TestXlsx.read(file, 1, 6, 7, 8);
+    assertThat(names.getFirst()).containsExactly("", "Mã đơn vị", "Tên (đơn vị chỉ đọc)");
+    String xctName =
+        jdbc.sql("SELECT name FROM \"OrgUnit\" WHERE \"dmpCode\" = 'XCT'")
+            .query(String.class)
+            .single();
+    assertThat(names.stream().map(r -> List.of(r.get(1), r.get(2).strip())))
+        .contains(List.of("XCT", xctName));
+    assertThat(names.stream().filter(r -> !r.get(1).isEmpty()).count() - 1)
+        .isEqualTo(jdbc.sql("SELECT count(*) FROM \"OrgUnit\"").query(Long.class).single());
+    // The lists table (A to D) is still there, beside it.
+    assertThat(TestXlsx.read(file, 1, 1, 2, 3, 4).getFirst())
+        .containsExactly("Loại", "Mã", "Tên", "Đang dùng");
   }
 
   @Test
@@ -330,7 +440,7 @@ class OrgTest extends IntegrationTest {
                 orgRow("XCT", "T1", null, "CC03"), // valid on its own
                 orgRow("KVP", "T9", null, null), // unknown floor
                 orgRow("NOPE", null, null, null), // unknown node
-                Arrays.asList("EMPLOYEE", Demo.EMPLOYEE, "", "T1", null, "CC01")));
+                Arrays.asList("EMPLOYEE", Demo.EMPLOYEE, "T1", null, "CC01")));
     String view = uploadOk(file);
     assertThat(JsonPath.<String>read(view, "$.status")).isEqualTo("REJECTED");
     assertThat(JsonPath.<Integer>read(view, "$.rowCount")).isEqualTo(4);
@@ -371,7 +481,7 @@ class OrgTest extends IntegrationTest {
                 orgRow("XCT", "T1", null, "CC03"), // floor T2 -> T1
                 orgRow("KHO-XH", null, null, "CC09"), // cost center for the "missing" list
                 orgRow("IT", "T4", null, "CC06"), // unchanged: not in the preview
-                Arrays.asList("EMPLOYEE", Demo.EMPLOYEE, "", "T1", null, null)));
+                Arrays.asList("EMPLOYEE", Demo.EMPLOYEE, "T1", null, null)));
     String preview = uploadOk(file);
     String id = JsonPath.read(preview, "$.id");
     assertThat(JsonPath.<String>read(preview, "$.status")).isEqualTo("PREVIEW");
@@ -444,6 +554,22 @@ class OrgTest extends IntegrationTest {
     assertThat(JsonPath.<List<Map<String, Object>>>read(res.getContentAsString(), "$.details"))
         .containsExactly(Map.of("path", "file", "message", "TEMPLATE_MISMATCH"));
     assertThat(upload("not a spreadsheet".getBytes(), "x.xlsx").getStatus()).isEqualTo(400);
+    // A file of the older layout, with a name column in C, is rejected rather than read shifted.
+    MockHttpServletResponse old =
+        upload(
+            TestXlsx.build(
+                List.of(
+                    "Loại (ORG/EMPLOYEE)",
+                    "Mã đơn vị / mã nhân viên",
+                    "Tên (chỉ để đọc)",
+                    "Mã tầng",
+                    "Mã nhà ăn",
+                    "Mã trung tâm chi phí"),
+                List.of(List.of("ORG", "XCT", "Xưởng", "T1", "", "CC03"))),
+            "old.xlsx");
+    assertThat(old.getStatus()).isEqualTo(400);
+    assertThat(JsonPath.<List<Map<String, Object>>>read(old.getContentAsString(), "$.details"))
+        .containsExactly(Map.of("path", "file", "message", "TEMPLATE_MISMATCH"));
     MockHttpServletResponse none =
         mvc.perform(multipart("/api/admin/org/mapping/imports").cookie(hc))
             .andReturn()

@@ -84,7 +84,7 @@ class DayCasesTest {
 
   @Test
   @DisplayName(
-      "BR-41 / Q28: full-day and morning leave with lunch are cases; afternoon leave is not")
+      "BR-41 / Q33: full-day and morning leave with lunch are cases; afternoon leave is not")
   void leave() {
     for (LeaveDayType leave : LeaveDayType.values()) {
       Input input =

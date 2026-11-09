@@ -2,17 +2,19 @@ import type { Role } from '@meal/shared';
 import { describe, expect, it } from 'vitest';
 import { NAV_ITEMS, findNavItem, visibleNav } from './nav';
 
-const hrefs = (roles: Role[], group: 'mine' | 'admin') =>
+const hrefs = (roles: Role[], group: 'mine' | 'admin' | 'masterdata') =>
   visibleNav(roles)[group].map((i) => i.href);
+// Admin screens are split between the "admin" and "masterdata" sidebar groups.
+const adminSide = (roles: Role[]) => [...hrefs(roles, 'admin'), ...hrefs(roles, 'masterdata')];
 
 describe('role-based navigation (plan section 3 matrix)', () => {
   it('an employee only gets the "Mine" group', () => {
     expect(hrefs(['EMPLOYEE'], 'mine')).toEqual(['/today', '/week', '/team', '/history']);
-    expect(hrefs(['EMPLOYEE'], 'admin')).toEqual([]);
+    expect(adminSide(['EMPLOYEE'])).toEqual([]);
   });
 
   it('a dept admin sees operational admin screens but not HC-only ones', () => {
-    const admin = hrefs(['EMPLOYEE', 'DEPT_ADMIN'], 'admin');
+    const admin = adminSide(['EMPLOYEE', 'DEPT_ADMIN']);
     expect(admin).toEqual(
       expect.arrayContaining([
         '/admin/today',
@@ -37,14 +39,14 @@ describe('role-based navigation (plan section 3 matrix)', () => {
   });
 
   it('an HC admin sees every admin screen except system-only ones', () => {
-    const admin = hrefs(['EMPLOYEE', 'HC_ADMIN'], 'admin');
+    const admin = adminSide(['EMPLOYEE', 'HC_ADMIN']);
     expect(admin).toContain('/admin/menu');
     expect(admin).toContain('/admin/audit');
     expect(admin).not.toContain('/system');
   });
 
   it('a system admin sees settings, org mapping, audit and /system, but no meal operations', () => {
-    const admin = hrefs(['EMPLOYEE', 'SYS_ADMIN'], 'admin');
+    const admin = adminSide(['EMPLOYEE', 'SYS_ADMIN']);
     expect(admin).toEqual(
       expect.arrayContaining([
         '/admin/settings',
@@ -59,7 +61,7 @@ describe('role-based navigation (plan section 3 matrix)', () => {
   });
 
   it('roles stack: a dept admin who is also HC admin gets the union', () => {
-    const admin = hrefs(['EMPLOYEE', 'DEPT_ADMIN', 'HC_ADMIN'], 'admin');
+    const admin = adminSide(['EMPLOYEE', 'DEPT_ADMIN', 'HC_ADMIN']);
     expect(admin).toContain('/admin/menu');
     expect(admin).toContain('/admin/delivery');
   });
@@ -80,13 +82,13 @@ describe('role-based navigation (plan section 3 matrix)', () => {
       '/admin/today',
       '/admin/registrations',
       '/admin/print',
+      '/system',
       '/admin/dishes',
       '/admin/menu',
       '/admin/master',
       '/admin/org',
       '/admin/employees',
       '/admin/settings',
-      '/system',
     ]);
   });
 });

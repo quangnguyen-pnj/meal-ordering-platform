@@ -7,11 +7,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import vn.pnj.meal.rules.VnTime;
 import vn.pnj.meal.rules.deadline.Deadlines.CloseAt;
+import vn.pnj.meal.rules.deadline.Deadlines.PublishWindow;
 
 /**
  * Week N starts Monday 2026-11-02. Week N-1 runs Monday 2026-10-26 to Sunday 2026-11-01, and its
@@ -45,7 +47,7 @@ class CloseAtTest {
     void monday() {
       CloseAt r = publishAt("2026-10-26", "10:00");
       assertThat(vn(r.closeAt())).isEqualTo("2026-10-30 00:00");
-      assertThat(r.latePublish()).isFalse();
+      assertThat(r.window()).isEqualTo(PublishWindow.ON_TIME);
     }
 
     @Test
@@ -53,57 +55,162 @@ class CloseAtTest {
     void thursday2359() {
       CloseAt r = publishAt("2026-10-29", "23:59");
       assertThat(vn(r.closeAt())).isEqualTo("2026-10-30 00:00");
-      assertThat(r.latePublish()).isFalse();
+      assertThat(r.window()).isEqualTo(PublishWindow.ON_TIME);
     }
 
     @Test
     @DisplayName("BR-04: publishing at Friday 00:00 exactly is already late (closeAt is exclusive)")
     void fridayMidnight() {
       CloseAt r = publishAt("2026-10-30", "00:00");
-      assertThat(r.latePublish()).isTrue();
+      assertThat(r.window()).isEqualTo(PublishWindow.LATE);
       assertThat(vn(r.closeAt())).isEqualTo("2026-10-31 00:00");
     }
 
     @Test
-    @DisplayName("BR-04: publishing at Friday 00:01 gives closeAt = publish time + 24 hours")
+    @DisplayName("BR-04: publishing at Friday 00:01 suggests closeAt = publish time + 24 hours")
     void friday0001() {
       CloseAt r = publishAt("2026-10-30", "00:01");
       assertThat(vn(r.closeAt())).isEqualTo("2026-10-31 00:01");
-      assertThat(r.latePublish()).isTrue();
+      assertThat(r.window()).isEqualTo(PublishWindow.LATE);
       assertThat(vn(r.regularCloseAt())).isEqualTo("2026-10-30 00:00");
     }
 
     @Test
-    @DisplayName("BR-04: publishing on Saturday gives closeAt on Sunday at the same time")
+    @DisplayName("BR-04: publishing on Saturday suggests closeAt on Sunday at the same time")
     void saturday() {
       assertThat(vn(publishAt("2026-10-31", "09:30").closeAt())).isEqualTo("2026-11-01 09:30");
     }
 
     @Test
-    @DisplayName("BR-04: publishing on Sunday 20:00 gives closeAt Monday 20:00 of week N")
+    @DisplayName("BR-04: publishing on Sunday 20:00 suggests at most 00:00 Monday of week N")
     void sunday() {
       CloseAt r = publishAt("2026-11-01", "20:00");
-      assertThat(vn(r.closeAt())).isEqualTo("2026-11-02 20:00");
-      assertThat(r.latePublish()).isTrue();
+      assertThat(vn(r.closeAt())).isEqualTo("2026-11-02 00:00");
+      assertThat(r.window()).isEqualTo(PublishWindow.LATE);
     }
 
     @Test
-    @DisplayName("BR-04: the extension comes from registration.latePublishHours, not from code")
+    @DisplayName("BR-04: the suggestion comes from registration.latePublishHours, not from code")
     void fromSetting() {
       CloseAt r = Deadlines.computeCloseAt(WEEK_START, at("2026-10-30", "10:00"), CLOSE_RULE, 6);
       assertThat(vn(r.closeAt())).isEqualTo("2026-10-30 16:00");
     }
+
+    @Test
+    @DisplayName("BR-04: publishing at Sunday 23:59 of week N-1 is still a late publish")
+    void sunday2359() {
+      assertThat(publishAt("2026-11-01", "23:59").window()).isEqualTo(PublishWindow.LATE);
+    }
+
+    @Test
+    @DisplayName("BR-04: publishing at 00:00 Monday of week N has no forecast: closeAt = publish")
+    void mondayMidnight() {
+      CloseAt r = publishAt("2026-11-02", "00:00");
+      assertThat(r.window()).isEqualTo(PublishWindow.IN_WEEK);
+      assertThat(vn(r.closeAt())).isEqualTo("2026-11-02 00:00");
+    }
+
+    @Test
+    @DisplayName("BR-04: publishing week 45's menu on Wednesday of week 45 has no forecast")
+    void inWeek() {
+      CloseAt r = publishAt("2026-11-04", "10:15");
+      assertThat(r.window()).isEqualTo(PublishWindow.IN_WEEK);
+      assertThat(vn(r.closeAt())).isEqualTo("2026-11-04 10:15");
+    }
   }
 
   @Nested
-  @DisplayName("BR-05: a late closeAt never pushes a day past its own lock")
+  @DisplayName("BR-04: the closeAt the HC admin picks for a late publish")
+  class ChosenCloseAt {
+    private final Instant saturday = at("2026-10-31", "09:30");
+
+    @Test
+    @DisplayName("BR-04: a closeAt later the same day is accepted")
+    void sameDay() {
+      assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, at("2026-10-31", "17:00")))
+          .isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: 00:00 Monday of week N is the latest accepted closeAt")
+    void mondayMidnight() {
+      assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, at("2026-11-02", "00:00")))
+          .isTrue();
+      assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, at("2026-11-02", "00:01")))
+          .isFalse();
+    }
+
+    @Test
+    @DisplayName("BR-04: a closeAt at or before the publish time is refused")
+    void notInThePast() {
+      assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, saturday)).isFalse();
+      assertThat(Deadlines.isValidLateCloseAt(WEEK_START, saturday, at("2026-10-31", "09:00")))
+          .isFalse();
+    }
+  }
+
+  @Nested
+  @DisplayName("BR-04: a week whose serving days have all locked cannot be published")
+  class WeekOver {
+    private final List<LocalDate> monToFri =
+        List.of(WEEK_START, WEEK_START.plusDays(1), WEEK_START.plusDays(4));
+
+    private boolean overAt(List<LocalDate> days, String date, String time) {
+      return Deadlines.isWeekOver(WEEK_START, days, at(date, time), LOCK_TIME);
+    }
+
+    @Test
+    @DisplayName("BR-04: on Wednesday of week N the week is not over while Friday is still open")
+    void midWeek() {
+      assertThat(overAt(monToFri, "2026-11-04", "10:00")).isFalse();
+    }
+
+    @Test
+    @DisplayName("BR-04: the week is over from 08:00 of its last serving day, not at 07:59")
+    void lastDayLock() {
+      assertThat(overAt(monToFri, "2026-11-06", "07:59")).isFalse();
+      assertThat(overAt(monToFri, "2026-11-06", "08:00")).isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: a past week (week 44 seen from week 45) is over")
+    void pastWeek() {
+      LocalDate week44 = WEEK_START.minusDays(7);
+      assertThat(
+              Deadlines.isWeekOver(
+                  week44,
+                  List.of(week44, week44.plusDays(4)),
+                  at("2026-11-03", "10:00"),
+                  LOCK_TIME))
+          .isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: an enabled Saturday keeps the week open until its own lock")
+    void saturday() {
+      List<LocalDate> withSaturday = List.of(WEEK_START, WEEK_START.plusDays(5));
+      assertThat(overAt(withSaturday, "2026-11-06", "09:00")).isFalse();
+      assertThat(overAt(withSaturday, "2026-11-07", "08:00")).isTrue();
+    }
+
+    @Test
+    @DisplayName("BR-04: a week with no serving day is over once its Sunday has locked")
+    void noServingDay() {
+      assertThat(overAt(List.of(), "2026-11-08", "07:59")).isFalse();
+      assertThat(overAt(List.of(), "2026-11-08", "08:00")).isTrue();
+    }
+  }
+
+  @Nested
+  @DisplayName("BR-05: a closeAt inside week N never pushes a day past its own lock")
   class DayLock {
-    private final Instant sundayPublish = publishAt("2026-11-01", "20:00").closeAt();
+    // A menu published in week N at Monday 20:00 has closeAt = Monday 20:00.
+    private final Instant mondayPublish = publishAt("2026-11-02", "20:00").closeAt();
 
     @Test
     @DisplayName("BR-05: Monday still locks at its own 08:00 when closeAt is Monday 20:00")
     void monday() {
-      assertThat(vn(Deadlines.dayFreeEditDeadline(WEEK_START, sundayPublish, LOCK_TIME)))
+      assertThat(vn(Deadlines.dayFreeEditDeadline(WEEK_START, mondayPublish, LOCK_TIME)))
           .isEqualTo("2026-11-02 08:00");
     }
 
@@ -112,7 +219,7 @@ class CloseAtTest {
         "BR-05: Tuesday is bounded by the closeAt (Monday 20:00), which comes before its lock")
     void tuesday() {
       assertThat(
-              vn(Deadlines.dayFreeEditDeadline(WEEK_START.plusDays(1), sundayPublish, LOCK_TIME)))
+              vn(Deadlines.dayFreeEditDeadline(WEEK_START.plusDays(1), mondayPublish, LOCK_TIME)))
           .isEqualTo("2026-11-02 20:00");
     }
 

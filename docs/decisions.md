@@ -84,6 +84,7 @@ Choices made while building, where the plan (`docs/plan.md`, MVP Plan v1.1) was 
 - `planMenuDayEdit` (BR-11, BR-14): a saved day is a list of `{ id?, dishId }`. An existing id with a new dish is a replacement, a missing id is a removal, and the same dish twice on a day is rejected.
 - `buildDmpTree` / `mapDmpLevel` (BR-61): the level is the depth from the root (assumption A14). Any duplicate code, unknown parent, cycle or 7th level rejects the whole tree.
 - `validateMappingRows` (BR-64): a row states the complete mapping of its target, and a blank cell means "inherit". Exporting and re-importing the same file therefore changes nothing; a test proves the round trip. Employee rows may only set the cost center (BR-63).
+- Mapping template (BR-64): the Mapping sheet has only the importable columns (Loại, Mã, Mã tầng, Mã nhà ăn, Mã trung tâm chi phí). Unit names are read-only, so the export lists them on the "Danh mục" sheet as a second table from column G (Mã đơn vị, Tên). Import checks the whole header row, so a file in the older layout with a name column in C is rejected (`TEMPLATE_MISMATCH`) instead of being read one column off.
 
 ### API
 
@@ -249,7 +250,8 @@ A list of fixes and features from the product owner, with the answers to the que
 ### Excel imports
 
 - **Dish library:** template download, then upload with `apply=false` (preview) or `apply=true`. A row is "Món chính" with a dish-type code, or "Tráng miệng". One bad row rejects the file; rows already in the library are skipped, so the same file twice adds nothing. Applied in one transaction with one audit entry (`dishLibrary.imported`).
-  - The template's "Nhóm" and "Mã loại món" cells are Excel drop-downs on rows 2–2001 (the import limit). "Nhóm" lists the two groups; "Mã loại món" points at the codes on the "Loại món" sheet and accepts blank (desserts have no type). This only helps the user; the server still validates every row, because the drop-down can be bypassed by pasting or by other spreadsheet apps.
+  - The template's "Nhóm" cells are an Excel drop-down of the two groups on rows 2–2001 (the import limit). This only helps the user; the server still validates every row, because the drop-down can be bypassed by pasting or by other spreadsheet apps.
+  - "Mã loại món" is free text (product owner, 2026-11-02; it was a drop-down pointing at a second "Loại món" sheet). The template is now one sheet: the active codes and names sit in columns E–F of "Thư viện món" as a lookup, after an empty column D. The parser reads only A–C, so lookup rows are never imported; the server checks each code (`TYPE_REQUIRED`, `TYPE_UNKNOWN`).
 - **A unit's week of registrations** (the product owner's meaning of "danh sách đăng ký suất ăn"): the template is the bulk grid as a file (row 1 for people, hidden row 2 with `<date>|<menuItemId>` keys, current quantities filled in), only days still open for on-behalf entry. Upload validates the whole file (`validateRegistrationImport`); applying saves every changed day through the grid's own save, now able to take several days in one transaction (`saveGridDays`), so BR-20, BR-21 and the per-day audit apply unchanged. Same scope as the grid (`registration.onBehalf` on the unit).
 
 ### Removed
@@ -481,7 +483,7 @@ The P1 part of the API now runs on Java with the same HTTP contract: org structu
 - **Excel uses Apache POI 5.5.1.**
   - 6.0.0 was released on 2026-10-19, too recently to adopt.
   - Cells are read as Excel shows them (`DataFormatter`), like ExcelJS's `cell.text`.
-  - The library template keeps its two drop-down lists.
+  - The library template keeps its "Nhóm" drop-down list.
   - Exports write text cells only.
 - **Jobs run on `@Scheduled` + ShedLock.**
   - The schedules are the legacy ones, in Vietnam time: sync at 02:00, the menu warning hourly, close-week every minute, reselect-deadline every minute at :30.
@@ -608,7 +610,7 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - **Request (product owner):** production managers confirm in DMP, before finalization, that an employee who forgot to check in or arrived late is at work. They tick a box; the arrival time does not matter, and no reason is needed. DMP takes time-clock data every 5 minutes.
 - **Choices (product owner, 2026-10-30):** a DMP confirmation counts as present (BR-30) and restores the meals automatically when it arrives before finalization, even for an arrival after 08:10 (BR-32). One that arrives after finalization adds nothing: it shows on the review list (BR-41) and the HC admin decides on an adjustment (BR-46). Confirming in the meal system (BR-33) stays as a fallback with an optional reason, still audited; AGENTS rule 6 names this exception.
-- **Open:** how DMP exposes the confirmation in `/api/attendance` (Q27). Only the documents changed; the code comes with P3.
+- **Open:** how DMP exposes the confirmation in `/api/attendance` (Q32). Only the documents changed; the code comes with P3.
 
 ## Phase 3 – Attendance and day-D processing (2026-11-01)
 
@@ -616,7 +618,7 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - `AttendanceRules`: `checkInInTime` / `isPresent` (BR-30, v1.3: a check-in by the cutoff, or a manager's DMP confirmation whatever the time), `earliestCheckIn`, `afterSync` (BR-32: present per DMP becomes `PRESENT`; nothing else changes, so a check-in after 08:10 never restores and a sync never takes presence back; `ABSENT` is final), `cancelledAtCutoff` (BR-31), `mealsCount`, `safetyCheck` (BR-34), and the schedule checks `isPollDue`, `isCutoffDue`, `canConfirmPresence`. Every time comes in as an argument; the cutoff, poll start, interval and threshold are settings.
 - **The cutoff is the last accepted minute** (08:10:59 counts), like `registration.close` (Q30).
-- `DayCases.casesFor` (BR-41) gives the cases of one employee's day: provisionally cancelled, not eating, reduced, added (also without a forecast), dish changed, extra, presence confirmed by an admin, confirmed in DMP without a check-in in time, full-day or morning leave with meals. No difference cases before the forecast is taken. Only full-day and morning leave count as "on leave with meals"; afternoon leave keeps lunch (Q28, product owner 2026-11-01).
+- `DayCases.casesFor` (BR-41) gives the cases of one employee's day: provisionally cancelled, not eating, reduced, added (also without a forecast), dish changed, extra, presence confirmed by an admin, confirmed in DMP without a check-in in time, full-day or morning leave with meals. No difference cases before the forecast is taken. Only full-day and morning leave count as "on leave with meals"; afternoon leave keeps lunch (Q33, product owner 2026-11-01).
 
 ### Data (Flyway V5)
 
@@ -637,7 +639,7 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 ### DMP
 
-- `HttpDmpClient.getAttendance` (`/api/attendance`, `fromDate = toDate` as dd-MM-yyyy, `companyCode` when set, pages of 500) and `getLeave` (`/api/daily-forecast?hasLeave=true`, ISO dates, `pageSize`). The parsers accept a Spring page, a `data`/`items` wrapper or an array; trust `last`/`totalPages` when present, else a short page ends. Date-times without an offset are Vietnam time (A7); a bare `07:45` takes the row's date. Field names are best guesses until `/v3/api-docs` is checked (Q17, Q27).
+- `HttpDmpClient.getAttendance` (`/api/attendance`, `fromDate = toDate` as dd-MM-yyyy, `companyCode` when set, pages of 500) and `getLeave` (`/api/daily-forecast?hasLeave=true`, ISO dates, `pageSize`). The parsers accept a Spring page, a `data`/`items` wrapper or an array; trust `last`/`totalPages` when present, else a short page ends. Date-times without an offset are Vietnam time (A7); a bare `07:45` takes the row's date. Field names are best guesses until `/v3/api-docs` is checked (Q17, Q32).
 - `AttendanceRecord` gains `managerConfirmed`; a confirmed row may have no check-in. `NOT_IMPLEMENTED` is gone from `DmpException`.
 - **Mock scenarios** `late-record` (08:05 rows that reach DMP at 08:20) and `manager-confirmed` (forgot to check in, or checked in at 08:25, then confirmed). An override's `arrivesAt` hides a row until that time of day D; the mock reads the API clock for it, fake time included.
 
@@ -663,4 +665,47 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 
 - **Q29 (product owner):** after a held cutoff (BR-34) only the HC admin's re-run cancels. This is what P3 already does (`AttendanceService.runCutoff` re-evaluates only with `reevaluate`); polls keep recording and restoring meanwhile.
 - **After finalization (product owner):** the poll and the HC admin's re-run go on until `close.adjustmentDeadline` (10:30) but only record; nothing is restored and late DMP confirmations or check-ins are cases to review. No sync runs for the day after the deadline. Built in P4, with finalization; until then the P3 bound (end of day D, Q31) stays.
-- **Q28 (product owner):** only full-day and morning leave count as "on leave with meals".
+- **Q33 (product owner):** only full-day and morning leave count as "on leave with meals".
+
+## Late and in-week menu publishing (2026-11-03)
+
+- **Request (product owner):** a menu published inside its own week (e.g. week 45's menu published during week 45) must not count as a forecast; every registration of that week is an actual one. A menu published late but before the week starts (Friday to Sunday of week N-1) gets the closeAt the HC admin picks, instead of always publish + 24 hours.
+- **Rules (`Deadlines.publishWindow`, BR-04 in the plan):**
+  - `ON_TIME`, before the regular closeAt: unchanged (BR-03).
+  - `LATE`, from the regular closeAt to 00:00 Monday of week N: the publish request must carry `closeAt`, after the publish time and no later than 00:00 Monday (exclusive, so the last save is Sunday 23:59:59); otherwise 400 on `closeAt`. The builder suggests publish + `registration.latePublishHours`, capped at that limit; the setting is now only the suggestion.
+  - `IN_WEEK`, from 00:00 Monday of week N: closeAt = publish time, and the empty forecast snapshot is taken in the publish transaction (`ForecastService.ensureClosed`), so no registration can land in it. The week is `CLOSED` at once; the forecast export shows 0 and reconciliation runs as usual (every meal is a difference from the forecast). A `closeAt` in the request is ignored.
+- **API:** `MenuWeekView.latePublish` is replaced by `publishWindow` (ON_TIME, LATE, IN_WEEK) and `latestCloseAt`. Both publish endpoints take an optional `closeAt`. `MyRegistrationWeekView` gains `noForecast`, so `/week` keeps the "Đăng ký dự trù" tab with an empty table and says why.
+- **The menu-publish audit** records `publishWindow` instead of `latePublish`.
+- **Not retroactive:** weeks already published keep their stored closeAt and snapshot.
+- **Rejected:** keeping the 24-hour window for in-week publishes (registrations made in it would count as forecast, which is what the request rules out); treating Friday–Sunday publishes as in-week (the product owner chose 00:00 Monday as the boundary).
+
+## Past weeks cannot be published (2026-11-04)
+
+- **Problem:** after the in-week publish rule, publishing week 44's menu from week 45 was accepted as an in-week publish: an empty forecast and every day already locked, so the week was published but nobody could register, and it could not be edited any more (open-questions Q27).
+- **Rule (`Deadlines.isWeekOver`, BR-04 in the plan):** a week can no longer be published once its last serving day has locked (`day.lockTime` on that day; Sunday for a week with no serving day). Both publish endpoints answer `409 WEEK_OVER` (new error code, Java and `packages/shared`); the save-and-publish endpoint checks before writing the draft. Saving a draft is still allowed.
+- **API:** `MenuWeekView.weekOver`. The builder hides the publish button, the closeAt line and the late/in-week badges for such a week and shows a warning.
+- **Known gap:** `weekOver` in the view is computed from the stored (or default) serving days; turning Saturday on in the builder only counts once the draft is saved.
+
+## Fallback meal unit: register without a meal unit (CR 2026-11-04)
+
+- **Request (product owner):** let employees register even when no meal unit ("đầu mối nhận cơm") is set for them; their meals gather at one place until the HC admin gives them a meal unit. Only a department with no canteen blocks registration, and the employee contacts the administration staff in charge of meals to set one.
+- **Answers taken (product owner, 2026-11-04):**
+  - The gathering place is an existing meal unit the HC admin picks, not a virtual unit.
+  - It applies to employees with no meal unit and to employees whose meal unit lacks a floor. An employee whose department resolves no canteen still cannot register.
+  - The menu stays the canteen of the employee's department (own meal unit's canteen first, else the nearest one at or above the employee).
+  - When the employee gets a meal unit later, days not yet snapshotted follow the new meal unit; forecast lines already written keep the fallback (BR-64). Registrations store no meal unit, so this needs no migration of data.
+- **Data:** `OrgUnit.isFallbackMealUnit` (V5): at most one per factory (partial unique index), only on a meal unit (check constraint).
+- **Rule (`Mapping.resolveEmployeeMealAssignment`):** `EmployeeMealAssignment.mealUnitId` is now the unit the box goes to (own or fallback); `ownMealUnitId` is the nearest flagged node; `viaFallback` says the fallback applies. `MealStatus` still describes the employee's own mapping (NO_MEAL_UNIT / INVALID_MEAL_UNIT), so the "unassigned" list keeps showing them for the HC admin to fix. A fallback that is no longer a meal unit or resolves no floor is ignored (old behaviour). `OrgIndex` carries the fallback id, so every caller (forecast snapshot, menu, registrations, admin lists) picks it up without change.
+- **API:** `PATCH /admin/org/units/{id}` takes `isFallbackMealUnit`. Setting it moves the fallback (the previous node is cleared, both audited as `orgUnit.mapping.updated`). It is refused with 400 on `isFallbackMealUnit` when the node is not a meal unit, or resolves no floor after the change. It needs no canteen: it takes the meals of every canteen (product owner, 2026-11-05, Q28). Unflagging the meal unit clears the fallback with it. `OrgUnitView.isFallbackMealUnit`; `EmployeeMappingView.canRegister` and `viaFallback` (its `mealUnitId`/`mealUnitName` stay the employee's own meal unit; floor and canteen are where the meals go).
+- **Web:** `/admin/org` has a "Đầu mối nhận cơm tập trung" checkbox on every meal unit, a badge in the tree, and status lines that say when employees fall back to it. The "Chưa đăng ký cơm được" tab says per employee whether they can still order at the fallback. The employee's "cannot register" message now asks them to contact the administration staff to set their department's canteen.
+- **Seed:** no fallback is set, so the seeded "unassigned" employees still show the old behaviour until the HC admin picks one (see `docs/demo-cr-2026-11-04.md`).
+- **One place for every canteen (product owner, 2026-11-05, Q28):** unplaced meals gather at the one fallback whatever canteen (supplier) cooks them; all that matters is that the employee gets lunch. Each line keeps the employee's canteen, so each supplier still knows what it cooks, and the fallback's floor says where it is picked up. The fallback needs a floor but no canteen.
+- **The fallback is a valid meal unit with a floor alone (2026-11-05):** a meal unit picked as fallback with a floor and no canteen was still shown as "Đầu mối thiếu nhà ăn" (red badge, "chưa đăng ký cơm được" status), because BR-63 validity asked for both. `Mapping.resolveMealUnitMapping` now counts the fallback valid with a floor (`OrgUnitView.mealUnitValid`), and the fallback's own employees are OK there with their department's canteen (`resolveEmployeeMealAssignment`), so they leave the "Chưa đăng ký cơm được" list. Those whose department has no canteen stay blocked. On `/admin/org` the fallback's canteen reads "Mọi nhà ăn" and its status says it needs no canteen.
+- **Why the fallback checkbox can be refused (2026-11-05):** the 400 on `isFallbackMealUnit` (`noFloor`, `notMealUnit`) showed the generic "Dữ liệu chưa hợp lệ" and the checkbox stayed unticked, so the HC admin could not tell what was missing. `/admin/org` now names the reason (pick a floor first / answer "Có" first). An API older than this CR answers the same request with 400 "Nothing to update": restart the API after pulling the branch.
+- **Rejected:** a virtual "Chưa phân đầu mối" unit per canteen (the product owner chose an existing meal unit); a fallback per canteen (Q28: one place for all).
+
+## Merge main into P3 (2026-11-09)
+
+- **Migration:** main's fallback meal unit took Flyway V5 (`V5__fallback_meal_unit.sql`), so the P3 attendance migration is now `V6__p3_attendance.sql`. A local database that already applied the old P3 V5 fails Flyway validation; reset it (`pnpm db:local` with a fresh data directory, then `pnpm db:seed`).
+- **Open questions:** main's Q27 (past weeks) and Q28 (fallback for every canteen) keep their numbers; the branch's Q27 (how DMP exposes the manager's confirmation) is now **Q32** and Q28 (afternoon leave is no case) is now **Q33**, in code comments, tests, plan and docs.
+- **Main's own red checks fixed in the merge:** `nav.test.ts` still expected the master-data screens in the "admin" group after main moved them to "masterdata" (it now checks both groups and the new order); `app-shell.tsx` had an unused `asideScrolled` after its shadow was commented out (renamed `_asideScrolled`).

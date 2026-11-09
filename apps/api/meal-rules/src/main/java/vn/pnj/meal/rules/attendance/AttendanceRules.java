@@ -79,7 +79,7 @@ public final class AttendanceRules {
    *       check-in by the cutoff, or a manager's DMP confirmation, brings the meals back.
    *   <li>Otherwise the state stays: a check-in after the cutoff never restores (BR-32), and
    *       presence once established is never taken back by a sync (a record or confirmation that
-   *       disappears from DMP keeps the meals, open question Q27).
+   *       disappears from DMP keeps the meals, open question Q32).
    *   <li>ABSENT is final: after finalization nothing comes back by itself (BR-46).
    * </ul>
    */

@@ -1,4 +1,4 @@
-import { addDays, isoWeekOf, lastAcceptedMinute } from '@meal/shared';
+import { addDays, isoWeekOf, lastAcceptedMinute, toVnDateTime, vnToUtc } from '@meal/shared';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { t } from '@/messages';
@@ -69,4 +69,25 @@ export function formatVnDateTime(iso: string): string {
 /** BR-03: a closeAt is shown as its last accepted minute, e.g. "22/10/2026 23:59". */
 export function formatCloseAt(closeAtIso: string): string {
   return formatVnDateTime(lastAcceptedMinute(new Date(closeAtIso)).toISOString());
+}
+
+/**
+ * BR-04: a closeAt as the value of a datetime-local input showing its last accepted minute in
+ * Vietnam time ("2026-10-31T16:59" for a closeAt of 17:00), the same minute formatCloseAt shows.
+ */
+export function closeAtToVnInput(closeAtIso: string): string {
+  const v = toVnDateTime(lastAcceptedMinute(new Date(closeAtIso)));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${v.date}T${pad(v.hour)}:${pad(v.minute)}`;
+}
+
+/** The inverse of closeAtToVnInput: the exclusive closeAt one minute after the chosen minute. */
+export function vnInputToCloseAt(value: string): string | null {
+  const [date, time] = value.split('T');
+  if (!date || !time) return null;
+  try {
+    return new Date(vnToUtc(date, time.slice(0, 5)).getTime() + 60_000).toISOString();
+  } catch {
+    return null;
+  }
 }

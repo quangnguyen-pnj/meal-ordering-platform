@@ -1,6 +1,6 @@
 # Phase 3 – how to demo each exit criterion
 
-The "Done when" items of plan P3 (v1.3), and exactly how to show each one. Commands run from the repository root. Setup and accounts are as in [demo-p0.md](demo-p0.md) to [demo-p2.md](demo-p2.md). P3 adds Flyway migration V5 (`pnpm db:seed` applies it).
+The "Done when" items of plan P3 (v1.3), and exactly how to show each one. Commands run from the repository root. Setup and accounts are as in [demo-p0.md](demo-p0.md) to [demo-p2.md](demo-p2.md). P3 adds Flyway migration V6 (`pnpm db:seed` applies it).
 
 ```bash
 pnpm install
@@ -91,4 +91,4 @@ pnpm --filter @meal/web test   # admin-today-screen.test.tsx, banners.test.ts
 
 ## Real DMP
 
-Not done: it needs the service account (plan section 8). Once it exists, set `DMP_MODE=http`, `DMP_BASE_URL`, `DMP_SERVICE_EMAIL`, `DMP_SERVICE_PASSWORD`, `DMP_COMPANY_CODE`, run "Chạy lại đồng bộ" for a past day and compare `SyncRun.recordCount` with DMP's own count for that day. Check the field names first (Q17, Q27).
+Not done: it needs the service account (plan section 8). Once it exists, set `DMP_MODE=http`, `DMP_BASE_URL`, `DMP_SERVICE_EMAIL`, `DMP_SERVICE_PASSWORD`, `DMP_COMPANY_CODE`, run "Chạy lại đồng bộ" for a past day and compare `SyncRun.recordCount` with DMP's own count for that day. Check the field names first (Q17, Q32).

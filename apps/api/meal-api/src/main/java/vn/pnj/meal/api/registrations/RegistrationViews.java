@@ -88,6 +88,8 @@ public final class RegistrationViews {
 
   /**
    * @param forecastTaken BR-07: the forecast snapshot exists; changes are now differences from it
+   * @param noForecast BR-04: the menu was published inside its own week, so the forecast is empty
+   *     and every meal counts as actual (product owner, 2026-11-03)
    */
   public record WeekPublished(
       @Schema(allowableValues = "PUBLISHED") String state,
@@ -95,6 +97,7 @@ public final class RegistrationViews {
       String canteenName,
       Instant closeAt,
       boolean forecastTaken,
+      boolean noForecast,
       List<MyDayView> days,
       int totalMeals)
       implements MyWeekView {
@@ -103,9 +106,18 @@ public final class RegistrationViews {
         String canteenName,
         Instant closeAt,
         boolean forecastTaken,
+        boolean noForecast,
         List<MyDayView> days,
         int totalMeals) {
-      this("PUBLISHED", weekStart, canteenName, closeAt, forecastTaken, days, totalMeals);
+      this(
+          "PUBLISHED",
+          weekStart,
+          canteenName,
+          closeAt,
+          forecastTaken,
+          noForecast,
+          days,
+          totalMeals);
     }
   }
 

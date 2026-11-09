@@ -15,6 +15,8 @@ import java.util.function.Function;
  *       floor or no canteen is invalid. An HC admin may set the floor where one employee picks up
  *       their meal (product owner, 2026-10-23). Cost center follows the org tree: the inherited
  *       mapping, else the value supplied by DMP.
+ *   <li>CR 2026-11-04: employees with a canteen but no usable meal unit register into the factory's
+ *       fallback meal unit.
  * </ul>
  */
 public final class Mapping {
@@ -65,7 +67,9 @@ public final class Mapping {
   }
 
   /**
-   * BR-63: a meal unit is valid only when both a floor and a canteen resolve for it.
+   * BR-63: a meal unit is valid only when both a floor and a canteen resolve for it. The factory's
+   * fallback meal unit serves every canteen (product owner, 2026-11-05, Q28), so a floor is enough
+   * for it; its {@code canteenId} is then null.
    *
    * @param missing which of "floor" / "canteen" did not resolve; empty when valid
    */
@@ -77,6 +81,9 @@ public final class Mapping {
     String canteen = resolve(mealUnitId, Field.CANTEEN, index).value();
     if (floor != null && canteen != null) {
       return new MealUnitMapping(true, floor, canteen, List.of());
+    }
+    if (floor != null && mealUnitId.equals(index.fallbackMealUnitId())) {
+      return new MealUnitMapping(true, floor, null, List.of());
     }
     return new MealUnitMapping(false, null, null, missing(floor, canteen));
   }
@@ -118,13 +125,20 @@ public final class Mapping {
   }
 
   /**
-   * @param mealUnitId nearest flagged node (BR-60), even when it turns out invalid
-   * @param missing which of "floor" / "canteen" the meal unit could not resolve
-   * @param canRegister false for employees on the "unassigned" list (BR-60, BR-63)
+   * @param mealUnitId the meal unit the employee's box goes to: their own (BR-60), or the factory's
+   *     fallback meal unit when {@code viaFallback}; null when they cannot register
+   * @param ownMealUnitId nearest flagged node (BR-60), even when it turns out invalid
+   * @param status the employee's own mapping: OK, or why their meals go to the fallback unit or
+   *     cannot be registered
+   * @param missing which of "floor" / "canteen" their own meal unit could not resolve
+   * @param canRegister false for employees whose department resolves no canteen, or who have no
+   *     usable meal unit while no fallback meal unit is set (CR 2026-11-04)
+   * @param viaFallback their meals go to the fallback meal unit (CR 2026-11-04)
    * @param missingCostCenter BR-63: they can still register and appear on a separate list
    */
   public record EmployeeMealAssignment(
       String mealUnitId,
+      String ownMealUnitId,
       MealStatus status,
       List<String> missing,
       String floorId,
@@ -133,55 +147,99 @@ public final class Mapping {
       String costCenterId,
       CostCenterSource costCenterSource,
       boolean canRegister,
+      boolean viaFallback,
       boolean missingCostCenter) {}
 
+  /**
+   * BR-60 / BR-63, as changed by CR 2026-11-04 (product owner): only an employee whose department
+   * resolves no canteen cannot register; they ask the administration dept to set one. An employee
+   * with a canteen but no usable meal unit (none flagged above them, or theirs has no floor) still
+   * registers, and their meals go to the factory's fallback meal unit, picked by the HC admin.
+   *
+   * <ul>
+   *   <li>Canteen: the own meal unit's, else the nearest one at or above the employee's node.
+   *       Employees whose own meal unit is the fallback (it may have no canteen) are OK there.
+   *   <li>Floor: the employee floor override, else the fallback meal unit's floor. The fallback
+   *       serves every canteen and needs no canteen of its own.
+   *   <li>No fallback meal unit set, or it resolves no floor: they cannot register, as before.
+   * </ul>
+   */
   public static EmployeeMealAssignment resolveEmployeeMealAssignment(
       String orgUnitId, String floorOverrideId, String dmpCostCenterId, OrgIndex index) {
     ResolvedCostCenter cost = resolveEmployeeCostCenter(orgUnitId, dmpCostCenterId, index);
     boolean missingCostCenter = cost.costCenterId() == null;
 
-    String mealUnitId = resolveMealUnitId(orgUnitId, index);
-    if (mealUnitId == null) {
+    String ownMealUnitId = resolveMealUnitId(orgUnitId, index);
+    String unitFloor = null;
+    String unitCanteen = null;
+    if (ownMealUnitId != null) {
+      // The meal unit still decides the canteen (BR-15); an employee floor stands in for a floor
+      // the unit lacks, so that employee registers into their own unit.
+      unitFloor = resolve(ownMealUnitId, Field.FLOOR, index).value();
+      unitCanteen = resolve(ownMealUnitId, Field.CANTEEN, index).value();
+      String floor = floorOverrideId != null ? floorOverrideId : unitFloor;
+      String canteen = unitCanteen;
+      if (canteen == null && ownMealUnitId.equals(index.fallbackMealUnitId())) {
+        // The fallback serves every canteen (Q28): its own employees keep their department's.
+        canteen = resolve(orgUnitId, Field.CANTEEN, index).value();
+      }
+      if (floor != null && canteen != null) {
+        return new EmployeeMealAssignment(
+            ownMealUnitId,
+            ownMealUnitId,
+            MealStatus.OK,
+            List.of(),
+            floor,
+            floorOverrideId != null ? FloorSource.OVERRIDE : FloorSource.MEAL_UNIT,
+            canteen,
+            cost.costCenterId(),
+            cost.source(),
+            true,
+            false,
+            missingCostCenter);
+      }
+    }
+
+    MealStatus status =
+        ownMealUnitId == null ? MealStatus.NO_MEAL_UNIT : MealStatus.INVALID_MEAL_UNIT;
+    List<String> missing =
+        ownMealUnitId == null
+            ? List.of()
+            : missing(floorOverrideId != null ? floorOverrideId : unitFloor, unitCanteen);
+    // One fallback per factory, whatever the canteen (product owner, 2026-11-05, Q28): the menu
+    // and the supplier follow the employee's canteen, the pick-up place follows the fallback.
+    String canteen =
+        unitCanteen != null ? unitCanteen : resolve(orgUnitId, Field.CANTEEN, index).value();
+    String fallbackId = index.fallbackMealUnitId();
+    String fallbackFloor =
+        fallbackId == null ? null : resolve(fallbackId, Field.FLOOR, index).value();
+    String floor = floorOverrideId != null ? floorOverrideId : fallbackFloor;
+    if (canteen == null || fallbackId == null || floor == null) {
       return new EmployeeMealAssignment(
           null,
-          MealStatus.NO_MEAL_UNIT,
-          List.of(),
+          ownMealUnitId,
+          status,
+          missing,
           null,
           null,
           null,
           cost.costCenterId(),
           cost.source(),
           false,
-          missingCostCenter);
-    }
-
-    // The meal unit still decides the canteen (BR-15); an employee floor stands in for a floor
-    // the unit lacks, so that employee can register while the rest of the unit cannot.
-    String unitFloor = resolve(mealUnitId, Field.FLOOR, index).value();
-    String canteen = resolve(mealUnitId, Field.CANTEEN, index).value();
-    String floor = floorOverrideId != null ? floorOverrideId : unitFloor;
-    if (floor == null || canteen == null) {
-      return new EmployeeMealAssignment(
-          mealUnitId,
-          MealStatus.INVALID_MEAL_UNIT,
-          missing(floor, canteen),
-          null,
-          null,
-          null,
-          cost.costCenterId(),
-          cost.source(),
           false,
           missingCostCenter);
     }
     return new EmployeeMealAssignment(
-        mealUnitId,
-        MealStatus.OK,
-        List.of(),
+        fallbackId,
+        ownMealUnitId,
+        status,
+        missing,
         floor,
         floorOverrideId != null ? FloorSource.OVERRIDE : FloorSource.MEAL_UNIT,
         canteen,
         cost.costCenterId(),
         cost.source(),
+        true,
         true,
         missingCostCenter);
   }

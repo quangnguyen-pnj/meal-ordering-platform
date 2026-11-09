@@ -139,7 +139,7 @@ class AttendanceRulesTest {
     }
 
     @Test
-    @DisplayName("BR-32: a sync never takes presence back (Q27)")
+    @DisplayName("BR-32: a sync never takes presence back (Q32)")
     void neverRevoked() {
       assertThat(AttendanceRules.afterSync(PRESENT, false)).isEqualTo(PRESENT);
       assertThat(AttendanceRules.afterSync(UNKNOWN, false)).isEqualTo(UNKNOWN);
