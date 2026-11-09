@@ -49,12 +49,19 @@ public class MenuController {
     }
   }
 
-  public record Canteens(List<MenuService.CanteenOption> items, LocalDate upcomingWeekStart) {}
+  public record Canteens(
+      List<MenuService.CanteenOption> items,
+      LocalDate currentWeekStart,
+      LocalDate upcomingWeekStart) {}
 
   @RequirePermission(action = Action.MENU_MANAGE, scope = ScopeType.FACTORY)
   @GetMapping("/admin/menu/canteens")
   Canteens canteens(RequestPrincipal p) {
-    return new Canteens(menus.canteens(p.factoryId()), Deadlines.upcomingWeekStart(clock.now()));
+    Instant now = clock.now();
+    return new Canteens(
+        menus.canteens(p.factoryId()),
+        Deadlines.currentWeekStart(now),
+        Deadlines.upcomingWeekStart(now));
   }
 
   @RequirePermission(action = Action.MENU_MANAGE, scope = ScopeType.FACTORY)

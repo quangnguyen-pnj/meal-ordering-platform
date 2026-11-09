@@ -43,7 +43,12 @@ export function PrintScreen() {
               <CardDescription>{t('print.intro')}</CardDescription>
             </div>
             {week ? (
-              <WeekNav weekStart={week} onChange={setWeekStart} homeWeekStart={home} />
+              <WeekNav
+                weekStart={week}
+                onChange={setWeekStart}
+                homeWeekStart={home}
+                currentWeekStart={units.data?.currentWeekStart}
+              />
             ) : null}
           </div>
         </CardHeader>

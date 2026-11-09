@@ -109,9 +109,10 @@ public class MyRegistrationsService {
   public MyWeekView week(RequestPrincipal p, LocalDate weekStart) {
     assertMonday(weekStart);
     forecast.catchUp(p.factoryId());
+    LocalDate currentWeekStart = Deadlines.currentWeekStart(clock.now());
     Employee me = store.employee(p.factoryId(), p.employeeId());
     if (!me.assignment().canRegister() || me.assignment().canteenId() == null) {
-      return new WeekUnassigned(weekStart);
+      return new WeekUnassigned(weekStart, currentWeekStart);
     }
     LoadedWeek week = store.loadWeek(me.assignment().canteenId(), weekStart);
     if (week == null || !week.published()) {
@@ -120,7 +121,7 @@ public class MyRegistrationsService {
               .param("id", me.assignment().canteenId())
               .query(String.class)
               .single();
-      return new WeekNotPublished(weekStart, canteenName);
+      return new WeekNotPublished(weekStart, currentWeekStart, canteenName);
     }
     List<LoadedDay> serving = week.servingDays();
     List<RegRow> rows =
@@ -146,6 +147,7 @@ public class MyRegistrationsService {
             .toList();
     return new WeekPublished(
         weekStart,
+        currentWeekStart,
         week.canteenName(),
         week.closeAt(),
         week.closedAt() != null,

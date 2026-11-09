@@ -108,6 +108,7 @@ export function resolveDrop(active: string, over: string | null): Drop | null {
 
 interface CanteensResponse {
   items: Array<{ id: string; code: string; name: string }>;
+  currentWeekStart: string;
   upcomingWeekStart: string;
 }
 
@@ -156,6 +157,7 @@ export function MenuScreen() {
                 weekStart={weekStart}
                 onChange={setWeekStart}
                 homeWeekStart={canteens.data.upcomingWeekStart}
+                currentWeekStart={canteens.data.currentWeekStart}
               />
             ) : null}
           </div>
