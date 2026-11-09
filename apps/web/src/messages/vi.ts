@@ -540,7 +540,7 @@ export const vi = {
       '{other} người thuộc nhà ăn khác và {cannot} người chưa đặt cơm được (chưa có nhà ăn hoặc đầu mối nhận cơm hợp lệ) không hiện trong bảng.',
     noEmployees: 'Đơn vị này không có nhân viên đăng ký được.',
     addExtra: 'Thêm suất bổ sung',
-    extraTitle: 'Thêm suất bổ sung cho {name} ngày {date}',
+    extraTitle: 'Thêm suất bổ sung',
     extraDish: 'Món',
     extraQuantity: 'Số suất',
     extraReason: 'Lý do (bắt buộc)',

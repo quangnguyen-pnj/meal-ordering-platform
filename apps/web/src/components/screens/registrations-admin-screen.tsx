@@ -10,7 +10,16 @@ import type {
   RegistrationProgressView,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Clock, FolderInput, Info, Lock, Plus, Search } from 'lucide-react';
+import {
+  CalendarDays,
+  Clock,
+  FolderInput,
+  Info,
+  Lock,
+  Plus,
+  Search,
+  UserRound,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
@@ -886,7 +895,7 @@ function ExtraDialog({
         add.reset();
         onClose();
       }}
-      title={t('registrations.extraTitle', { name: row?.name ?? '', date: formatDate(date) })}
+      title={t('registrations.extraTitle')}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -906,26 +915,42 @@ function ExtraDialog({
           if (valid) add.mutate();
         }}
       >
+        <div className="flex flex-col text-sm font-medium gap-1.5">
+          <div className="flex items-center gap-3">
+            <UserRound size={15} strokeWidth={2.5} className="text-gray-500" />
+            <span>{row?.name}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <CalendarDays size={15} strokeWidth={2.5} className="text-gray-500" />
+            <span className="font-medium">{formatDate(date)}</span>
+          </div>
+        </div>
+
         {add.error ? <Alert variant="destructive">{apiErrorText(add.error)}</Alert> : null}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="extra-dish">{t('registrations.extraDish')}</Label>
-          <ResponsiveSelect
-            id="extra-dish"
-            value={menuItemId || day?.items[0]?.id || ''}
-            onValueChange={setMenuItemId}
-            options={(day?.items ?? []).map((i) => ({ value: i.id, label: i.displayName }))}
-          />
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex flex-col gap-2">
+            <Label htmlFor="extra-dish">{t('registrations.extraDish')}</Label>
+            <ResponsiveSelect
+              id="extra-dish"
+              value={menuItemId || day?.items[0]?.id || ''}
+              onValueChange={setMenuItemId}
+              options={(day?.items ?? []).map((i) => ({ value: i.id, label: i.displayName }))}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="extra-qty">{t('registrations.extraQuantity')}</Label>
+            <Input
+              id="extra-qty"
+              inputMode="numeric"
+              className="w-28"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="extra-qty">{t('registrations.extraQuantity')}</Label>
-          <Input
-            id="extra-qty"
-            inputMode="numeric"
-            className="w-28"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-          />
-        </div>
+
         <div className="flex flex-col gap-2">
           <Label htmlFor="extra-reason">{t('registrations.extraReason')}</Label>
           <Input
