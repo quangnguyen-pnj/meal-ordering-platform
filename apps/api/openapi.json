@@ -2751,6 +2751,10 @@
       "Canteens" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -2762,7 +2766,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "items", "upcomingWeekStart" ]
+        "required" : [ "currentWeekStart", "items", "upcomingWeekStart" ]
       },
       "Change" : {
         "type" : "object",
@@ -5622,6 +5626,10 @@
       "Units" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -5633,7 +5641,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "items", "upcomingWeekStart" ]
+        "required" : [ "currentWeekStart", "items", "upcomingWeekStart" ]
       },
       "UserBody" : {
         "type" : "object",
@@ -5694,6 +5702,10 @@
           "canteenName" : {
             "type" : "string"
           },
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "NOT_PUBLISHED" ]
@@ -5703,7 +5715,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "state", "weekStart" ]
+        "required" : [ "canteenName", "currentWeekStart", "state", "weekStart" ]
       },
       "WeekPublished" : {
         "type" : "object",
@@ -5714,6 +5726,10 @@
           "closeAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
           },
           "days" : {
             "type" : "array",
@@ -5740,7 +5756,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "canteenName", "closeAt", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
+        "required" : [ "canteenName", "closeAt", "currentWeekStart", "days", "forecastTaken", "noForecast", "state", "totalMeals", "weekStart" ]
       },
       "WeekSaveBody" : {
         "type" : "object",
@@ -5762,6 +5778,10 @@
       "WeekUnassigned" : {
         "type" : "object",
         "properties" : {
+          "currentWeekStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
           "state" : {
             "type" : "string",
             "enum" : [ "UNASSIGNED" ]
@@ -5771,7 +5791,7 @@
             "format" : "date"
           }
         },
-        "required" : [ "state", "weekStart" ]
+        "required" : [ "currentWeekStart", "state", "weekStart" ]
       }
     }
   }

@@ -716,3 +716,10 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Choice:** `components/ui/calendar.tsx` (shadcn/ui Calendar on `react-day-picker` v9, Vietnamese locale, weeks from Monday) and `components/ui/date-picker.tsx` (Popover + Calendar). The value stays a `YYYY-MM-DD` string; it shows as dd/MM/yyyy. The date is built from local fields, so there is no timezone shift, and no code reads the clock (the picker only builds a `Date` from a given string).
 - **Used in:** `/admin/today` only; other screens pick days with their own buttons.
 - **Rejected:** a hand-written calendar (more code to keep, no keyboard and screen-reader support); keeping the native input.
+
+## CR 2026-11-09: week picker names the week being viewed
+
+- **Request (product owner):** make clear which week the week picker shows; the current week reads "tuần hiện tại". (Opening every screen on the current week was considered and not done: menu, print and the registration progress tabs work on the coming week, and `/week` opens on the week open for registration, J1.)
+- **Web:** `WeekNav` shows "Tuần 46 · tuần hiện tại", "· tuần sau" or "· tuần trước" when the viewed week is the current week, the next or the previous one; other weeks show only the number. Copy is in `common.weekRelative` (`vi.ts`).
+- **API:** the current week comes from the server clock (fake time in dev and tests), never from the browser. `Deadlines.currentWeekStart(now)` (pure, in `meal-rules`); `currentWeekStart` is added to `GET /admin/menu/canteens`, `GET /admin/registrations/units` and every `MyWeekView` state (`GET/PUT /registrations/me/week`). `openapi.json` and `openapi.d.ts` regenerated.
+- **No rule changed:** default weeks, deadlines and the "Về tuần sắp tới" link are as before. No new data, so no migration, no audit and nothing for `docs/security.md`.

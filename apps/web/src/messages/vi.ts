@@ -66,6 +66,7 @@ export const vi = {
     showPin: 'Hiện mã PIN',
     hidePin: 'Ẩn mã PIN',
     weekNumber: 'Tuần {week}',
+    weekRelative: { current: 'tuần hiện tại', next: 'tuần sau', previous: 'tuần trước' },
     orgFilter: 'Lọc theo đơn vị',
     orgLevelAll: 'Tất cả {level}',
   },

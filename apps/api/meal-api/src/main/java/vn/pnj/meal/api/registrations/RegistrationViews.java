@@ -64,14 +64,19 @@ public final class RegistrationViews {
     String state();
 
     LocalDate weekStart();
+
+    /** The Monday of the current week by server time, for the "this week" label. */
+    LocalDate currentWeekStart();
   }
 
   /** BR-60: the employee has no valid meal unit. */
   public record WeekUnassigned(
-      @Schema(allowableValues = "UNASSIGNED") String state, LocalDate weekStart)
+      @Schema(allowableValues = "UNASSIGNED") String state,
+      LocalDate weekStart,
+      LocalDate currentWeekStart)
       implements MyWeekView {
-    WeekUnassigned(LocalDate weekStart) {
-      this("UNASSIGNED", weekStart);
+    WeekUnassigned(LocalDate weekStart, LocalDate currentWeekStart) {
+      this("UNASSIGNED", weekStart, currentWeekStart);
     }
   }
 
@@ -79,10 +84,11 @@ public final class RegistrationViews {
   public record WeekNotPublished(
       @Schema(allowableValues = "NOT_PUBLISHED") String state,
       LocalDate weekStart,
+      LocalDate currentWeekStart,
       String canteenName)
       implements MyWeekView {
-    WeekNotPublished(LocalDate weekStart, String canteenName) {
-      this("NOT_PUBLISHED", weekStart, canteenName);
+    WeekNotPublished(LocalDate weekStart, LocalDate currentWeekStart, String canteenName) {
+      this("NOT_PUBLISHED", weekStart, currentWeekStart, canteenName);
     }
   }
 
@@ -94,6 +100,7 @@ public final class RegistrationViews {
   public record WeekPublished(
       @Schema(allowableValues = "PUBLISHED") String state,
       LocalDate weekStart,
+      LocalDate currentWeekStart,
       String canteenName,
       Instant closeAt,
       boolean forecastTaken,
@@ -103,6 +110,7 @@ public final class RegistrationViews {
       implements MyWeekView {
     WeekPublished(
         LocalDate weekStart,
+        LocalDate currentWeekStart,
         String canteenName,
         Instant closeAt,
         boolean forecastTaken,
@@ -112,6 +120,7 @@ public final class RegistrationViews {
       this(
           "PUBLISHED",
           weekStart,
+          currentWeekStart,
           canteenName,
           closeAt,
           forecastTaken,
@@ -201,7 +210,8 @@ public final class RegistrationViews {
   public record UnitOption(
       String id, String name, String pathName, int level, boolean isMealUnit, int employeeCount) {}
 
-  public record Units(List<UnitOption> items, LocalDate upcomingWeekStart) {}
+  public record Units(
+      List<UnitOption> items, LocalDate currentWeekStart, LocalDate upcomingWeekStart) {}
 
   public record ProgressUnit(
       String mealUnitId,
