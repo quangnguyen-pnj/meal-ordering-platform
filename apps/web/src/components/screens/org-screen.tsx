@@ -197,12 +197,14 @@ function TreeTab() {
       const count = mealCounts.get(n.id) ?? 0;
       return (
         <>
+          {n.isFallbackMealUnit ? (
+            <Badge className="text-primary">{t('org.fallbackBadge')}</Badge>
+          ) : null}
           <Badge variant={n.mealUnitValid ? 'secondary' : 'destructive'}>
             {n.mealUnitValid
               ? t('org.mealUnitBadge', { count })
               : t('org.mealUnitInvalidBadge', { missing: missingParts(n), count })}
           </Badge>
-          {n.isFallbackMealUnit ? <Badge>{t('org.fallbackBadge')}</Badge> : null}
         </>
       );
     }
