@@ -96,7 +96,14 @@ export function RegistrationsAdminScreen() {
             <CardTitle>{t('registrations.title')}</CardTitle>
             <CardDescription>{t('registrations.intro')}</CardDescription>
           </div>
-          {week ? <WeekNav weekStart={week} onChange={setWeekStart} homeWeekStart={home} /> : null}
+          {week ? (
+            <WeekNav
+              weekStart={week}
+              onChange={setWeekStart}
+              homeWeekStart={home}
+              currentWeekStart={units.data?.currentWeekStart}
+            />
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">

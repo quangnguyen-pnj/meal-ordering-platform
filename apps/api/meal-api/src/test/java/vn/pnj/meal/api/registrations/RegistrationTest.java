@@ -316,8 +316,12 @@ class RegistrationTest extends IntegrationTest {
   @Order(3)
   @DisplayName("BR-60: an employee without a meal unit cannot register")
   void unassignedEmployee() throws Exception {
-    assertThat(myWeek(unassigned, N))
-        .isEqualTo("{\"state\":\"UNASSIGNED\",\"weekStart\":\"" + N + "\"}");
+    String view = myWeek(unassigned, N);
+    assertThat(JsonPath.<String>read(view, "$.state")).isEqualTo("UNASSIGNED");
+    assertThat(JsonPath.<String>read(view, "$.weekStart")).isEqualTo(N);
+    // The week label ("tuần hiện tại") comes from the server clock, not the browser's.
+    assertThat(JsonPath.<String>read(view, "$.currentWeekStart"))
+        .isEqualTo(N_DATE.minusDays(7).toString());
   }
 
   @Test

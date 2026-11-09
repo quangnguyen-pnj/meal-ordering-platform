@@ -1180,6 +1180,8 @@ export interface components {
             name: string;
         };
         Canteens: {
+            /** Format: date */
+            currentWeekStart: string;
             items: components["schemas"]["CanteenOption"][];
             /** Format: date */
             upcomingWeekStart: string;
@@ -1995,6 +1997,8 @@ export interface components {
             mealUnitsRecomputed: number;
         };
         Units: {
+            /** Format: date */
+            currentWeekStart: string;
             items: components["schemas"]["UnitOption"][];
             /** Format: date */
             upcomingWeekStart: string;
@@ -2014,6 +2018,8 @@ export interface components {
         };
         WeekNotPublished: {
             canteenName: string;
+            /** Format: date */
+            currentWeekStart: string;
             /** @enum {string} */
             state: "NOT_PUBLISHED";
             /** Format: date */
@@ -2023,6 +2029,8 @@ export interface components {
             canteenName: string;
             /** Format: date-time */
             closeAt: string;
+            /** Format: date */
+            currentWeekStart: string;
             days: components["schemas"]["MyDayView"][];
             forecastTaken: boolean;
             noForecast: boolean;
@@ -2038,6 +2046,8 @@ export interface components {
             weekStart: string;
         };
         WeekUnassigned: {
+            /** Format: date */
+            currentWeekStart: string;
             /** @enum {string} */
             state: "UNASSIGNED";
             /** Format: date */
