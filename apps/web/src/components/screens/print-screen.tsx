@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import { WeekNav } from '@/components/week-nav';
 import { apiErrorText } from '@/lib/errors';
 import { formatCloseAt, formatDate } from '@/lib/utils';
@@ -32,6 +32,7 @@ export function PrintScreen() {
   const week = weekStart ?? home ?? null;
   const grid = useRegistrationGrid(unitId, week, canteenId);
   const view = grid.data;
+  const stale = grid.isPlaceholderData;
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,23 +65,32 @@ export function PrintScreen() {
                 setCanteenId('');
               }}
             />
-            <CanteenPicker id="print-canteen" grid={view} onChange={setCanteenId} />
-            <Button disabled={view?.state !== 'PUBLISHED'} onClick={() => window.print()}>
+            <CanteenPicker
+              id="print-canteen"
+              grid={view}
+              disabled={stale}
+              onChange={setCanteenId}
+            />
+            <Button disabled={stale || view?.state !== 'PUBLISHED'} onClick={() => window.print()}>
               <Printer className="h-4 w-4" aria-hidden />
               {t('print.print')}
             </Button>
           </div>
           {grid.error ? <Alert variant="destructive">{apiErrorText(grid.error)}</Alert> : null}
           {grid.isLoading ? <LoadingRows rows={3} /> : null}
-          {view?.state === 'NOT_PUBLISHED' ? (
-            <Alert>{t('week.notPublished', { canteen: view.canteenName ?? '' })}</Alert>
-          ) : null}
-          {view?.state === 'NO_EMPLOYEES' ? <Alert>{t('registrations.noEmployees')}</Alert> : null}
+          <Refreshing busy={stale} className="empty:hidden">
+            {view?.state === 'NOT_PUBLISHED' ? (
+              <Alert>{t('week.notPublished', { canteen: view.canteenName ?? '' })}</Alert>
+            ) : null}
+            {view?.state === 'NO_EMPLOYEES' ? (
+              <Alert>{t('registrations.noEmployees')}</Alert>
+            ) : null}
+          </Refreshing>
         </CardContent>
       </Card>
 
       {view?.state === 'PUBLISHED' ? (
-        <div className="flex flex-col gap-8 print:gap-0">
+        <Refreshing busy={stale} className="flex flex-col gap-8 print:gap-0">
           {view.days.map((day) => (
             <section
               key={day.date}
@@ -158,7 +168,7 @@ export function PrintScreen() {
               <p className="mt-6 text-right text-sm">{t('print.signature')}</p>
             </section>
           ))}
-        </div>
+        </Refreshing>
       ) : null}
     </div>
   );

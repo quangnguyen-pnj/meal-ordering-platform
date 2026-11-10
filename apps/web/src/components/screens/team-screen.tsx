@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -64,7 +64,7 @@ export function TeamScreen() {
         ) : null}
         {query.isLoading ? <LoadingRows /> : null}
         {data ? (
-          <>
+          <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-6">
             <p className="text-sm">
               {t('team.unit', { unit: data.unitName, date: formatDate(data.date) })} ·{' '}
               {t('team.summary', { eating, total: data.members.length, meals })}
@@ -104,7 +104,7 @@ export function TeamScreen() {
                 <Pagination {...pagination} />
               </div>
             )}
-          </>
+          </Refreshing>
         ) : null}
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 'use client';
 
 import type { DessertView, DishTypeView, DishView, LibraryImportView } from '@/lib/api-types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, ArchiveRestore, FolderInput, Pencil, Plus, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ import { AppDialog } from '@/components/app-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -120,6 +120,8 @@ function useLibrary<T>(path: string, canteenId: string, includeArchived: boolean
     queryKey: [path, canteenId, includeArchived],
     queryFn: () =>
       api.get<{ items: T[] }>(`${path}?canteenId=${canteenId}&includeArchived=${includeArchived}`),
+    // Showing or hiding archived items keeps the list on screen instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -364,63 +366,65 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
       {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
 
       {list.isLoading ? <LoadingRows /> : null}
-      <Table containerClassName={list.isLoading ? 'hidden' : undefined} className="min-w-[30rem]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('dishes.displayName')}</TableHead>
-            <TableHead>{t('dishes.type')}</TableHead>
-            <TableHead>{t('dishes.sessions')}</TableHead>
-            <TableHead className="text-right">{t('common.actions')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageItems.map((d) => (
-            <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
-              <TableCell>
-                <DishName type={d.type} name={d.name} />{' '}
-                {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
-              </TableCell>
-              <TableCell>{d.type.name}</TableCell>
-              <TableCell>{d.sessions.map((s) => vi.sessions[s]).join(', ')}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    onClick={() => {
-                      save.reset();
-                      setEditing({ id: d.id, name: d.name, typeId: d.typeId });
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden />
-                    {t('common.edit')}
-                  </Button>
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    disabled={archive.isPending}
-                    onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
-                  >
-                    {d.archivedAt ? (
-                      <ArchiveRestore className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Archive className="h-4 w-4" aria-hidden />
-                    )}
-                    {d.archivedAt ? t('common.restore') : t('common.archive')}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {items.length === 0 && !list.isLoading ? (
+      <Refreshing busy={list.isPlaceholderData}>
+        <Table containerClassName={list.isLoading ? 'hidden' : undefined} className="min-w-[30rem]">
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground">
-                {t('dishes.empty')}
-              </TableCell>
+              <TableHead>{t('dishes.displayName')}</TableHead>
+              <TableHead>{t('dishes.type')}</TableHead>
+              <TableHead>{t('dishes.sessions')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
-          ) : null}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((d) => (
+              <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
+                <TableCell>
+                  <DishName type={d.type} name={d.name} />{' '}
+                  {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
+                </TableCell>
+                <TableCell>{d.type.name}</TableCell>
+                <TableCell>{d.sessions.map((s) => vi.sessions[s]).join(', ')}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => {
+                        save.reset();
+                        setEditing({ id: d.id, name: d.name, typeId: d.typeId });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      disabled={archive.isPending}
+                      onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
+                    >
+                      {d.archivedAt ? (
+                        <ArchiveRestore className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Archive className="h-4 w-4" aria-hidden />
+                      )}
+                      {d.archivedAt ? t('common.restore') : t('common.archive')}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && !list.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-muted-foreground">
+                  {t('dishes.empty')}
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </Refreshing>
       <Pagination {...pagination} />
     </div>
   );
@@ -516,59 +520,61 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
       </AppDialog>
       {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
       {list.isLoading ? <LoadingRows /> : null}
-      <Table containerClassName={list.isLoading ? 'hidden' : undefined}>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('common.name')}</TableHead>
-            <TableHead className="text-right">{t('common.actions')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageItems.map((d) => (
-            <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
-              <TableCell>
-                {d.name}{' '}
-                {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    onClick={() => {
-                      save.reset();
-                      setEditing({ id: d.id, name: d.name });
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden />
-                    {t('common.edit')}
-                  </Button>
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    disabled={archive.isPending}
-                    onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
-                  >
-                    {d.archivedAt ? (
-                      <ArchiveRestore className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Archive className="h-4 w-4" aria-hidden />
-                    )}
-                    {d.archivedAt ? t('common.restore') : t('common.archive')}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {items.length === 0 && !list.isLoading ? (
+      <Refreshing busy={list.isPlaceholderData}>
+        <Table containerClassName={list.isLoading ? 'hidden' : undefined}>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={2} className="text-muted-foreground">
-                {t('dishes.empty')}
-              </TableCell>
+              <TableHead>{t('common.name')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
-          ) : null}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((d) => (
+              <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
+                <TableCell>
+                  {d.name}{' '}
+                  {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => {
+                        save.reset();
+                        setEditing({ id: d.id, name: d.name });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      disabled={archive.isPending}
+                      onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
+                    >
+                      {d.archivedAt ? (
+                        <ArchiveRestore className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Archive className="h-4 w-4" aria-hidden />
+                      )}
+                      {d.archivedAt ? t('common.restore') : t('common.archive')}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && !list.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-muted-foreground">
+                  {t('dishes.empty')}
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </Refreshing>
       <Pagination {...pagination} />
     </div>
   );

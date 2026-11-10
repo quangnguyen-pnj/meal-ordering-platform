@@ -145,6 +145,53 @@ describe('AdminTodayScreen', () => {
     });
   });
 
+  it('keeps the list on screen while another unit loads, then shows the new one', async () => {
+    const user = userEvent.setup();
+    // Touch screens get the native select, which is simplest to drive here.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    const units = [
+      { id: 'k1', level: 1, levelName: 'Khối', name: 'Khối Sản xuất', parentId: null },
+      { id: 'k2', level: 1, levelName: 'Khối', name: 'Khối Văn phòng', parentId: null },
+      { id: 'p1', level: 2, levelName: 'Phòng ban', name: 'Phòng Kế toán', parentId: 'k2' },
+    ];
+    let release: () => void = () => undefined;
+    const filtered: AdminTodayView = { ...view, rows: [view.rows[1]!] };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/admin/registrations/org-units')) {
+          return new Response(JSON.stringify({ items: units }), { status: 200 });
+        }
+        if (String(url).includes('orgUnitId=k2')) {
+          await new Promise<void>((resolve) => (release = resolve));
+          return new Response(JSON.stringify(filtered), { status: 200 });
+        }
+        return new Response(JSON.stringify(view), { status: 200 });
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AdminTodayScreen canSync={false} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Nguyễn Văn An')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Khối'), 'k2');
+    // The dependent select opens at once; the old list stays (busy), no skeleton in its place.
+    expect(await screen.findByLabelText('Phòng ban')).toBeInTheDocument();
+    expect(screen.getByText('Nguyễn Văn An')).toBeInTheDocument();
+    expect(screen.getByText('Nguyễn Văn An').closest('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.queryByText('Đang tải…')).not.toBeInTheDocument();
+
+    release();
+    await waitFor(() => expect(screen.queryByText('Nguyễn Văn An')).not.toBeInTheDocument());
+    expect(screen.getByText('Trần Thị Lan').closest('[aria-busy]')).toBeNull();
+  });
+
   it('BR-24: saving an edit after the lock needs a reason', async () => {
     const user = userEvent.setup();
     show();

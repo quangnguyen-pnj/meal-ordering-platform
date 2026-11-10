@@ -53,7 +53,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -398,7 +398,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
         {list.isLoading ? (
           <LoadingRows rows={8} />
         ) : (
-          <>
+          <Refreshing busy={list.isPlaceholderData} className="flex flex-col gap-6">
             {/* Phones: one card per employee. */}
             <ul className="flex flex-col gap-3 md:hidden">
               {items.map((e) => (
@@ -510,7 +510,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
                 {t('employees.empty')}
               </p>
             ) : null}
-          </>
+          </Refreshing>
         )}
 
         <Pagination

@@ -32,6 +32,9 @@ export function useRegistrationGrid(unitId: string, weekStart: string | null, ca
           (canteenId ? `&canteenId=${encodeURIComponent(canteenId)}` : ''),
       ),
     enabled: !!unitId && !!weekStart,
+    // Another unit, week or canteen keeps the last grid on screen (callers dim it and lock it)
+    // instead of flashing a skeleton; with no unit picked there is nothing to keep.
+    placeholderData: (prev) => (unitId && weekStart ? prev : undefined),
   });
 }
 
@@ -67,10 +70,12 @@ export function UnitPicker({
 export function CanteenPicker({
   id,
   grid,
+  disabled,
   onChange,
 }: {
   id: string;
   grid: RegistrationGridView | undefined;
+  disabled?: boolean;
   onChange: (id: string) => void;
 }) {
   if (!grid || grid.canteens.length < 2) return null;
@@ -80,6 +85,7 @@ export function CanteenPicker({
       <ResponsiveSelect
         id={id}
         value={grid.canteenId ?? ''}
+        disabled={disabled}
         onValueChange={onChange}
         options={grid.canteens.map((c) => ({ value: c.id, label: c.name }))}
       />

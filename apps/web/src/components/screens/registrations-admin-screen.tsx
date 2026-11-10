@@ -9,7 +9,7 @@ import type {
   RegistrationImportView,
   RegistrationProgressView,
 } from '@/lib/api-types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
   Clock,
@@ -40,7 +40,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -143,6 +143,7 @@ function ProgressTab({ weekStart }: { weekStart: string }) {
     queryKey: ['/admin/registrations/progress', weekStart],
     queryFn: () =>
       api.get<RegistrationProgressView>(`/admin/registrations/progress?weekStart=${weekStart}`),
+    placeholderData: keepPreviousData,
   });
   const { pageItems, pagination } = usePagination(query.data?.units ?? [], weekStart);
   if (query.error) return <Alert variant="destructive">{apiErrorText(query.error)}</Alert>;
@@ -151,7 +152,7 @@ function ProgressTab({ weekStart }: { weekStart: string }) {
     return <p className="text-sm text-muted-foreground">{t('registrations.noUnits')}</p>;
   }
   return (
-    <div className="flex flex-col gap-3">
+    <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-3">
       <Table className="min-w-[36rem]">
         <TableHeader>
           <TableRow>
@@ -191,7 +192,7 @@ function ProgressTab({ weekStart }: { weekStart: string }) {
         </TableBody>
       </Table>
       <Pagination {...pagination} />
-    </div>
+    </Refreshing>
   );
 }
 
@@ -208,6 +209,8 @@ function NotRegisteredTab({ weekStart }: { weekStart: string }) {
       if (orgUnitId) q.set('orgUnitId', orgUnitId);
       return api.get<NotRegisteredView>(`/admin/registrations/not-registered?${q}`);
     },
+    // Another day or unit keeps the last list on screen (dimmed) instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
   // Searched here: the API returns the whole list for the week, day and org filter.
   const matches = (query.data?.items ?? []).filter(
@@ -252,53 +255,55 @@ function NotRegisteredTab({ weekStart }: { weekStart: string }) {
       </div>
       {query.error ? <Alert variant="destructive">{apiErrorText(query.error)}</Alert> : null}
       {query.isLoading ? <LoadingRows /> : null}
-      {query.data && query.data.total === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('registrations.noOne')}</p>
-      ) : null}
-      {query.data && query.data.total > 0 ? (
-        <>
-          <p className="text-sm">{t('registrations.listTotal', { count: query.data.total })}</p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('common.code')}</TableHead>
-                <TableHead>{t('common.name')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('registrations.unit')}</TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  {t('registrations.mealUnit')}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((e) => (
-                <TableRow key={e.employeeCode}>
-                  <TableCell className="tabular-nums">{e.employeeCode}</TableCell>
-                  <TableCell>
-                    <p className="font-medium">{e.name}</p>
-                    {/* Narrow screens: the unit columns fold under the name. */}
-                    <p className="text-xs text-muted-foreground md:hidden">
-                      <span className="sm:hidden">{e.mealUnitName} · </span>
-                      {e.orgPath}
-                    </p>
-                  </TableCell>
-                  <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                    {e.orgPath}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">{e.mealUnitName}</TableCell>
-                </TableRow>
-              ))}
-              {matches.length === 0 ? (
+      <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-3 empty:hidden">
+        {query.data && query.data.total === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('registrations.noOne')}</p>
+        ) : null}
+        {query.data && query.data.total > 0 ? (
+          <>
+            <p className="text-sm">{t('registrations.listTotal', { count: query.data.total })}</p>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-muted-foreground">
-                    {t('registrations.noMatch')}
-                  </TableCell>
+                  <TableHead>{t('common.code')}</TableHead>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('registrations.unit')}</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    {t('registrations.mealUnit')}
+                  </TableHead>
                 </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-          <Pagination {...pagination} />
-        </>
-      ) : null}
+              </TableHeader>
+              <TableBody>
+                {pageItems.map((e) => (
+                  <TableRow key={e.employeeCode}>
+                    <TableCell className="tabular-nums">{e.employeeCode}</TableCell>
+                    <TableCell>
+                      <p className="font-medium">{e.name}</p>
+                      {/* Narrow screens: the unit columns fold under the name. */}
+                      <p className="text-xs text-muted-foreground md:hidden">
+                        <span className="sm:hidden">{e.mealUnitName} · </span>
+                        {e.orgPath}
+                      </p>
+                    </TableCell>
+                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                      {e.orgPath}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{e.mealUnitName}</TableCell>
+                  </TableRow>
+                ))}
+                {matches.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-muted-foreground">
+                      {t('registrations.noMatch')}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+            <Pagination {...pagination} />
+          </>
+        ) : null}
+      </Refreshing>
     </div>
   );
 }
@@ -337,6 +342,8 @@ function GridTab({ weekStart }: { weekStart: string }) {
   const [snapshot, setSnapshot] = useState(0);
   const grid = useRegistrationGrid(unitId, weekStart, canteenId);
   const view = grid.data;
+  // The last grid stays on screen while another unit's loads; nothing in it can be edited or saved.
+  const stale = grid.isPlaceholderData;
 
   // A new grid (unit, week, save) resets the values; switching days goes through pickDay.
   useEffect(() => {
@@ -442,9 +449,14 @@ function GridTab({ weekStart }: { weekStart: string }) {
             save.reset();
           }}
         />
-        <CanteenPicker id="grid-canteen" grid={view} onChange={setCanteenId} />
+        <CanteenPicker id="grid-canteen" grid={view} disabled={stale} onChange={setCanteenId} />
         {view?.state === 'PUBLISHED' && view.days.some((d) => d.window === 'ON_BEHALF') ? (
-          <Button variant="outline" className="ml-auto" onClick={() => setImportOpen(true)}>
+          <Button
+            variant="outline"
+            className="ml-auto"
+            disabled={stale}
+            onClick={() => setImportOpen(true)}
+          >
             <FolderInput className="h-5 w-5 text-primary" aria-hidden />
             {t('registrations.import.open')}
           </Button>
@@ -467,368 +479,372 @@ function GridTab({ weekStart }: { weekStart: string }) {
 
       {grid.error ? <Alert variant="destructive">{apiErrorText(grid.error)}</Alert> : null}
       {grid.isLoading ? <LoadingRows /> : null}
-      {view?.state === 'NOT_PUBLISHED' ? (
-        <Alert>{t('week.notPublished', { canteen: view.canteenName ?? '' })}</Alert>
-      ) : null}
-      {view?.state === 'NO_EMPLOYEES' ? <Alert>{t('registrations.noEmployees')}</Alert> : null}
-      {view && (view.skipped.otherCanteen > 0 || view.skipped.cannotRegister > 0) ? (
-        <p className="text-xs text-muted-foreground">
-          {t('registrations.skipped', {
-            other: view.skipped.otherCanteen,
-            cannot: view.skipped.cannotRegister,
-          })}
-        </p>
-      ) : null}
+      <Refreshing busy={stale} className="flex flex-col gap-4 empty:hidden">
+        {view?.state === 'NOT_PUBLISHED' ? (
+          <Alert>{t('week.notPublished', { canteen: view.canteenName ?? '' })}</Alert>
+        ) : null}
+        {view?.state === 'NO_EMPLOYEES' ? <Alert>{t('registrations.noEmployees')}</Alert> : null}
+        {view && (view.skipped.otherCanteen > 0 || view.skipped.cannotRegister > 0) ? (
+          <p className="text-xs text-muted-foreground">
+            {t('registrations.skipped', {
+              other: view.skipped.otherCanteen,
+              cannot: view.skipped.cannotRegister,
+            })}
+          </p>
+        ) : null}
 
-      {view?.state === 'PUBLISHED' && day && groups ? (
-        <>
-          {/* Days on their own row. Then one toolbar: search and row filter (side by side, also on
+        {view?.state === 'PUBLISHED' && day && groups ? (
+          <>
+            {/* Days on their own row. Then one toolbar: search and row filter (side by side, also on
               phones) and the day's window, whose entry hint opens from the info button. */}
-          <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
+            <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex w-full min-w-0 gap-2 lg:w-auto">
-              <div className="relative min-w-0 flex-1 lg:w-64 lg:flex-none">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <Input
-                  type="search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder={t('registrations.gridSearch')}
-                  aria-label={t('registrations.gridSearch')}
-                  className="pl-9"
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <div className="flex w-full min-w-0 gap-2 lg:w-auto">
+                <div className="relative min-w-0 flex-1 lg:w-64 lg:flex-none">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden
+                  />
+                  <Input
+                    type="search"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={t('registrations.gridSearch')}
+                    aria-label={t('registrations.gridSearch')}
+                    className="pl-9"
+                  />
+                </div>
+                <ResponsiveSelect
+                  aria-label={t('registrations.gridFilter')}
+                  value={filter}
+                  onValueChange={(v) => pickFilter(v as GridFilter)}
+                  className="w-40 shrink-0 sm:w-52"
+                  options={GRID_FILTERS.map((f) => ({
+                    value: f,
+                    label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
+                    disabled: f !== 'all' && f !== filter && groups[f].length === 0,
+                  }))}
                 />
               </div>
-              <ResponsiveSelect
-                aria-label={t('registrations.gridFilter')}
-                value={filter}
-                onValueChange={(v) => pickFilter(v as GridFilter)}
-                className="w-40 shrink-0 sm:w-52"
-                options={GRID_FILTERS.map((f) => ({
-                  value: f,
-                  label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
-                  disabled: f !== 'all' && f !== filter && groups[f].length === 0,
-                }))}
-              />
-            </div>
-            {filtered ? (
-              <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
-                <span aria-live="polite">
-                  {t('registrations.gridShown', { shown: shown.length, total: view.rows.length })}
-                </span>
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  className="h-auto px-0"
-                  onClick={() => {
-                    setQ('');
-                    pickFilter('all');
-                  }}
-                >
-                  <FilterX className="h-4 w-4" aria-hidden />
-                  {t('registrations.clearFilter')}
-                </Button>
-              </p>
-            ) : null}
-            <div
-              className={cn(
-                'flex min-h-9 items-center gap-1.5 text-sm lg:ml-auto',
-                editable ? 'text-muted-foreground' : 'rounded-md bg-warning/15 px-2.5 py-1',
-              )}
-            >
-              {editable ? (
-                <Clock className="h-4 w-4 shrink-0" aria-hidden />
-              ) : (
-                <Lock className="h-4 w-4 shrink-0" aria-hidden />
-              )}
-              <span>
-                {t(`registrations.windows.${day.window}`, { lock: formatVnTime(day.lockAt) })}
-              </span>
-              {editable ? (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      aria-label={t('registrations.gridHintLabel')}
-                    >
-                      <Info className="h-4 w-4" aria-hidden />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-72 text-sm">
-                    {t('registrations.gridHint')}
-                  </PopoverContent>
-                </Popover>
+              {filtered ? (
+                <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
+                  <span aria-live="polite">
+                    {t('registrations.gridShown', { shown: shown.length, total: view.rows.length })}
+                  </span>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    className="h-auto px-0"
+                    onClick={() => {
+                      setQ('');
+                      pickFilter('all');
+                    }}
+                  >
+                    <FilterX className="h-4 w-4" aria-hidden />
+                    {t('registrations.clearFilter')}
+                  </Button>
+                </p>
               ) : null}
+              <div
+                className={cn(
+                  'flex min-h-9 items-center gap-1.5 text-sm lg:ml-auto',
+                  editable ? 'text-muted-foreground' : 'rounded-md bg-warning/15 px-2.5 py-1',
+                )}
+              >
+                {editable ? (
+                  <Clock className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                <span>
+                  {t(`registrations.windows.${day.window}`, { lock: formatVnTime(day.lockAt) })}
+                </span>
+                {editable ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        aria-label={t('registrations.gridHintLabel')}
+                      >
+                        <Info className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-72 text-sm">
+                      {t('registrations.gridHint')}
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
+              </div>
             </div>
-          </div>
 
-          {save.error && Object.keys(serverRowErrors).length === 0 ? (
-            <Alert variant="destructive">{apiErrorText(save.error)}</Alert>
-          ) : null}
+            {save.error && Object.keys(serverRowErrors).length === 0 ? (
+              <Alert variant="destructive">{apiErrorText(save.error)}</Alert>
+            ) : null}
 
-          {/* Scrolls inside a screen-high box, so the dish header, the names and the totals stay
+            {/* Scrolls inside a screen-high box, so the dish header, the names and the totals stay
               in view; scroll-padding keeps a focused cell clear of them. */}
-          <Table containerClassName="isolate max-h-[max(22rem,calc(100dvh_-_11rem))] overflow-auto scroll-pb-16 scroll-pl-40 scroll-pt-20 sm:scroll-pl-56">
-            <TableHeader className="bg-muted">
-              <TableRow className="hover:bg-transparent">
-                <TableHead
-                  className={cn(STICKY_COL, 'top-0 z-30 bg-muted px-2', LINE_BOTTOM, COL_EDGE)}
-                >
-                  <span className="hidden w-7 pr-2 text-right sm:inline-block">#</span>
-                  {t('registrations.employee')}
-                </TableHead>
-                {day.items.map((i) => (
+            <Table containerClassName="isolate max-h-[max(22rem,calc(100dvh_-_11rem))] overflow-auto scroll-pb-16 scroll-pl-40 scroll-pt-20 sm:scroll-pl-56">
+              <TableHeader className="bg-muted">
+                <TableRow className="hover:bg-transparent">
                   <TableHead
-                    key={i.id}
-                    className={cn(
-                      'sticky top-0 z-20 min-w-20 max-w-28 whitespace-normal bg-muted px-2 py-2 text-center normal-case tracking-normal',
-                      LINE_BOTTOM,
-                    )}
+                    className={cn(STICKY_COL, 'top-0 z-30 bg-muted px-2', LINE_BOTTOM, COL_EDGE)}
                   >
-                    <DishName type={i.type} displayName={i.displayName} />
+                    <span className="hidden w-7 pr-2 text-right sm:inline-block">#</span>
+                    {t('registrations.employee')}
                   </TableHead>
-                ))}
-                <TableHead
-                  className={cn('sticky top-0 z-20 bg-muted px-2 text-center', LINE_BOTTOM)}
-                >
-                  {t('registrations.total')}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody striped={false}>
-              {shown.map(({ row, index }, r) => {
-                const cell = row.cells[date]!;
-                const invalid = changes.invalid[row.employeeCode] ?? [];
-                const errors = serverRowErrors[row.employeeCode] ?? [];
-                const rowTotal = day.items.reduce(
-                  (s, i) => s + (Number(values[row.employeeCode]?.[i.id]) || 0),
-                  0,
-                );
-                const forecast = cell.forecast
-                  ? Object.values(cell.forecast).reduce((s, n) => s + n, 0)
-                  : null;
-                const hasError = invalid.length > 0 || errors.length > 0;
-                return (
-                  <TableRow
-                    key={row.employeeCode}
-                    className={cn(
-                      // A data-entry grid: thin row lines help keep the eye on one employee.
-                      'group border-b border-border/50 hover:bg-transparent focus-within:bg-primary/5',
-                      hasError && 'bg-destructive/5 focus-within:bg-destructive/5',
-                    )}
-                  >
-                    <TableCell
+                  {day.items.map((i) => (
+                    <TableHead
+                      key={i.id}
                       className={cn(
-                        STICKY_COL,
-                        'z-10 bg-card px-2 py-1',
-                        hasError
-                          ? 'shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_0_0_9999px_hsl(var(--destructive)/0.05)]'
-                          : cn(
-                              COL_EDGE,
-                              'group-focus-within:shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_0_0_9999px_hsl(var(--primary)/0.05)]',
-                            ),
+                        'sticky top-0 z-20 min-w-20 max-w-28 whitespace-normal bg-muted px-2 py-2 text-center normal-case tracking-normal',
+                        LINE_BOTTOM,
                       )}
                     >
-                      <div className="flex items-start gap-1">
-                        <span className="hidden w-7 shrink-0 pr-2 pt-0.5 text-right text-xs tabular-nums text-muted-foreground sm:block">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium" title={row.name}>
-                            {row.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
-                            <span className="tabular-nums">
-                              {row.employeeCode}
-                              {forecast !== null
-                                ? ` · ${t('registrations.forecastShort', { count: forecast })}`
-                                : ''}
-                            </span>
-                            {cell.blocked ? (
-                              <Badge variant="outline" className="px-1.5 leading-4">
-                                {t('registrations.blocked')}
-                              </Badge>
+                      <DishName type={i.type} displayName={i.displayName} />
+                    </TableHead>
+                  ))}
+                  <TableHead
+                    className={cn('sticky top-0 z-20 bg-muted px-2 text-center', LINE_BOTTOM)}
+                  >
+                    {t('registrations.total')}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody striped={false}>
+                {shown.map(({ row, index }, r) => {
+                  const cell = row.cells[date]!;
+                  const invalid = changes.invalid[row.employeeCode] ?? [];
+                  const errors = serverRowErrors[row.employeeCode] ?? [];
+                  const rowTotal = day.items.reduce(
+                    (s, i) => s + (Number(values[row.employeeCode]?.[i.id]) || 0),
+                    0,
+                  );
+                  const forecast = cell.forecast
+                    ? Object.values(cell.forecast).reduce((s, n) => s + n, 0)
+                    : null;
+                  const hasError = invalid.length > 0 || errors.length > 0;
+                  return (
+                    <TableRow
+                      key={row.employeeCode}
+                      className={cn(
+                        // A data-entry grid: thin row lines help keep the eye on one employee.
+                        'group border-b border-border/50 hover:bg-transparent focus-within:bg-primary/5',
+                        hasError && 'bg-destructive/5 focus-within:bg-destructive/5',
+                      )}
+                    >
+                      <TableCell
+                        className={cn(
+                          STICKY_COL,
+                          'z-10 bg-card px-2 py-1',
+                          hasError
+                            ? 'shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_0_0_9999px_hsl(var(--destructive)/0.05)]'
+                            : cn(
+                                COL_EDGE,
+                                'group-focus-within:shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_0_0_9999px_hsl(var(--primary)/0.05)]',
+                              ),
+                        )}
+                      >
+                        <div className="flex items-start gap-1">
+                          <span className="hidden w-7 shrink-0 pr-2 pt-0.5 text-right text-xs tabular-nums text-muted-foreground sm:block">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium" title={row.name}>
+                              {row.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                              <span className="tabular-nums">
+                                {row.employeeCode}
+                                {forecast !== null
+                                  ? ` · ${t('registrations.forecastShort', { count: forecast })}`
+                                  : ''}
+                              </span>
+                              {cell.blocked ? (
+                                <Badge variant="outline" className="px-1.5 leading-4">
+                                  {t('registrations.blocked')}
+                                </Badge>
+                              ) : null}
+                              {cell.extra ? (
+                                <Badge variant="secondary" className="px-1.5 leading-4">
+                                  {t('registrations.extra')}
+                                </Badge>
+                              ) : null}
+                              {cell.needsReselect > 0 ? (
+                                <Badge variant="warning" className="px-1.5 leading-4">
+                                  {t('registrations.needsReselect', { count: cell.needsReselect })}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            {invalid.length > 0 ? (
+                              <span className="sr-only">{t('registrations.invalidCell')}</span>
                             ) : null}
-                            {cell.extra ? (
-                              <Badge variant="secondary" className="px-1.5 leading-4">
-                                {t('registrations.extra')}
-                              </Badge>
-                            ) : null}
-                            {cell.needsReselect > 0 ? (
-                              <Badge variant="warning" className="px-1.5 leading-4">
-                                {t('registrations.needsReselect', { count: cell.needsReselect })}
-                              </Badge>
+                            {errors.length > 0 ? (
+                              <p className="text-xs text-destructive">
+                                {t('registrations.rowError', { errors: errors.join(', ') })}
+                              </p>
                             ) : null}
                           </div>
-                          {invalid.length > 0 ? (
-                            <span className="sr-only">{t('registrations.invalidCell')}</span>
-                          ) : null}
-                          {errors.length > 0 ? (
-                            <p className="text-xs text-destructive">
-                              {t('registrations.rowError', { errors: errors.join(', ') })}
-                            </p>
+                          {day.window === 'EXTRA' && !cell.blocked ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-primary"
+                                  aria-label={`${t('registrations.addExtra')}: ${row.name}`}
+                                  onClick={() => setExtraFor(row.employeeCode)}
+                                >
+                                  <Plus className="h-4 w-4" aria-hidden />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('registrations.addExtra')}</TooltipContent>
+                            </Tooltip>
                           ) : null}
                         </div>
-                        {day.window === 'EXTRA' && !cell.blocked ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 shrink-0 text-primary"
-                                aria-label={`${t('registrations.addExtra')}: ${row.name}`}
-                                onClick={() => setExtraFor(row.employeeCode)}
-                              >
-                                <Plus className="h-4 w-4" aria-hidden />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('registrations.addExtra')}</TooltipContent>
-                          </Tooltip>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    {day.items.map((i, c) => (
-                      <TableCell key={i.id} className="px-1 py-1 text-center">
-                        <Input
-                          data-cell={`${r}:${c}`}
-                          inputMode="numeric"
-                          aria-label={`${row.name} · ${i.displayName}`}
-                          aria-invalid={invalid.includes(i.id)}
-                          title={
-                            invalid.includes(i.id) ? t('registrations.invalidCell') : undefined
-                          }
-                          disabled={!editable || cell.blocked}
-                          value={values[row.employeeCode]?.[i.id] ?? ''}
-                          onKeyDown={(e) => moveDown(e, r, c)}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setValues((prev) => ({
-                              ...prev,
-                              [row.employeeCode]: { ...prev[row.employeeCode], [i.id]: v },
-                            }));
-                          }}
-                          className="mx-auto w-14 px-1 text-center tabular-nums md:h-9"
-                        />
                       </TableCell>
-                    ))}
-                    <TableCell className="px-2 py-1 text-center font-medium tabular-nums">
-                      {rowTotal}
+                      {day.items.map((i, c) => (
+                        <TableCell key={i.id} className="px-1 py-1 text-center">
+                          <Input
+                            data-cell={`${r}:${c}`}
+                            inputMode="numeric"
+                            aria-label={`${row.name} · ${i.displayName}`}
+                            aria-invalid={invalid.includes(i.id)}
+                            title={
+                              invalid.includes(i.id) ? t('registrations.invalidCell') : undefined
+                            }
+                            disabled={!editable || cell.blocked}
+                            value={values[row.employeeCode]?.[i.id] ?? ''}
+                            onKeyDown={(e) => moveDown(e, r, c)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setValues((prev) => ({
+                                ...prev,
+                                [row.employeeCode]: { ...prev[row.employeeCode], [i.id]: v },
+                              }));
+                            }}
+                            className="mx-auto w-14 px-1 text-center tabular-nums md:h-9"
+                          />
+                        </TableCell>
+                      ))}
+                      <TableCell className="px-2 py-1 text-center font-medium tabular-nums">
+                        {rowTotal}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {shown.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={day.items.length + 2} className="text-muted-foreground">
+                      {t('registrations.gridNoMatch')}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {shown.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={day.items.length + 2} className="text-muted-foreground">
-                    {t('registrations.gridNoMatch')}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
+                ) : null}
+              </TableBody>
 
-            {/* Totals are always the whole unit, whatever the search or filter shows. */}
-            <tfoot className="font-semibold">
-              <tr>
-                <td
-                  className={cn(
-                    STICKY_COL,
-                    'bottom-0 z-30 bg-muted px-2 py-2.5',
-                    'shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_1px_0_hsl(var(--border))]',
-                  )}
-                >
-                  <span className="sm:pl-8">{t('registrations.total')}</span>
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    {t('registrations.gridPeople', { count: view.rows.length })}
-                  </span>
-                </td>
-                {day.items.map((i) => (
+              {/* Totals are always the whole unit, whatever the search or filter shows. */}
+              <tfoot className="font-semibold">
+                <tr>
                   <td
-                    key={i.id}
+                    className={cn(
+                      STICKY_COL,
+                      'bottom-0 z-30 bg-muted px-2 py-2.5',
+                      'shadow-[inset_-1px_0_0_hsl(var(--border)),inset_0_1px_0_hsl(var(--border))]',
+                    )}
+                  >
+                    <span className="sm:pl-8">{t('registrations.total')}</span>
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      {t('registrations.gridPeople', { count: view.rows.length })}
+                    </span>
+                  </td>
+                  {day.items.map((i) => (
+                    <td
+                      key={i.id}
+                      className={cn(
+                        'sticky bottom-0 z-20 bg-muted px-2 py-2.5 text-center tabular-nums',
+                        LINE_TOP,
+                      )}
+                    >
+                      {totals[i.id] ?? 0}
+                    </td>
+                  ))}
+                  <td
                     className={cn(
                       'sticky bottom-0 z-20 bg-muted px-2 py-2.5 text-center tabular-nums',
                       LINE_TOP,
                     )}
                   >
-                    {totals[i.id] ?? 0}
+                    {Object.values(totals).reduce((s, n) => s + n, 0)}
                   </td>
-                ))}
-                <td
-                  className={cn(
-                    'sticky bottom-0 z-20 bg-muted px-2 py-2.5 text-center tabular-nums',
-                    LINE_TOP,
-                  )}
-                >
-                  {Object.values(totals).reduce((s, n) => s + n, 0)}
-                </td>
-              </tr>
-            </tfoot>
-          </Table>
+                </tr>
+              </tfoot>
+            </Table>
 
-          <ExtraDialog
-            view={view}
-            date={date}
-            employeeCode={extraFor}
-            onClose={() => setExtraFor(null)}
-            onSaved={async () => {
-              setExtraFor(null);
-              toast.success(t('registrations.extraSaved'));
-              await qc.invalidateQueries({ predicate: (q) => isRegistrationQuery(q.queryKey) });
-            }}
-          />
+            <ExtraDialog
+              view={view}
+              date={date}
+              employeeCode={extraFor}
+              onClose={() => setExtraFor(null)}
+              onSaved={async () => {
+                setExtraFor(null);
+                toast.success(t('registrations.extraSaved'));
+                await qc.invalidateQueries({ predicate: (q) => isRegistrationQuery(q.queryKey) });
+              }}
+            />
 
-          {editable && dirty ? (
-            <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-raised">
-              <p className="flex flex-wrap items-center gap-x-2 text-sm" role="status">
-                <span>
-                  {invalidCount > 0
-                    ? t('registrations.invalidRows', { count: invalidCount })
-                    : errorRows > 0
-                      ? t('registrations.saveErrorRows', { count: errorRows })
-                      : t('registrations.unsaved')}
-                </span>
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  className="h-auto px-0"
-                  onClick={() => pickFilter(errorRows > 0 ? 'errors' : 'changed')}
-                >
-                  <Eye className="h-4 w-4" aria-hidden />
-                  {errorRows > 0 ? t('registrations.viewErrors') : t('registrations.viewChanged')}
-                </Button>
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={save.isPending}
-                  onClick={() => {
-                    setValues(gridValues(view, date));
-                    save.reset();
-                    setSnapshot((n) => n + 1);
-                  }}
-                >
-                  <Undo2 className="h-4 w-4" aria-hidden />
-                  {t('registrations.discard')}
-                </Button>
-                <Button
-                  disabled={changes.rows.length === 0 || invalidCount > 0 || save.isPending}
-                  onClick={() => save.mutate()}
-                >
-                  <Save className="h-4 w-4" aria-hidden />
-                  {save.isPending
-                    ? t('common.saving')
-                    : t('registrations.saveDay', { day: weekdayName(date) })}
-                </Button>
+            {editable && dirty ? (
+              <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-raised">
+                <p className="flex flex-wrap items-center gap-x-2 text-sm" role="status">
+                  <span>
+                    {invalidCount > 0
+                      ? t('registrations.invalidRows', { count: invalidCount })
+                      : errorRows > 0
+                        ? t('registrations.saveErrorRows', { count: errorRows })
+                        : t('registrations.unsaved')}
+                  </span>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    className="h-auto px-0"
+                    onClick={() => pickFilter(errorRows > 0 ? 'errors' : 'changed')}
+                  >
+                    <Eye className="h-4 w-4" aria-hidden />
+                    {errorRows > 0 ? t('registrations.viewErrors') : t('registrations.viewChanged')}
+                  </Button>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={save.isPending}
+                    onClick={() => {
+                      setValues(gridValues(view, date));
+                      save.reset();
+                      setSnapshot((n) => n + 1);
+                    }}
+                  >
+                    <Undo2 className="h-4 w-4" aria-hidden />
+                    {t('registrations.discard')}
+                  </Button>
+                  <Button
+                    disabled={
+                      stale || changes.rows.length === 0 || invalidCount > 0 || save.isPending
+                    }
+                    onClick={() => save.mutate()}
+                  >
+                    <Save className="h-4 w-4" aria-hidden />
+                    {save.isPending
+                      ? t('common.saving')
+                      : t('registrations.saveDay', { day: weekdayName(date) })}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </>
-      ) : null}
+            ) : null}
+          </>
+        ) : null}
+      </Refreshing>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import type {
   TodayPresence,
   TodayRow,
 } from '@/lib/api-types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -88,7 +88,10 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
       if (orgUnitId) params.set('orgUnitId', orgUnitId);
       return api.get<AdminTodayView>(`/admin/today${params.size ? `?${params}` : ''}`);
     },
+    // A new day or unit keeps the last list on screen (dimmed) instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
+  const stale = query.isPlaceholderData;
   const orgUnits = useQuery({
     queryKey: ['/admin/registrations/org-units'],
     queryFn: () => api.get<{ items: OrgFilterOption[] }>('/admin/registrations/org-units'),
@@ -123,7 +126,7 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
       <CardContent className="flex flex-col gap-6">
         {/* What matters first: today's numbers and the attendance sync; the filters sit right above the list they filter. */}
         {view ? (
-          <>
+          <Refreshing busy={stale} className="flex flex-col gap-6">
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <Stat label={t('adminToday.summary.withMeals')} value={view.summary.withMeals} />
               <Stat label={t('adminToday.summary.present')} value={view.summary.present} />
@@ -137,7 +140,7 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
             </dl>
 
             <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
-          </>
+          </Refreshing>
         ) : null}
 
         <div className="flex flex-wrap items-end gap-4">
@@ -167,57 +170,59 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
 
         {view ? (
           <>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
-              <TabsList>
-                <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
-                <TabsTrigger value="exceptions">
-                  {t('adminToday.tabs.exceptions', { count: exceptions.length })}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <Refreshing busy={stale} className="flex flex-col gap-6">
+              <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
+                <TabsList>
+                  <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
+                  <TabsTrigger value="exceptions">
+                    {t('adminToday.tabs.exceptions', { count: exceptions.length })}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('adminToday.empty')}</p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('common.name')}</TableHead>
-                      <TableHead>{t('adminToday.columns.meals')}</TableHead>
-                      <TableHead>{t('adminToday.columns.presence')}</TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        {t('adminToday.columns.cases')}
-                      </TableHead>
-                      <TableHead className="w-0">
-                        <span className="sr-only">{t('common.actions')}</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pageItems.map((row) => (
-                      <TodayTableRow
-                        key={row.employeeCode}
-                        row={row}
-                        view={view}
-                        onConfirm={() => setConfirmFor(row)}
-                        onEdit={() => setEditFor(row)}
-                      />
-                    ))}
-                    {shown.length === 0 ? (
+              {rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('adminToday.empty')}</p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-muted-foreground">
-                          {tab === 'exceptions' && !term
-                            ? t('adminToday.noExceptions')
-                            : t('adminToday.noMatch')}
-                        </TableCell>
+                        <TableHead>{t('common.name')}</TableHead>
+                        <TableHead>{t('adminToday.columns.meals')}</TableHead>
+                        <TableHead>{t('adminToday.columns.presence')}</TableHead>
+                        <TableHead className="hidden lg:table-cell">
+                          {t('adminToday.columns.cases')}
+                        </TableHead>
+                        <TableHead className="w-0">
+                          <span className="sr-only">{t('common.actions')}</span>
+                        </TableHead>
                       </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-                <Pagination {...pagination} />
-              </>
-            )}
+                    </TableHeader>
+                    <TableBody>
+                      {pageItems.map((row) => (
+                        <TodayTableRow
+                          key={row.employeeCode}
+                          row={row}
+                          view={view}
+                          onConfirm={() => setConfirmFor(row)}
+                          onEdit={() => setEditFor(row)}
+                        />
+                      ))}
+                      {shown.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-muted-foreground">
+                            {tab === 'exceptions' && !term
+                              ? t('adminToday.noExceptions')
+                              : t('adminToday.noMatch')}
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </TableBody>
+                  </Table>
+                  <Pagination {...pagination} />
+                </>
+              )}
+            </Refreshing>
 
             <ConfirmPresenceDialog
               row={confirmFor}
