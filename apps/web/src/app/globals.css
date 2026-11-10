@@ -17,11 +17,13 @@
     --popover-foreground: 24 14% 13%;
     --primary: 24 80% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 20% 94%;
+    /* Greys on the page background: darker than on white, or they melt into the canvas. White
+       surfaces set the lighter ones below. Muted text keeps 4.5:1 on each. */
+    --secondary: 30 16% 91%;
     --secondary-foreground: 24 14% 13%;
-    --muted: 30 15% 95%;
+    --muted: 30 14% 91.5%;
     --muted-foreground: 25 8% 40%;
-    --accent: 30 25% 92%;
+    --accent: 30 20% 90%;
     --accent-foreground: 24 14% 13%;
     --destructive: 0 72% 40%;
     --destructive-foreground: 0 0% 100%;
@@ -36,10 +38,15 @@
     --radius: 0.5rem;
   }
 
+  /* White surfaces: tinted fields and lighter greys, as shadcn/ui draws them on white. */
   .bg-card,
+  .bg-popover,
   [role='dialog'],
   [role='alertdialog'] {
     --field: 30 12% 97%;
+    --secondary: 30 20% 94%;
+    --muted: 30 15% 95%;
+    --accent: 30 25% 92%;
   }
 
   body {

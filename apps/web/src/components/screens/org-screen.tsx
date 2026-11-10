@@ -368,7 +368,7 @@ function TreeTab() {
         {selected ? (
           <NodeDetail key={selected.id} node={selected} idx={idx} />
         ) : (
-          <p className="rounded-lg bg-muted/50 p-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-foreground">
             {t('org.selectNode')}
           </p>
         )}
