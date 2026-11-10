@@ -1,4 +1,4 @@
-import { Construction } from 'lucide-react';
+import { CalendarDays, Construction } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
@@ -37,7 +37,10 @@ export default async function PlaceholderPage({ params }: { params: Promise<{ sl
         </div>
         {item.href !== '/week' ? (
           <Button asChild variant="outline">
-            <Link href="/week">{t('placeholder.goToWeek')}</Link>
+            <Link href="/week">
+              <CalendarDays className="h-4 w-4" aria-hidden />
+              {t('placeholder.goToWeek')}
+            </Link>
           </Button>
         ) : null}
       </CardContent>

@@ -35,6 +35,8 @@ import {
   CirclePower,
   GripVertical,
   Plus,
+  Save,
+  Send,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -483,6 +485,7 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
             disabled={save.isPending || publish.isPending || (!dirty && view.id !== null)}
             onClick={() => save.mutate()}
           >
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending
               ? t('common.saving')
               : published
@@ -513,6 +516,7 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
               aria-describedby={gaps.length > 0 ? 'publish-hint' : undefined}
               onClick={askPublish}
             >
+              <Send className="h-4 w-4" aria-hidden />
               {publish.isPending ? t('menu.publishing') : t('menu.publish')}
             </Button>
           ) : null}
@@ -681,7 +685,12 @@ function DishPicker({
       onClose={onClose}
       title={title}
       className="gap-3"
-      footer={<Button onClick={onClose}>{t('common.done')}</Button>}
+      footer={
+        <Button onClick={onClose}>
+          <Check className="h-4 w-4" aria-hidden />
+          {t('common.done')}
+        </Button>
+      }
     >
       <Command className="rounded-md shadow-block">
         <CommandInput placeholder={t('menu.searchDish')} />

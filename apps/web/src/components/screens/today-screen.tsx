@@ -1,5 +1,6 @@
 'use client';
 
+import { Ban, Save } from 'lucide-react';
 import type {
   MyAttendanceView,
   MyDayRegistrationView,
@@ -144,6 +145,7 @@ export function TodayScreen() {
             {!locked ? (
               <div className="flex flex-wrap gap-2">
                 <Button disabled={!dirty || save.isPending} onClick={() => save.mutate(quantities)}>
+                  <Save className="h-4 w-4" aria-hidden />
                   {save.isPending ? t('common.saving') : t('common.save')}
                 </Button>
                 <Button
@@ -161,6 +163,7 @@ export function TodayScreen() {
                     save.mutate(none);
                   }}
                 >
+                  <Ban className="h-4 w-4" aria-hidden />
                   {t('today.notEating')}
                 </Button>
               </div>

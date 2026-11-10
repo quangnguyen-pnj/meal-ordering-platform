@@ -1,5 +1,6 @@
 'use client';
 
+import { Pencil, RefreshCw, Save, UserCheck } from 'lucide-react';
 import type {
   AdminTodayView,
   AttendanceRerunResult,
@@ -290,6 +291,7 @@ function SyncPanel({
             disabled={rerun.isPending}
             onClick={() => rerun.mutate()}
           >
+            <RefreshCw className="h-4 w-4" aria-hidden />
             {rerun.isPending ? t('adminToday.sync.rerunning') : t('adminToday.sync.rerun')}
           </Button>
         ) : null}
@@ -416,11 +418,13 @@ function TodayTableRow({
         <div className="flex flex-col gap-1 sm:flex-row">
           {canConfirm ? (
             <Button size="sm" variant="outline" onClick={onConfirm}>
+              <UserCheck className="h-4 w-4" aria-hidden />
               {t('adminToday.confirm')}
             </Button>
           ) : null}
           {canEdit ? (
-            <Button size="sm" variant="ghost" onClick={onEdit}>
+            <Button size="sm" variant="tertiary" onClick={onEdit}>
+              <Pencil className="h-4 w-4" aria-hidden />
               {t('adminToday.edit')}
             </Button>
           ) : null}
@@ -470,6 +474,7 @@ function ConfirmPresenceDialog({
             {t('common.cancel')}
           </Button>
           <Button form="presence-form" type="submit" disabled={confirm.isPending}>
+            <UserCheck className="h-4 w-4" aria-hidden />
             {confirm.isPending ? t('common.saving') : t('adminToday.confirm')}
           </Button>
         </>
@@ -551,6 +556,7 @@ function EditMealsDialog({
             {t('common.cancel')}
           </Button>
           <Button form="meals-form" type="submit" disabled={!valid || save.isPending}>
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? t('common.saving') : t('common.save')}
           </Button>
         </>

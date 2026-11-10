@@ -2,7 +2,7 @@
 
 import type { DessertView, DishTypeView, DishView, LibraryImportView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderInput } from 'lucide-react';
+import { Archive, ArchiveRestore, FolderInput, Pencil, Plus, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DishName, DishTypeTag } from '@/components/dish-name';
@@ -297,6 +297,7 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
               setEditing({ id: null, name: '', typeId: activeTypes[0]?.id ?? '' });
             }}
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {t('dishes.addMain')}
           </Button>
         </div>
@@ -384,21 +385,27 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Button
-                    variant="ghost"
+                    variant="tertiary"
                     size="sm"
                     onClick={() => {
                       save.reset();
                       setEditing({ id: d.id, name: d.name, typeId: d.typeId });
                     }}
                   >
+                    <Pencil className="h-4 w-4" aria-hidden />
                     {t('common.edit')}
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="tertiary"
                     size="sm"
                     disabled={archive.isPending}
                     onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
                   >
+                    {d.archivedAt ? (
+                      <ArchiveRestore className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Archive className="h-4 w-4" aria-hidden />
+                    )}
                     {d.archivedAt ? t('common.restore') : t('common.archive')}
                   </Button>
                 </div>
@@ -470,6 +477,7 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
               setEditing({ id: null, name: '' });
             }}
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {t('dishes.addDessert')}
           </Button>
         </div>
@@ -525,21 +533,27 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Button
-                    variant="ghost"
+                    variant="tertiary"
                     size="sm"
                     onClick={() => {
                       save.reset();
                       setEditing({ id: d.id, name: d.name });
                     }}
                   >
+                    <Pencil className="h-4 w-4" aria-hidden />
                     {t('common.edit')}
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="tertiary"
                     size="sm"
                     disabled={archive.isPending}
                     onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
                   >
+                    {d.archivedAt ? (
+                      <ArchiveRestore className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Archive className="h-4 w-4" aria-hidden />
+                    )}
                     {d.archivedAt ? t('common.restore') : t('common.archive')}
                   </Button>
                 </div>
@@ -637,6 +651,7 @@ function DishTypes() {
             });
           }}
         >
+          <Plus className="h-4 w-4" aria-hidden />
           {t('dishes.types.add')}
         </Button>
       </div>
@@ -804,7 +819,7 @@ function DishTypes() {
               <TableCell className="tabular-nums">{type.dishCount}</TableCell>
               <TableCell className="text-right">
                 <Button
-                  variant="ghost"
+                  variant="tertiary"
                   size="sm"
                   onClick={() => {
                     save.reset();
@@ -820,6 +835,7 @@ function DishTypes() {
                     });
                   }}
                 >
+                  <Pencil className="h-4 w-4" aria-hidden />
                   {t('common.edit')}
                 </Button>
               </TableCell>
@@ -853,6 +869,7 @@ function DialogActions({
         {t('common.cancel')}
       </Button>
       <Button type="submit" disabled={pending || disabled}>
+        <Save className="h-4 w-4" aria-hidden />
         {pending ? t('common.saving') : t('common.save')}
       </Button>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { addDays } from '@meal/shared';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatWeekNumber, formatWeekRange } from '@/lib/utils';
 import { t } from '@/messages';
@@ -33,7 +33,13 @@ export function WeekNav({
     <div className="flex flex-wrap items-center gap-2">
       {homeWeekStart && homeWeekStart !== weekStart ? (
         // Spacing, not a divider line, sets "back" apart from the week arrows.
-        <Button variant="ghost" size="sm" className="mr-2" onClick={() => onChange(homeWeekStart)}>
+        <Button
+          variant="tertiary"
+          size="sm"
+          className="mr-2"
+          onClick={() => onChange(homeWeekStart)}
+        >
+          <Undo2 className="h-4 w-4" aria-hidden />
           {t('menu.backToUpcoming')}
         </Button>
       ) : null}

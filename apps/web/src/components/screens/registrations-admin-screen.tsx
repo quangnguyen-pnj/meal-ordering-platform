@@ -13,11 +13,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
   Clock,
+  Eye,
+  FilterX,
   FolderInput,
   Info,
   Lock,
   Plus,
+  Save,
   Search,
+  Undo2,
   UserRound,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -516,7 +520,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
                   {t('registrations.gridShown', { shown: shown.length, total: view.rows.length })}
                 </span>
                 <Button
-                  variant="link"
+                  variant="tertiary"
                   size="sm"
                   className="h-auto px-0"
                   onClick={() => {
@@ -524,6 +528,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
                     pickFilter('all');
                   }}
                 >
+                  <FilterX className="h-4 w-4" aria-hidden />
                   {t('registrations.clearFilter')}
                 </Button>
               </p>
@@ -788,11 +793,12 @@ function GridTab({ weekStart }: { weekStart: string }) {
                       : t('registrations.unsaved')}
                 </span>
                 <Button
-                  variant="link"
+                  variant="tertiary"
                   size="sm"
                   className="h-auto px-0"
                   onClick={() => pickFilter(errorRows > 0 ? 'errors' : 'changed')}
                 >
+                  <Eye className="h-4 w-4" aria-hidden />
                   {errorRows > 0 ? t('registrations.viewErrors') : t('registrations.viewChanged')}
                 </Button>
               </p>
@@ -806,12 +812,14 @@ function GridTab({ weekStart }: { weekStart: string }) {
                     setSnapshot((n) => n + 1);
                   }}
                 >
+                  <Undo2 className="h-4 w-4" aria-hidden />
                   {t('registrations.discard')}
                 </Button>
                 <Button
                   disabled={changes.rows.length === 0 || invalidCount > 0 || save.isPending}
                   onClick={() => save.mutate()}
                 >
+                  <Save className="h-4 w-4" aria-hidden />
                   {save.isPending
                     ? t('common.saving')
                     : t('registrations.saveDay', { day: weekdayName(date) })}
@@ -910,6 +918,7 @@ function ExtraDialog({
             {t('common.cancel')}
           </Button>
           <Button form="extra-form" type="submit" disabled={!valid || add.isPending}>
+            <Plus className="h-4 w-4" aria-hidden />
             {add.isPending ? t('common.saving') : t('registrations.addExtra')}
           </Button>
         </>

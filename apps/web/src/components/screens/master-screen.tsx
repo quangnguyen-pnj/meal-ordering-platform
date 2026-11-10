@@ -1,5 +1,6 @@
 'use client';
 
+import { Ban, CircleCheck, Pencil, Plus, Save } from 'lucide-react';
 import type { MasterItemView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -130,6 +131,7 @@ function MasterTable({ kind }: { kind: Kind }) {
     <div className="flex flex-col gap-5">
       <div className="flex justify-end">
         <Button onClick={() => open({ id: null, code: '', name: '', sortOrder: 0 })}>
+          <Plus className="h-4 w-4" aria-hidden />
           {ADD_LABEL[kind]}
         </Button>
       </div>
@@ -189,6 +191,7 @@ function MasterTable({ kind }: { kind: Kind }) {
                 {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={save.isPending}>
+                <Save className="h-4 w-4" aria-hidden />
                 {save.isPending ? t('common.saving') : t('common.save')}
               </Button>
             </div>
@@ -227,7 +230,7 @@ function MasterTable({ kind }: { kind: Kind }) {
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Button
-                    variant="ghost"
+                    variant="tertiary"
                     size="sm"
                     onClick={() =>
                       open({
@@ -238,9 +241,15 @@ function MasterTable({ kind }: { kind: Kind }) {
                       })
                     }
                   >
+                    <Pencil className="h-4 w-4" aria-hidden />
                     {t('common.edit')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => toggle.mutate(item)}>
+                  <Button variant="tertiary" size="sm" onClick={() => toggle.mutate(item)}>
+                    {item.active ? (
+                      <Ban className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <CircleCheck className="h-4 w-4" aria-hidden />
+                    )}
                     {item.active ? t('common.deactivate') : t('common.activate')}
                   </Button>
                 </div>
