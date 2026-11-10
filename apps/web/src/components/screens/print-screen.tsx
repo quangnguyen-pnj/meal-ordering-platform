@@ -35,7 +35,7 @@ export function PrintScreen() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card className="print:hidden">
+      <Card variant="page" className="print:hidden">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-col gap-1.5">

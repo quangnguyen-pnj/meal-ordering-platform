@@ -23,7 +23,7 @@ export default async function PlaceholderPage({ params }: { params: Promise<{ sl
   }
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t(item.labelKey)}</CardTitle>
       </CardHeader>

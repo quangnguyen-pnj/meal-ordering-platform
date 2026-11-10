@@ -44,7 +44,7 @@ export function TeamScreen() {
   const { pageItems, pagination } = usePagination(data?.members ?? [], term);
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('team.title')}</CardTitle>
         <CardDescription>{t('team.intro')}</CardDescription>

@@ -5,7 +5,7 @@ import { t } from '@/messages';
 /** Shown inside the shell while the next screen renders, so a click never looks ignored. */
 export default function Loading() {
   return (
-    <Card role="status" aria-live="polite">
+    <Card variant="page" role="status" aria-live="polite">
       <span className="sr-only">{t('common.loading')}</span>
       <CardHeader>
         <Skeleton className="h-7 w-56" />

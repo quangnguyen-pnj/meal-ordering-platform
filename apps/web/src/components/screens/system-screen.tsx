@@ -81,7 +81,7 @@ export function SystemScreen() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card>
+      <Card variant="page">
         <CardHeader>
           <CardTitle>{t('system.rolesTitle')}</CardTitle>
         </CardHeader>
@@ -165,7 +165,7 @@ export function SystemScreen() {
           </Table>
         </CardContent>
       </Card>
-      <Card>
+      <Card variant="page">
         <CardHeader>
           <CardTitle className="text-lg">{t('system.syncTitle')}</CardTitle>
         </CardHeader>

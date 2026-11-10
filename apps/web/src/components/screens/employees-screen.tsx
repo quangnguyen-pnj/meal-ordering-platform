@@ -318,7 +318,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
   );
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('employees.title')}</CardTitle>
         <CardDescription>{t('employees.intro')}</CardDescription>

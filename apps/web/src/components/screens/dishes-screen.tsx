@@ -66,7 +66,7 @@ export function DishesScreen() {
   const canteen = canteens.data?.items.find((c) => c.id === canteenId);
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader className="gap-4">
         <div className="flex flex-col gap-1.5">
           <CardTitle>{t('dishes.title')}</CardTitle>

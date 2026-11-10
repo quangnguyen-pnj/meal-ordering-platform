@@ -2,15 +2,24 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 // shadcn/ui Card. CardTitle is the page's <h1>: every screen is one card with one title.
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn('rounded-xl bg-card text-card-foreground shadow-block', className)}
-      {...props}
-    />
-  ),
-);
+// variant="page" is the screen itself: no surface of its own, the title sits on the page
+// background and the blocks inside (tables, day cards, number tiles) are the cards, so a
+// screen never shows a card inside a card and a phone gets its full width.
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { variant?: 'default' | 'page' }
+>(({ className, variant = 'default', ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      variant === 'page'
+        ? 'text-card-foreground [&>*]:!px-0 [&>:first-child]:!pt-0'
+        : 'rounded-xl bg-card text-card-foreground shadow-block',
+      className,
+    )}
+    {...props}
+  />
+));
 Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

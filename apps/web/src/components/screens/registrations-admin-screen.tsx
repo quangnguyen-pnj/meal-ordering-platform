@@ -93,7 +93,7 @@ export function RegistrationsAdminScreen() {
   const week = weekStart ?? home ?? null;
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1.5">
@@ -783,7 +783,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
           />
 
           {editable && dirty ? (
-            <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 bg-card px-4 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
+            <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-raised">
               <p className="flex flex-wrap items-center gap-x-2 text-sm" role="status">
                 <span>
                   {invalidCount > 0

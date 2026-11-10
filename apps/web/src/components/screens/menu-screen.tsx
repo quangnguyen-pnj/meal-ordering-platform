@@ -139,7 +139,7 @@ export function MenuScreen() {
   if (canteens.data.items.length === 0) return <Alert>{t('menu.noCanteen')}</Alert>;
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader className="gap-4">
         <CardTitle>{t('menu.title')}</CardTitle>
         <div className="flex flex-wrap items-end gap-4">

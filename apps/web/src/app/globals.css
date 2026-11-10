@@ -7,6 +7,8 @@
     --background: 0 0% 100%;
     /* Page behind the cards: a faint warm grey so white blocks and their shadows stand out. */
     --canvas: 30 20% 97%;
+    /* Text fields: white on the page background, tinted on white surfaces (see ui/field.ts). */
+    --field: 0 0% 100%;
     /* Text: a warm near-black and a warm grey that keeps 4.5:1 on white and on the canvas. */
     --foreground: 24 14% 13%;
     --card: 0 0% 100%;
@@ -32,6 +34,12 @@
     --input: 30 12% 76%;
     --ring: 24 80% 38%;
     --radius: 0.5rem;
+  }
+
+  .bg-card,
+  [role='dialog'],
+  [role='alertdialog'] {
+    --field: 30 12% 97%;
   }
 
   body {

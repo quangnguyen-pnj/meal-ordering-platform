@@ -112,7 +112,7 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
   const refresh = () => qc.invalidateQueries({ queryKey: [KEY] });
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('adminToday.title')}</CardTitle>
         <CardDescription>
@@ -121,6 +121,25 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        {/* What matters first: today's numbers and the attendance sync; the filters sit right above the list they filter. */}
+        {view ? (
+          <>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Stat label={t('adminToday.summary.withMeals')} value={view.summary.withMeals} />
+              <Stat label={t('adminToday.summary.present')} value={view.summary.present} />
+              <Stat
+                label={t('adminToday.summary.provisional')}
+                value={view.summary.provisionallyCancelled}
+                tone={view.summary.provisionallyCancelled > 0 ? 'destructive' : undefined}
+              />
+              <Stat label={t('adminToday.summary.counted')} value={view.summary.countedMeals} />
+              <Stat label={t('adminToday.summary.forecast')} value={view.summary.forecastMeals} />
+            </dl>
+
+            <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
+          </>
+        ) : null}
+
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex w-full flex-col gap-2 sm:w-44">
             <Label htmlFor="today-date">{t('adminToday.date')}</Label>
@@ -148,19 +167,6 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
 
         {view ? (
           <>
-            <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <Stat label={t('adminToday.summary.withMeals')} value={view.summary.withMeals} />
-              <Stat label={t('adminToday.summary.present')} value={view.summary.present} />
-              <Stat
-                label={t('adminToday.summary.provisional')}
-                value={view.summary.provisionallyCancelled}
-                tone={view.summary.provisionallyCancelled > 0 ? 'destructive' : undefined}
-              />
-              <Stat label={t('adminToday.summary.counted')} value={view.summary.countedMeals} />
-              <Stat label={t('adminToday.summary.forecast')} value={view.summary.forecastMeals} />
-            </dl>
-
             <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
               <TabsList>
                 <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
@@ -242,7 +248,7 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'destructive' }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-4">
+    <div className="rounded-lg bg-card p-4 shadow-block">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd
         className={`text-xl font-semibold tabular-nums ${tone === 'destructive' ? 'text-destructive' : ''}`}
@@ -280,7 +286,7 @@ function SyncPanel({
   return (
     <section
       aria-label={t('adminToday.sync.title')}
-      className="flex flex-col gap-2 rounded-lg bg-muted/50 p-4 text-sm"
+      className="flex flex-col gap-2 rounded-lg bg-card p-4 shadow-block text-sm"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">{t('adminToday.sync.title')}</h2>

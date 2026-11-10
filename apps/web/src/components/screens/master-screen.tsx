@@ -49,7 +49,7 @@ const EDIT_LABEL: Record<Kind, string> = {
 export function MasterScreen() {
   const [kind, setKind] = useState<Kind>('canteens');
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('master.title')}</CardTitle>
         <CardDescription>{t('master.intro')}</CardDescription>

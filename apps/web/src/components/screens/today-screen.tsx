@@ -83,7 +83,7 @@ export function TodayScreen() {
   const total = Object.values(quantities).reduce((s, n) => s + n, 0);
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('today.title')}</CardTitle>
         <CardDescription>
@@ -107,7 +107,7 @@ export function TodayScreen() {
         {view && day ? (
           <>
             <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
-              <div className="rounded-lg bg-muted/50 p-4">
+              <div className="rounded-lg bg-card p-4 shadow-block">
                 <dt className="text-xs text-muted-foreground">{t('today.forecastLabel')}</dt>
                 <dd className="text-xl font-semibold tabular-nums">
                   {day.forecastTotal === null
@@ -115,7 +115,7 @@ export function TodayScreen() {
                     : t('today.meals', { count: day.forecastTotal })}
                 </dd>
               </div>
-              <div className="rounded-lg bg-muted/50 p-4">
+              <div className="rounded-lg bg-card p-4 shadow-block">
                 <dt className="text-xs text-muted-foreground">{t('today.actualLabel')}</dt>
                 <dd className="text-xl font-semibold tabular-nums">
                   {t('today.meals', { count: day.actualTotal })}
@@ -194,7 +194,7 @@ function AttendanceBlock({ attendance }: { attendance: MyAttendanceView }) {
   return (
     <section
       aria-label={t('today.attendanceTitle')}
-      className="flex max-w-xl flex-col gap-1 rounded-lg bg-muted/50 p-4 text-sm"
+      className="flex max-w-xl flex-col gap-1 rounded-lg bg-card p-4 shadow-block text-sm"
     >
       <h2 className="font-medium">{t('today.attendanceTitle')}</h2>
       <p

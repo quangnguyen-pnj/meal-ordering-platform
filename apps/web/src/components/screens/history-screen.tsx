@@ -46,7 +46,7 @@ export function HistoryScreen() {
     data && setRange({ from: addDays(data.from, days), to: addDays(data.to, days) });
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('history.title')}</CardTitle>
         <CardDescription>{t('history.intro')}</CardDescription>
