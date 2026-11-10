@@ -716,7 +716,7 @@ function DishTypes() {
                   onChange={(e) => setEditing({ ...editing, color: e.target.value })}
                 />
               </div>
-              <p className="text-sm">
+              <p className="text-xs mt-1">
                 {t('dishes.types.preview')}:{' '}
                 {validColor ? (
                   <DishName
@@ -726,19 +726,21 @@ function DishTypes() {
                 ) : null}
               </p>
             </fieldset>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="type-order">{t('dishes.types.sortOrder')}</Label>
-                <Input
-                  id="type-order"
-                  inputMode="numeric"
-                  value={editing.sortOrder}
-                  onChange={(e) => setEditing({ ...editing, sortOrder: e.target.value })}
-                />
-              </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="type-order">{t('dishes.types.sortOrder')}</Label>
+              <Input
+                id="type-order"
+                inputMode="numeric"
+                value={editing.sortOrder}
+                onChange={(e) => setEditing({ ...editing, sortOrder: e.target.value })}
+              />
+            </div>
+
+            <div className="flex justify-between items-center">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="type-min">
-                  {t('dishes.types.perDay')}: {t('dishes.types.minPerDay')}
+                  {t('dishes.types.perDay')} ({t('dishes.types.minPerDay')})
                 </Label>
                 <Input
                   id="type-min"
@@ -751,7 +753,7 @@ function DishTypes() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="type-max">
-                  {t('dishes.types.perDay')}: {t('dishes.types.maxPerDay')}
+                  {t('dishes.types.perDay')} ({t('dishes.types.maxPerDay')})
                 </Label>
                 <Input
                   id="type-max"
@@ -763,16 +765,22 @@ function DishTypes() {
                 />
               </div>
             </div>
+
             {editing.id ? (
-              <label className="flex min-h-11 items-center gap-2 text-sm">
+              <label className="flex items-start min-h-11 gap-2 ">
                 <Checkbox
                   checked={editing.active}
                   onCheckedChange={(v) => setEditing({ ...editing, active: v === true })}
                 />
-                {t('common.active')}
-                <span className="text-muted-foreground">· {t('dishes.types.inactiveHint')}</span>
+                <span className="flex flex-col text-sm gap-0.5">
+                  {t('common.active')}
+                  <span className="text-xs text-muted-foreground">
+                    {t('dishes.types.inactiveHint')}
+                  </span>
+                </span>
               </label>
             ) : null}
+
             {save.error ? (
               <Alert variant="destructive">
                 {save.error instanceof ApiError && save.error.code === 'CONFLICT'
@@ -780,6 +788,7 @@ function DishTypes() {
                   : apiErrorText(save.error)}
               </Alert>
             ) : null}
+
             <DialogActions
               pending={save.isPending}
               disabled={
