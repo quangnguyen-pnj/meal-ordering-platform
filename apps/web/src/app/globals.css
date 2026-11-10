@@ -18,10 +18,13 @@
     --primary: 24 80% 38%;
     --primary-foreground: 0 0% 100%;
     /* Greys on the page background: darker than on white, or they melt into the canvas. White
-       surfaces set the lighter ones below. Muted text keeps 4.5:1 on each. */
+       surfaces set the lighter ones below. Muted text keeps 4.5:1 on each.
+       --muted is a 25% wash on the page, so it never gets heavier than the canvas it sits on.
+       Because it carries its own alpha, an opacity modifier (bg-muted/50) is invalid on the page:
+       use plain bg-muted there. Inside white surfaces --muted is opaque and modifiers work. */
     --secondary: 30 16% 91%;
     --secondary-foreground: 24 14% 13%;
-    --muted: 30 14% 91.5%;
+    --muted: 30 14% 91.5% / 25%;
     --muted-foreground: 25 8% 40%;
     --accent: 30 20% 90%;
     --accent-foreground: 24 14% 13%;
