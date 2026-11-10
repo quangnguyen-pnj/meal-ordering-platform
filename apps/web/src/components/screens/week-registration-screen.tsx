@@ -2,7 +2,7 @@
 
 import type { MyRegistrationWeekView, SaveRegistrationResult } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Clock, Lock, UtensilsCrossed } from 'lucide-react';
+import { CalendarClock, Clock, Lock, Save, Undo2, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -155,9 +155,11 @@ export function WeekRegistrationScreen() {
             disabled={changed.length === 0 || save.isPending}
             onClick={() => setDraft(draftFromDays(days))}
           >
+            <Undo2 className="h-4 w-4" aria-hidden />
             {t('week.discard')}
           </Button>
           <Button disabled={changed.length === 0 || save.isPending} onClick={() => save.mutate()}>
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? t('common.saving') : t('week.save')}
           </Button>
         </div>

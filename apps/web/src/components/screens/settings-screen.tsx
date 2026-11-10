@@ -1,5 +1,6 @@
 'use client';
 
+import { RotateCcw, Save, Undo2 } from 'lucide-react';
 import { SETTING_DEFINITIONS, type SettingKey, type WeekdayTime } from '@meal/shared';
 import type { SettingView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -209,12 +210,14 @@ export function SettingsScreen() {
                 setErrors({});
               }}
             >
+              <Undo2 className="h-4 w-4" aria-hidden />
               {t('settings.discard')}
             </Button>
             <Button
               disabled={save.isPending || invalidKeys.length > 0}
               onClick={() => save.mutate(changedKeys)}
             >
+              <Save className="h-4 w-4" aria-hidden />
               {save.isPending
                 ? t('common.saving')
                 : t('settings.saveAll', { count: changedKeys.length })}
@@ -326,7 +329,8 @@ function SettingRow({
             </div>
           )}
           {!isDefault ? (
-            <Button variant="ghost" size="sm" onClick={() => onChange(setting.defaultValue)}>
+            <Button variant="tertiary" size="sm" onClick={() => onChange(setting.defaultValue)}>
+              <RotateCcw className="h-4 w-4" aria-hidden />
               {t('settings.useDefault')}
             </Button>
           ) : null}
@@ -398,6 +402,7 @@ function SupplierCard() {
               />
             </div>
             <Button type="submit" disabled={!draft || save.isPending}>
+              <Save className="h-4 w-4" aria-hidden />
               {save.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </form>

@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,10 @@ export default function NotLinkedPage() {
         <CardContent className="flex flex-col gap-5">
           <p className="text-sm">{t('notLinked.body')}</p>
           <Button asChild>
-            <Link href="/login">{t('notLinked.backToLogin')}</Link>
+            <Link href="/login">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              {t('notLinked.backToLogin')}
+            </Link>
           </Button>
         </CardContent>
       </Card>

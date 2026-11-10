@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { addDays } from '@meal/shared';
 import type { HistoryView } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
@@ -55,13 +56,15 @@ export function HistoryScreen() {
         {data ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => shift(-28)}>
-              ‹ {t('history.earlier')}
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              {t('history.earlier')}
             </Button>
             <span className="text-sm font-medium">
               {t('history.range', { from: formatDate(data.from), to: formatDate(data.to) })}
             </span>
             <Button variant="outline" size="sm" disabled={range === null} onClick={() => shift(28)}>
-              {t('history.later')} ›
+              {t('history.later')}
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </Button>
           </div>
         ) : null}

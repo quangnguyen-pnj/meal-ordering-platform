@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowLeft, KeyRound } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChangePinSchema, PinSchema } from '@meal/shared';
 import { useMutation } from '@tanstack/react-query';
@@ -120,10 +121,12 @@ export function ChangePinForm({ forced }: { forced: boolean }) {
 
       <div className="flex gap-3">
         <Button type="submit" disabled={change.isPending}>
+          <KeyRound className="h-4 w-4" aria-hidden />
           {change.isPending ? t('changePin.submitting') : t('changePin.submit')}
         </Button>
         {forced ? null : (
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
+          <Button type="button" variant="tertiary" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             {t('changePin.cancel')}
           </Button>
         )}

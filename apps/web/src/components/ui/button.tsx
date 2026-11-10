@@ -18,6 +18,9 @@ const buttonVariants = cva(
         outline: 'bg-secondary text-secondary-foreground hover:bg-accent',
         secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
+        // A light action (Sửa, Mở hết, Bỏ qua…): brand-coloured text with an icon, so it reads as a
+        // button, not as plain text, without the weight of a filled button.
+        tertiary: 'text-primary hover:bg-primary/10',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

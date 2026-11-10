@@ -7,7 +7,15 @@ import type {
   ResetPinResult,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, KeyRound, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
+import {
+  Building2,
+  Check,
+  FilterX,
+  KeyRound,
+  MoreHorizontal,
+  Save,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
@@ -366,9 +374,11 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
                   setOffset(0);
                 }}
               >
+                <FilterX className="h-4 w-4" aria-hidden />
                 {t('employees.clearFilters')}
               </Button>
               <Button onClick={() => setFiltersOpen(false)}>
+                <Check className="h-4 w-4" aria-hidden />
                 {list.data
                   ? t('employees.showResults', {
                       count: new Intl.NumberFormat('vi-VN').format(total),
@@ -593,6 +603,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
                 (overrideFloor || null) === (overrideFor?.employee.floorOverrideId ?? null)
               }
             >
+              <Save className="h-4 w-4" aria-hidden />
               {setOverride.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </div>

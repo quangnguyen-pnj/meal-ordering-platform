@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { Download, FileUp } from 'lucide-react';
+import { Check, Download, FileUp } from 'lucide-react';
 import { useState } from 'react';
 import { AppDialog } from '@/components/app-dialog';
 import { Alert } from '@/components/ui/alert';
@@ -94,6 +94,7 @@ export function ExcelImportDialog<R extends ImportOutcome>({
           </Button>
           {summary?.applyLabel && result?.status === 'PREVIEW' && file ? (
             <Button disabled={run.isPending} onClick={() => run.mutate({ f: file, apply: true })}>
+              <Check className="h-4 w-4" aria-hidden />
               {run.isPending ? t('common.saving') : summary.applyLabel}
             </Button>
           ) : null}

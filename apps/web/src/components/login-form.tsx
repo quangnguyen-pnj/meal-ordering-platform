@@ -1,5 +1,6 @@
 'use client';
 
+import { LogIn } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PinLoginSchema, type PinLoginInput } from '@meal/shared';
 import type { SessionUser } from '@/lib/api-types';
@@ -60,7 +61,10 @@ export function LoginForm() {
       <div className="flex flex-col gap-1.5">
         <Button asChild variant="outline" className="w-full">
           {/* Full navigation, not client routing: the API answers with a redirect to Microsoft. */}
-          <a href="/api/auth/entra/login">{t('login.microsoft')}</a>
+          <a href="/api/auth/entra/login">
+            <LogIn className="h-4 w-4" aria-hidden />
+            {t('login.microsoft')}
+          </a>
         </Button>
         <p className="text-center text-xs text-muted-foreground">{t('login.microsoftHint')}</p>
       </div>
@@ -117,6 +121,7 @@ export function LoginForm() {
         ) : null}
 
         <Button type="submit" disabled={login.isPending}>
+          <LogIn className="h-4 w-4" aria-hidden />
           {login.isPending ? t('login.submitting') : t('login.submit')}
         </Button>
       </form>

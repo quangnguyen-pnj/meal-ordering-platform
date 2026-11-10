@@ -8,7 +8,20 @@ import type {
   OrgUnitView,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  ListTree,
+  RefreshCw,
+  Upload,
+  UserMinus,
+  UserPlus,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -88,6 +101,7 @@ export function OrgScreen() {
             <CardDescription>{t('org.intro')}</CardDescription>
           </div>
           <Button variant="outline" disabled={sync.isPending} onClick={() => sync.mutate()}>
+            <RefreshCw className="h-4 w-4" aria-hidden />
             {sync.isPending ? t('org.syncing') : t('org.sync')}
           </Button>
         </div>
@@ -310,16 +324,23 @@ function TreeTab() {
                 aria-pressed={view === v}
                 onClick={() => setView(v)}
               >
+                {v === 'tree' ? (
+                  <ListTree className="h-4 w-4" aria-hidden />
+                ) : (
+                  <UtensilsCrossed className="h-4 w-4" aria-hidden />
+                )}
                 {v === 'tree' ? t('org.viewTree') : t('org.viewMealUnits')}
               </Button>
             ))}
           </div>
           {view === 'tree' ? (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setExpanded('all')}>
+              <Button variant="tertiary" size="sm" onClick={() => setExpanded('all')}>
+                <ChevronsUpDown className="h-4 w-4" aria-hidden />
                 {t('org.expandAll')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setExpanded(new Set())}>
+              <Button variant="tertiary" size="sm" onClick={() => setExpanded(new Set())}>
+                <ChevronsDownUp className="h-4 w-4" aria-hidden />
                 {t('org.collapseAll')}
               </Button>
             </>
@@ -400,7 +421,7 @@ function MealUnitList({
               <TableCell>
                 <button
                   type="button"
-                  className="min-h-11 text-left font-medium underline-offset-4 hover:underline"
+                  className="min-h-11 text-left font-medium text-primary underline-offset-4 hover:underline"
                   onClick={() => onSelect(n.id)}
                 >
                   {n.name}
@@ -770,7 +791,8 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
                 <span className="font-mono text-xs text-muted-foreground">{a.employeeCode}</span>
               </span>
               <Button
-                variant="ghost"
+                variant="tertiary"
+                className="text-destructive hover:bg-destructive/10"
                 size="sm"
                 onClick={async () => {
                   const ok = await confirm({
@@ -782,6 +804,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
                   if (ok) revoke.mutate(a.assignmentId);
                 }}
               >
+                <UserMinus className="h-4 w-4" aria-hidden />
                 {t('org.revoke')}
               </Button>
             </li>
@@ -824,6 +847,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
             className="self-start"
             disabled={assign.isPending || !adminPick}
           >
+            <UserPlus className="h-4 w-4" aria-hidden />
             {t('org.addDeptAdmin')}
           </Button>
         </form>
@@ -937,6 +961,7 @@ function ImportExportTab() {
             disabled={exportFile.isPending}
             onClick={() => exportFile.mutate()}
           >
+            <Download className="h-4 w-4" aria-hidden />
             {t('common.download')}
           </Button>
         </div>
@@ -968,6 +993,7 @@ function ImportExportTab() {
             }}
           />
           <Button type="submit" disabled={!file || upload.isPending}>
+            <Upload className="h-4 w-4" aria-hidden />
             {t('org.upload')}
           </Button>
         </form>
@@ -1052,6 +1078,7 @@ function ImportExportTab() {
               {result.status === 'PREVIEW' && result.changes.length > 0 ? (
                 <div>
                   <Button disabled={apply.isPending} onClick={() => apply.mutate(result.id)}>
+                    <Check className="h-4 w-4" aria-hidden />
                     {t('org.apply')}
                   </Button>
                 </div>
