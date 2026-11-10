@@ -68,10 +68,10 @@ describe('WeekRegistrationScreen week label', () => {
 });
 
 describe('WeekRegistrationScreen tabs', () => {
-  it('BR-07: before closeAt only "Đăng ký dự trù" exists and holds the steppers', async () => {
+  it('BR-07: before closeAt only "Đăng ký dự trù" can be opened and holds the steppers', async () => {
     show(week(false));
     expect(await screen.findByRole('tab', { name: 'Đăng ký dự trù' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Đăng ký thực tế' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Đăng ký thực tế' })).toBeDisabled();
     expect(screen.getAllByRole('button', { name: 'Thêm 1 suất [Mặn] Cơm gà' })).toHaveLength(2);
   });
 

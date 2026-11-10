@@ -28,7 +28,7 @@ const reply = (status: number, body?: unknown) =>
 describe('LoginForm', () => {
   it('offers Microsoft sign-in as a plain link to the API', () => {
     wrap(<LoginForm />);
-    expect(screen.getByRole('link', { name: 'Đăng nhập bằng Microsoft' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Đăng nhập bằng SSO' })).toHaveAttribute(
       'href',
       '/api/auth/entra/login',
     );

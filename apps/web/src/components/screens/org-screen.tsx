@@ -297,7 +297,7 @@ function TreeTab() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Input
             className="w-full sm:max-w-xs"
             type="search"
@@ -309,7 +309,7 @@ function TreeTab() {
           <div
             role="group"
             aria-label={t('org.viewLabel')}
-            className="flex w-full gap-1 rounded-md bg-muted p-1 sm:w-auto"
+            className="flex w-full items-center gap-1 rounded-md bg-muted p-1 sm:w-auto"
           >
             {(['tree', 'mealUnits'] as const).map((v) => (
               <Button
@@ -334,6 +334,7 @@ function TreeTab() {
               </Button>
             ))}
           </div>
+
           {view === 'tree' ? (
             <>
               <Button variant="tertiary" size="sm" onClick={() => setExpanded('all')}>
@@ -347,6 +348,7 @@ function TreeTab() {
             </>
           ) : null}
         </div>
+
         {view === 'tree' ? (
           <ul className="rounded-lg bg-card p-2 shadow-block">
             {(children.get(null) ?? []).map((n) => renderNode(n, 0))}
@@ -361,6 +363,7 @@ function TreeTab() {
           />
         )}
       </div>
+
       <div className="lg:sticky lg:top-4 lg:self-start">
         {selected ? (
           <NodeDetail key={selected.id} node={selected} idx={idx} />
