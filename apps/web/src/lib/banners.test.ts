@@ -97,6 +97,6 @@ describe('banners', () => {
       'Lấy dữ liệu chấm công ngày 01/03/2027 từ DMP thất bại lúc 08:05. Hệ thống chưa hủy suất ăn nào; hãy chạy lại đồng bộ.',
     );
     expect(failed!.action).toEqual({ href: '/admin/today', label: 'Mở Hôm nay (quản trị)' });
-    expect(held!.message).toContain('chỉ 34/74 người có suất ăn đã chấm công');
+    expect(held!.message).toContain('chỉ 34/74 người có suất đã chấm công');
   });
 });

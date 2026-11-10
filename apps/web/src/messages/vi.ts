@@ -130,9 +130,9 @@ export const vi = {
       'Lấy dữ liệu chấm công ngày {date} từ DMP thất bại lúc {at}. Hệ thống chưa hủy suất ăn nào; hãy chạy lại đồng bộ.',
     attendanceCutoffHeld: {
       HELD_SYNC_FAILED:
-        'Ngày {date}: chưa có dữ liệu chấm công nên hệ thống không hủy tạm thời suất ăn nào lúc chốt chấm công. Hãy chạy lại đồng bộ hoặc sửa từng suất.',
+        'Ngày {date}: chưa có dữ liệu chấm công nên chưa hủy suất nào. Hãy chạy lại đồng bộ hoặc sửa từng suất.',
       HELD_TOO_FEW_PRESENT:
-        'Ngày {date}: chỉ {present}/{total} người có suất ăn đã chấm công, dưới ngưỡng an toàn, nên hệ thống không hủy hàng loạt. Hãy kiểm tra và chạy lại đồng bộ hoặc sửa từng suất.',
+        'Ngày {date}: chỉ {present}/{total} người có suất đã chấm công (dưới ngưỡng an toàn) nên chưa hủy hàng loạt. Hãy kiểm tra, chạy lại đồng bộ hoặc sửa từng suất.',
     },
     openAdminToday: 'Mở Hôm nay (quản trị)',
     reselect: 'Chọn lại món',

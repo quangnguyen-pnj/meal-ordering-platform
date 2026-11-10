@@ -295,8 +295,8 @@ function TreeTab() {
   const selected = selectedId ? byId.get(selectedId) : undefined;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
-      <div className="flex flex-col gap-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-wrap gap-3">
           <Input
             className="w-full sm:max-w-xs"
@@ -309,7 +309,7 @@ function TreeTab() {
           <div
             role="group"
             aria-label={t('org.viewLabel')}
-            className="flex gap-1 rounded-md bg-muted p-1"
+            className="flex w-full gap-1 rounded-md bg-muted p-1 sm:w-auto"
           >
             {(['tree', 'mealUnits'] as const).map((v) => (
               <Button
@@ -317,7 +317,8 @@ function TreeTab() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  'h-8 text-muted-foreground hover:bg-background/60',
+                  // Long labels wrap on a phone instead of running out of the box.
+                  'h-auto min-h-8 flex-1 whitespace-normal py-1 leading-tight text-muted-foreground hover:bg-background/60 sm:flex-none sm:whitespace-nowrap',
                   view === v &&
                     'bg-background font-medium text-foreground shadow-sm hover:bg-background',
                 )}

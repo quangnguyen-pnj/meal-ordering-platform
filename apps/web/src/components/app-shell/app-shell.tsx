@@ -263,9 +263,10 @@ export function AppShell({
         >
           <AccountMenu user={user} onSignOut={signOut} />
         </div>
-        <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8 print:p-0">
-          {/* Paper forms (/admin/print) print the page content only. */}
-          <div className="print:hidden">
+        {/* The sticky account bar above already gives the page its top space on desktop. */}
+        <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:px-8 md:pb-8 md:pt-3 print:p-0">
+          {/* Paper forms (/admin/print) print the page content only. Takes no gap when there is no banner. */}
+          <div className="empty:hidden print:hidden">
             <BannerArea userId={user.id} initial={banners} />
           </div>
           {children}

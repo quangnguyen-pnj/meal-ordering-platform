@@ -139,7 +139,7 @@ export function WeekRegistrationScreen() {
         ))}
       </div>
 
-      <div className="sticky bottom-0 z-20 -mx-5 flex flex-wrap items-center justify-between gap-3 bg-card px-5 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
+      <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 bg-card px-4 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
         <div className="text-sm">
           <p>
             <span className="text-base font-semibold tabular-nums">{total}</span>{' '}

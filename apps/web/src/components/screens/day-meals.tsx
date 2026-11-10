@@ -7,7 +7,7 @@ import { DishName } from '@/components/dish-name';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
-import { formatVnDateTime, formatVnTime } from '@/lib/utils';
+import { cn, formatVnDateTime, formatVnTime } from '@/lib/utils';
 import { t, vi } from '@/messages';
 
 export const weekdayName = (date: string) =>
@@ -67,11 +67,19 @@ export function DayMeals({
         </Alert>
       ))}
 
-      <ul className="flex flex-col gap-3">
+      {/* Each dish is one band from name to stepper, tinted once chosen, so the eye joins them. */}
+      <ul className="-mx-2 flex flex-col gap-1">
         {day.items.map((item) => {
           const value = quantities[item.menuItemId] ?? 0;
           return (
-            <li key={item.menuItemId} className="flex items-center justify-between gap-3">
+            <li
+              key={item.menuItemId}
+              className={cn(
+                'flex items-center justify-between gap-3 rounded-md px-2 py-1 transition-colors',
+                !locked && 'hover:bg-muted/60',
+                value > 0 && 'bg-primary/5 hover:bg-primary/10',
+              )}
+            >
               <div className="min-w-0">
                 <p className="text-sm font-medium">
                   <DishName type={item.type} displayName={item.displayName} />

@@ -783,7 +783,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
           />
 
           {editable && dirty ? (
-            <div className="sticky bottom-0 z-20 -mx-5 flex flex-wrap items-center justify-between gap-3 bg-card px-5 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
+            <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 bg-card px-4 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
               <p className="flex flex-wrap items-center gap-x-2 text-sm" role="status">
                 <span>
                   {invalidCount > 0
