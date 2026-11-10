@@ -30,7 +30,7 @@ import { ForecastWeekTable } from './forecast-week-table';
 
 /** A short fact with an icon, in place of a sentence. */
 const chip =
-  'inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0';
+  'inline-flex items-center gap-1.5 text-xs font-semibold rounded-full bg-muted px-3 py-1 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0';
 
 const weekUrl = (weekStart: string | null) =>
   `/registrations/me/week${weekStart ? `?weekStart=${weekStart}` : ''}`;
@@ -116,10 +116,10 @@ export function WeekRegistrationScreen() {
             className="flex flex-col gap-4 rounded-lg bg-card p-4 shadow-block sm:p-5"
           >
             <header className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-medium">
+              <h2 className="font-medium flex items-center gap-2">
                 {weekdayName(day.date)}{' '}
-                <span className="font-normal text-muted-foreground">
-                  {formatDayMonth(day.date)}
+                <span className="font-medium text-sm text-muted-foreground">
+                  ( {formatDayMonth(day.date)} )
                 </span>
               </h2>
               <DayWindowBadge day={day} />
@@ -233,9 +233,9 @@ export function WeekRegistrationScreen() {
               <TabsList aria-label={t('week.tabs.label')}>
                 <TabsTrigger value="forecast">{t('week.tabs.forecast')}</TabsTrigger>
                 {/* Hidden until the forecast is taken (product owner, 2026-10-27). */}
-                {forecastTaken ? (
-                  <TabsTrigger value="actual">{t('week.tabs.actual')}</TabsTrigger>
-                ) : null}
+                <TabsTrigger value="actual" disabled={!forecastTaken}>
+                  {t('week.tabs.actual')}
+                </TabsTrigger>
               </TabsList>
               <TabsContent
                 value="forecast"
