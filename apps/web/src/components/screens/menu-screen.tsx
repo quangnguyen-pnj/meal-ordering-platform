@@ -35,6 +35,8 @@ import {
   CirclePower,
   GripVertical,
   Plus,
+  Save,
+  Send,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -137,7 +139,7 @@ export function MenuScreen() {
   if (canteens.data.items.length === 0) return <Alert>{t('menu.noCanteen')}</Alert>;
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader className="gap-4">
         <CardTitle>{t('menu.title')}</CardTitle>
         <div className="flex flex-wrap items-end gap-4">
@@ -483,6 +485,7 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
             disabled={save.isPending || publish.isPending || (!dirty && view.id !== null)}
             onClick={() => save.mutate()}
           >
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending
               ? t('common.saving')
               : published
@@ -513,6 +516,7 @@ function WeekEditor({ canteenId, weekStart }: { canteenId: string; weekStart: st
               aria-describedby={gaps.length > 0 ? 'publish-hint' : undefined}
               onClick={askPublish}
             >
+              <Send className="h-4 w-4" aria-hidden />
               {publish.isPending ? t('menu.publishing') : t('menu.publish')}
             </Button>
           ) : null}
@@ -542,7 +546,7 @@ function Library({ dishes, desserts }: { dishes: DishView[]; desserts: DessertVi
   const [q, setQ] = useState('');
   const match = (name: string) => name.toLowerCase().includes(q.trim().toLowerCase());
   return (
-    <aside className="hidden flex-col gap-4 rounded-lg bg-muted/40 p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
+    <aside className="hidden flex-col gap-4 rounded-lg bg-muted p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
       <p className="font-medium">{t('menu.library')}</p>
       <p className="text-xs text-muted-foreground">{t('menu.libraryHint')}</p>
       <Input
@@ -681,7 +685,12 @@ function DishPicker({
       onClose={onClose}
       title={title}
       className="gap-3"
-      footer={<Button onClick={onClose}>{t('common.done')}</Button>}
+      footer={
+        <Button onClick={onClose}>
+          <Check className="h-4 w-4" aria-hidden />
+          {t('common.done')}
+        </Button>
+      }
     >
       <Command className="rounded-md shadow-block">
         <CommandInput placeholder={t('menu.searchDish')} />

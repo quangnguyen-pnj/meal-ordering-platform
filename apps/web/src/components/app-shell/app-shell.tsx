@@ -178,12 +178,11 @@ export function AppShell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
-  const [_asideScrolled, setAsideScrolled] = useState(false);
   const nav = visibleNav(user.roles);
   const groups = [
     { key: 'mine', title: t('nav.groups.mine'), items: nav.mine },
     { key: 'admin', title: t('nav.groups.admin'), items: nav.admin },
-    { key: 'admin', title: 'Master Data', items: nav.masterdata },
+    { key: 'masterdata', title: 'Master Data', items: nav.masterdata },
   ].filter((g) => g.items.length > 0);
 
   async function signOut() {
@@ -245,17 +244,9 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <aside
-        onScroll={(e) => setAsideScrolled(e.currentTarget.scrollTop > 0)}
-        className="hidden bg-card shadow-block md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden"
-      >
-        {/* The app name stays put while a long menu scrolls under it. */}
-        <div
-          className={cn(
-            'sticky top-0 z-10 bg-card px-4 py-5 transition-shadow',
-            // asideScrolled && 'shadow-[0_1px_40px_hsl(var(--border))]',
-          )}
-        >
+      <aside className="hidden bg-card shadow-block md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:overflow-y-auto print:hidden">
+        {/* The app name stays put while a long menu scrolls under it (no shadow, by choice). */}
+        <div className="sticky top-0 z-10 bg-card px-4 py-5">
           <p className="text-lg font-semibold">{t('app.name')}</p>
           <p className="text-sm text-muted-foreground">{t('app.factory')}</p>
         </div>
@@ -263,18 +254,19 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Same canvas as the page so it reads as part of it; a hairline appears once content scrolls under. */}
+        {/* Same canvas as the page so it reads as part of it; a soft shadow appears once content scrolls under. */}
         <div
           className={cn(
-            'sticky top-0 z-20 hidden items-center justify-end gap-3 border-b border-transparent bg-canvas/85 px-4 py-2 backdrop-blur-md transition-colors md:flex md:px-6 print:hidden',
-            scrolled && 'border-border',
+            'sticky top-0 z-20 hidden items-center justify-end gap-3 bg-canvas/85 px-4 py-2 backdrop-blur-md transition-shadow md:flex md:px-6 print:hidden',
+            scrolled && 'shadow-[0_8px_16px_-12px_rgb(41_37_36/0.3)]',
           )}
         >
           <AccountMenu user={user} onSignOut={signOut} />
         </div>
-        <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8 print:p-0">
-          {/* Paper forms (/admin/print) print the page content only. */}
-          <div className="print:hidden">
+        {/* The sticky account bar above already gives the page its top space on desktop. */}
+        <main className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:px-8 md:pb-8 md:pt-3 print:p-0">
+          {/* Paper forms (/admin/print) print the page content only. Takes no gap when there is no banner. */}
+          <div className="empty:hidden print:hidden">
             <BannerArea userId={user.id} initial={banners} />
           </div>
           {children}

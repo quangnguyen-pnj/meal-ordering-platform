@@ -1,5 +1,6 @@
 'use client';
 
+import { Pencil, RefreshCw, Save, UserCheck } from 'lucide-react';
 import type {
   AdminTodayView,
   AttendanceRerunResult,
@@ -9,7 +10,7 @@ import type {
   TodayPresence,
   TodayRow,
 } from '@/lib/api-types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -87,7 +88,10 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
       if (orgUnitId) params.set('orgUnitId', orgUnitId);
       return api.get<AdminTodayView>(`/admin/today${params.size ? `?${params}` : ''}`);
     },
+    // A new day or unit keeps the last list on screen (dimmed) instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
+  const stale = query.isPlaceholderData;
   const orgUnits = useQuery({
     queryKey: ['/admin/registrations/org-units'],
     queryFn: () => api.get<{ items: OrgFilterOption[] }>('/admin/registrations/org-units'),
@@ -111,15 +115,34 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
   const refresh = () => qc.invalidateQueries({ queryKey: [KEY] });
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('adminToday.title')}</CardTitle>
         <CardDescription>
           {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
-          {t('adminToday.intro', { lock: view ? formatVnTime(view.lockAt) : '08:00' })}
+          {t('adminToday.intro')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        {/* What matters first: today's numbers and the attendance sync; the filters sit right above the list they filter. */}
+        {view ? (
+          <Refreshing busy={stale} className="flex flex-col gap-6">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Stat label={t('adminToday.summary.withMeals')} value={view.summary.withMeals} />
+              <Stat label={t('adminToday.summary.present')} value={view.summary.present} />
+              <Stat
+                label={t('adminToday.summary.provisional')}
+                value={view.summary.provisionallyCancelled}
+                tone={view.summary.provisionallyCancelled > 0 ? 'destructive' : undefined}
+              />
+              <Stat label={t('adminToday.summary.counted')} value={view.summary.countedMeals} />
+              <Stat label={t('adminToday.summary.forecast')} value={view.summary.forecastMeals} />
+            </dl>
+
+            <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
+          </Refreshing>
+        ) : null}
+
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex w-full flex-col gap-2 sm:w-44">
             <Label htmlFor="today-date">{t('adminToday.date')}</Label>
@@ -147,70 +170,59 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
 
         {view ? (
           <>
-            <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <Stat label={t('adminToday.summary.withMeals')} value={view.summary.withMeals} />
-              <Stat label={t('adminToday.summary.present')} value={view.summary.present} />
-              <Stat
-                label={t('adminToday.summary.provisional')}
-                value={view.summary.provisionallyCancelled}
-                tone={view.summary.provisionallyCancelled > 0 ? 'destructive' : undefined}
-              />
-              <Stat label={t('adminToday.summary.counted')} value={view.summary.countedMeals} />
-              <Stat label={t('adminToday.summary.forecast')} value={view.summary.forecastMeals} />
-            </dl>
+            <Refreshing busy={stale} className="flex flex-col gap-6">
+              <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
+                <TabsList>
+                  <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
+                  <TabsTrigger value="exceptions">
+                    {t('adminToday.tabs.exceptions', { count: exceptions.length })}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
-              <TabsList>
-                <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
-                <TabsTrigger value="exceptions">
-                  {t('adminToday.tabs.exceptions', { count: exceptions.length })}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('adminToday.empty')}</p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('common.name')}</TableHead>
-                      <TableHead>{t('adminToday.columns.meals')}</TableHead>
-                      <TableHead>{t('adminToday.columns.presence')}</TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        {t('adminToday.columns.cases')}
-                      </TableHead>
-                      <TableHead className="w-0">
-                        <span className="sr-only">{t('common.actions')}</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pageItems.map((row) => (
-                      <TodayTableRow
-                        key={row.employeeCode}
-                        row={row}
-                        view={view}
-                        onConfirm={() => setConfirmFor(row)}
-                        onEdit={() => setEditFor(row)}
-                      />
-                    ))}
-                    {shown.length === 0 ? (
+              {rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('adminToday.empty')}</p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-muted-foreground">
-                          {tab === 'exceptions' && !term
-                            ? t('adminToday.noExceptions')
-                            : t('adminToday.noMatch')}
-                        </TableCell>
+                        <TableHead>{t('common.name')}</TableHead>
+                        <TableHead>{t('adminToday.columns.meals')}</TableHead>
+                        <TableHead>{t('adminToday.columns.presence')}</TableHead>
+                        <TableHead className="hidden lg:table-cell">
+                          {t('adminToday.columns.cases')}
+                        </TableHead>
+                        <TableHead className="w-0">
+                          <span className="sr-only">{t('common.actions')}</span>
+                        </TableHead>
                       </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-                <Pagination {...pagination} />
-              </>
-            )}
+                    </TableHeader>
+                    <TableBody>
+                      {pageItems.map((row) => (
+                        <TodayTableRow
+                          key={row.employeeCode}
+                          row={row}
+                          view={view}
+                          onConfirm={() => setConfirmFor(row)}
+                          onEdit={() => setEditFor(row)}
+                        />
+                      ))}
+                      {shown.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-muted-foreground">
+                            {tab === 'exceptions' && !term
+                              ? t('adminToday.noExceptions')
+                              : t('adminToday.noMatch')}
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </TableBody>
+                  </Table>
+                  <Pagination {...pagination} />
+                </>
+              )}
+            </Refreshing>
 
             <ConfirmPresenceDialog
               row={confirmFor}
@@ -279,7 +291,7 @@ function SyncPanel({
   return (
     <section
       aria-label={t('adminToday.sync.title')}
-      className="flex flex-col gap-2 rounded-lg bg-card p-4 text-sm shadow-block"
+      className="flex flex-col gap-2 rounded-lg bg-card p-4 shadow-block text-sm"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">{t('adminToday.sync.title')}</h2>
@@ -290,6 +302,7 @@ function SyncPanel({
             disabled={rerun.isPending}
             onClick={() => rerun.mutate()}
           >
+            <RefreshCw className="h-4 w-4" aria-hidden />
             {rerun.isPending ? t('adminToday.sync.rerunning') : t('adminToday.sync.rerun')}
           </Button>
         ) : null}
@@ -416,11 +429,13 @@ function TodayTableRow({
         <div className="flex flex-col gap-1 sm:flex-row">
           {canConfirm ? (
             <Button size="sm" variant="outline" onClick={onConfirm}>
+              <UserCheck className="h-4 w-4" aria-hidden />
               {t('adminToday.confirm')}
             </Button>
           ) : null}
           {canEdit ? (
-            <Button size="sm" variant="ghost" onClick={onEdit}>
+            <Button size="sm" variant="tertiary" onClick={onEdit}>
+              <Pencil className="h-4 w-4" aria-hidden />
               {t('adminToday.edit')}
             </Button>
           ) : null}
@@ -470,6 +485,7 @@ function ConfirmPresenceDialog({
             {t('common.cancel')}
           </Button>
           <Button form="presence-form" type="submit" disabled={confirm.isPending}>
+            <UserCheck className="h-4 w-4" aria-hidden />
             {confirm.isPending ? t('common.saving') : t('adminToday.confirm')}
           </Button>
         </>
@@ -551,6 +567,7 @@ function EditMealsDialog({
             {t('common.cancel')}
           </Button>
           <Button form="meals-form" type="submit" disabled={!valid || save.isPending}>
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? t('common.saving') : t('common.save')}
           </Button>
         </>

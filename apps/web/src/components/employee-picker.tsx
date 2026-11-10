@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronsUpDown, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { fieldSurface } from '@/components/ui/field';
 import {
   Command,
   CommandEmpty,
@@ -58,10 +59,11 @@ export function EmployeePicker({
           <Button
             id={id}
             type="button"
-            variant="outline"
+            variant="ghost"
             role="combobox"
             aria-expanded={open}
             className={cn(
+              fieldSurface,
               'h-auto min-h-11 w-full justify-between px-3 py-1.5 text-left font-normal',
               !value && 'text-muted-foreground',
             )}

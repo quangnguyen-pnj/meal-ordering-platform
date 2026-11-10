@@ -4,16 +4,17 @@ import { cn } from '@/lib/utils';
 
 // shadcn/ui Badge plus "success" and "warning" for statuses (published, draft, active).
 const badgeVariants = cva(
-  'inline-flex items-center whitespace-nowrap rounded-md border px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0',
   {
+    // A tinted fill and strong text tell the statuses apart; no borders.
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground shadow',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-destructive/40 bg-destructive/10 text-destructive',
-        outline: 'border-border text-muted-foreground',
-        success: 'border-transparent bg-success/10 text-success',
-        warning: 'border-warning/50 bg-warning/15 text-foreground',
+        default: 'bg-primary text-primary-foreground',
+        secondary: 'bg-secondary text-secondary-foreground',
+        destructive: 'bg-destructive/10 text-destructive',
+        outline: 'bg-muted text-muted-foreground',
+        success: 'bg-success/10 text-success',
+        warning: 'bg-warning/20 text-foreground',
       },
     },
     defaultVariants: { variant: 'secondary' },

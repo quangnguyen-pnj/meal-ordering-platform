@@ -31,6 +31,12 @@ export function formatDate(date: string): string {
   return `${d}/${m}/${y}`;
 }
 
+/** dd/MM for a YYYY-MM-DD calendar date, where the year is already clear (a week's day cards). */
+export function formatDayMonth(date: string): string {
+  const [, m, d] = date.split('-');
+  return `${d}/${m}`;
+}
+
 /** "26/10 – 01/11/2026" for the Monday YYYY-MM-DD of a week (Monday to Sunday). */
 export function formatWeekRange(weekStart: string): string {
   const end = addDays(weekStart, 6);

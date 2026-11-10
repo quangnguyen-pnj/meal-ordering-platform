@@ -1,11 +1,10 @@
 'use client';
 
 import { addDays } from '@meal/shared';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatWeekNumber, formatWeekRange } from '@/lib/utils';
 import { t } from '@/messages';
-import { Separator } from './ui/separator';
 
 /** Which week this is relative to the current one, or null further away. */
 function relativeWeekLabel(weekStart: string, currentWeekStart?: string): string | null {
@@ -33,13 +32,16 @@ export function WeekNav({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {homeWeekStart && homeWeekStart !== weekStart ? (
-        <>
-          <Button variant="ghost" size="sm" onClick={() => onChange(homeWeekStart)}>
-            {t('menu.backToUpcoming')}
-          </Button>
-
-          <Separator orientation="vertical" className="h-5" />
-        </>
+        // Spacing, not a divider line, sets "back" apart from the week arrows.
+        <Button
+          variant="tertiary"
+          size="sm"
+          className="mr-2"
+          onClick={() => onChange(homeWeekStart)}
+        >
+          <Undo2 className="h-4 w-4" aria-hidden />
+          {t('menu.backToUpcoming')}
+        </Button>
       ) : null}
 
       <Button

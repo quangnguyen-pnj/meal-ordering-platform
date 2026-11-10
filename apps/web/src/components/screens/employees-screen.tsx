@@ -7,7 +7,15 @@ import type {
   ResetPinResult,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, KeyRound, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
+import {
+  Building2,
+  Check,
+  FilterX,
+  KeyRound,
+  MoreHorizontal,
+  Save,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
@@ -45,7 +53,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -310,7 +318,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
   );
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('employees.title')}</CardTitle>
         <CardDescription>{t('employees.intro')}</CardDescription>
@@ -366,9 +374,11 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
                   setOffset(0);
                 }}
               >
+                <FilterX className="h-4 w-4" aria-hidden />
                 {t('employees.clearFilters')}
               </Button>
               <Button onClick={() => setFiltersOpen(false)}>
+                <Check className="h-4 w-4" aria-hidden />
                 {list.data
                   ? t('employees.showResults', {
                       count: new Intl.NumberFormat('vi-VN').format(total),
@@ -388,7 +398,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
         {list.isLoading ? (
           <LoadingRows rows={8} />
         ) : (
-          <>
+          <Refreshing busy={list.isPlaceholderData} className="flex flex-col gap-6">
             {/* Phones: one card per employee. */}
             <ul className="flex flex-col gap-3 md:hidden">
               {items.map((e) => (
@@ -496,11 +506,11 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
               </TableBody>
             </Table>
             {total === 0 ? (
-              <p className="rounded-lg bg-muted/50 p-8 text-center text-sm text-muted-foreground">
+              <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-foreground">
                 {t('employees.empty')}
               </p>
             ) : null}
-          </>
+          </Refreshing>
         )}
 
         <Pagination
@@ -593,6 +603,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
                 (overrideFloor || null) === (overrideFor?.employee.floorOverrideId ?? null)
               }
             >
+              <Save className="h-4 w-4" aria-hidden />
               {setOverride.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </div>

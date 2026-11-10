@@ -8,7 +8,20 @@ import type {
   OrgUnitView,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  ListTree,
+  RefreshCw,
+  Upload,
+  UserMinus,
+  UserPlus,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -80,7 +93,7 @@ export function OrgScreen() {
   });
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
@@ -88,6 +101,7 @@ export function OrgScreen() {
             <CardDescription>{t('org.intro')}</CardDescription>
           </div>
           <Button variant="outline" disabled={sync.isPending} onClick={() => sync.mutate()}>
+            <RefreshCw className="h-4 w-4" aria-hidden />
             {sync.isPending ? t('org.syncing') : t('org.sync')}
           </Button>
         </div>
@@ -281,9 +295,9 @@ function TreeTab() {
   const selected = selectedId ? byId.get(selectedId) : undefined;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Input
             className="w-full sm:max-w-xs"
             type="search"
@@ -295,32 +309,46 @@ function TreeTab() {
           <div
             role="group"
             aria-label={t('org.viewLabel')}
-            className="flex rounded-md border p-0.5 gap-1"
+            className="flex w-full items-center gap-1 rounded-md bg-muted p-1 sm:w-auto"
           >
             {(['tree', 'mealUnits'] as const).map((v) => (
               <Button
                 key={v}
                 variant="ghost"
                 size="sm"
-                className={cn(view === v && 'bg-accent font-medium')}
+                className={cn(
+                  // Long labels wrap on a phone instead of running out of the box.
+                  'h-auto min-h-8 flex-1 whitespace-normal py-1 leading-tight text-muted-foreground hover:bg-background/60 sm:flex-none sm:whitespace-nowrap',
+                  view === v &&
+                    'bg-background font-medium text-foreground shadow-sm hover:bg-background',
+                )}
                 aria-pressed={view === v}
                 onClick={() => setView(v)}
               >
+                {v === 'tree' ? (
+                  <ListTree className="h-4 w-4" aria-hidden />
+                ) : (
+                  <UtensilsCrossed className="h-4 w-4" aria-hidden />
+                )}
                 {v === 'tree' ? t('org.viewTree') : t('org.viewMealUnits')}
               </Button>
             ))}
           </div>
+
           {view === 'tree' ? (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setExpanded('all')}>
+              <Button variant="tertiary" size="sm" onClick={() => setExpanded('all')}>
+                <ChevronsUpDown className="h-4 w-4" aria-hidden />
                 {t('org.expandAll')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setExpanded(new Set())}>
+              <Button variant="tertiary" size="sm" onClick={() => setExpanded(new Set())}>
+                <ChevronsDownUp className="h-4 w-4" aria-hidden />
                 {t('org.collapseAll')}
               </Button>
             </>
           ) : null}
         </div>
+
         {view === 'tree' ? (
           <ul className="rounded-lg bg-card p-2 shadow-block">
             {(children.get(null) ?? []).map((n) => renderNode(n, 0))}
@@ -335,11 +363,12 @@ function TreeTab() {
           />
         )}
       </div>
+
       <div className="lg:sticky lg:top-4 lg:self-start">
         {selected ? (
           <NodeDetail key={selected.id} node={selected} idx={idx} />
         ) : (
-          <p className="rounded-lg bg-muted/50 p-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-foreground">
             {t('org.selectNode')}
           </p>
         )}
@@ -396,7 +425,7 @@ function MealUnitList({
               <TableCell>
                 <button
                   type="button"
-                  className="min-h-11 text-left font-medium underline-offset-4 hover:underline"
+                  className="min-h-11 text-left font-medium text-primary underline-offset-4 hover:underline"
                   onClick={() => onSelect(n.id)}
                 >
                   {n.name}
@@ -766,7 +795,8 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
                 <span className="font-mono text-xs text-muted-foreground">{a.employeeCode}</span>
               </span>
               <Button
-                variant="ghost"
+                variant="tertiary"
+                className="text-destructive hover:bg-destructive/10"
                 size="sm"
                 onClick={async () => {
                   const ok = await confirm({
@@ -778,6 +808,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
                   if (ok) revoke.mutate(a.assignmentId);
                 }}
               >
+                <UserMinus className="h-4 w-4" aria-hidden />
                 {t('org.revoke')}
               </Button>
             </li>
@@ -820,6 +851,7 @@ function NodeDetail({ node, idx }: { node: OrgUnitView; idx: OrgTreeIndex }) {
             className="self-start"
             disabled={assign.isPending || !adminPick}
           >
+            <UserPlus className="h-4 w-4" aria-hidden />
             {t('org.addDeptAdmin')}
           </Button>
         </form>
@@ -933,6 +965,7 @@ function ImportExportTab() {
             disabled={exportFile.isPending}
             onClick={() => exportFile.mutate()}
           >
+            <Download className="h-4 w-4" aria-hidden />
             {t('common.download')}
           </Button>
         </div>
@@ -964,6 +997,7 @@ function ImportExportTab() {
             }}
           />
           <Button type="submit" disabled={!file || upload.isPending}>
+            <Upload className="h-4 w-4" aria-hidden />
             {t('org.upload')}
           </Button>
         </form>
@@ -1048,6 +1082,7 @@ function ImportExportTab() {
               {result.status === 'PREVIEW' && result.changes.length > 0 ? (
                 <div>
                   <Button disabled={apply.isPending} onClick={() => apply.mutate(result.id)}>
+                    <Check className="h-4 w-4" aria-hidden />
                     {t('org.apply')}
                   </Button>
                 </div>

@@ -2,7 +2,7 @@
 
 import type { BannerView } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Bell, Check, CheckCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -104,11 +104,15 @@ function BannerActions({ banner, onDismiss }: { banner: Banner; onDismiss?: () =
     <div className="flex shrink-0 gap-1">
       {banner.action && !pathname.startsWith(banner.action.href) ? (
         <Button asChild variant="outline" size="sm">
-          <Link href={banner.action.href}>{banner.action.label}</Link>
+          <Link href={banner.action.href}>
+            {banner.action.label}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
         </Button>
       ) : null}
       {onDismiss ? (
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
+        <Button variant="tertiary" size="sm" onClick={onDismiss}>
+          <Check className="h-4 w-4" aria-hidden />
           {t('banners.dismiss')}
         </Button>
       ) : null}
@@ -159,11 +163,14 @@ function NoticeBox({
           <div className="flex shrink-0 flex-wrap gap-1">
             {action ? (
               <Button asChild variant="outline" size="sm">
-                <Link href={action.href}>{action.label}</Link>
+                <Link href={action.href}>
+                  {action.label}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
               </Button>
             ) : null}
             <Button
-              variant="ghost"
+              variant="tertiary"
               size="sm"
               aria-expanded={open}
               aria-controls={listId}
@@ -177,10 +184,11 @@ function NoticeBox({
               )}
             </Button>
             <Button
-              variant="ghost"
+              variant="tertiary"
               size="sm"
               onClick={() => onDismiss(notices.map((n) => n.dismissId!))}
             >
+              <CheckCheck className="h-4 w-4" aria-hidden />
               {t('banners.dismissAll')}
             </Button>
           </div>
@@ -189,12 +197,12 @@ function NoticeBox({
           id={listId}
           hidden={!open}
           // `flex` would override the hidden attribute's display: none.
-          className={cn('flex-col divide-y divide-border/60', open ? 'flex' : 'hidden')}
+          className={cn('flex-col gap-1', open ? 'flex' : 'hidden')}
         >
           {notices.map((n) => (
             <li
               key={n.id}
-              className="flex flex-col gap-1 py-2 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              className="flex flex-col gap-1 rounded-md bg-background/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
               <span>{n.message}</span>
               <BannerActions banner={n} onDismiss={() => onDismiss([n.dismissId!])} />

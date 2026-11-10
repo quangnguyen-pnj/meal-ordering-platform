@@ -2,20 +2,29 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 // shadcn/ui Card. CardTitle is the page's <h1>: every screen is one card with one title.
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn('rounded-xl bg-card text-card-foreground shadow-block', className)}
-      {...props}
-    />
-  ),
-);
+// variant="page" is the screen itself: no surface of its own, the title sits on the page
+// background and the blocks inside (tables, day cards, number tiles) are the cards, so a
+// screen never shows a card inside a card and a phone gets its full width.
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { variant?: 'default' | 'page' }
+>(({ className, variant = 'default', ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      variant === 'page'
+        ? 'text-card-foreground [&>*]:!px-0 [&>:first-child]:!pt-0'
+        : 'rounded-xl bg-card text-card-foreground shadow-block',
+      className,
+    )}
+    {...props}
+  />
+));
 Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col gap-2 p-5 sm:p-6', className)} {...props} />
+    <div ref={ref} className={cn('flex flex-col gap-2 p-4 sm:p-6', className)} {...props} />
   ),
 );
 CardHeader.displayName = 'CardHeader';
@@ -41,7 +50,7 @@ CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-5 pt-0 sm:p-6 sm:pt-0', className)} {...props} />
+    <div ref={ref} className={cn('p-4 pt-0 sm:p-6 sm:pt-0', className)} {...props} />
   ),
 );
 CardContent.displayName = 'CardContent';
@@ -50,7 +59,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex items-center p-5 pt-0 sm:p-6 sm:pt-0', className)}
+      className={cn('flex items-center p-4 pt-0 sm:p-6 sm:pt-0', className)}
       {...props}
     />
   ),

@@ -2,10 +2,12 @@
 
 import type { MyRegistrationWeekView, SaveRegistrationResult } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarClock, Clock, Lock, Save, Undo2, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingRows } from '@/components/ui/skeleton';
@@ -21,10 +23,14 @@ import {
   setQuantity,
   type Draft,
 } from '@/lib/registration-draft';
-import { formatCloseAt, formatDate, formatVnTime } from '@/lib/utils';
+import { cn, formatCloseAt, formatDayMonth, formatVnTime } from '@/lib/utils';
 import { t } from '@/messages';
 import { DayMeals, DayWindowBadge, weekdayName } from './day-meals';
 import { ForecastWeekTable } from './forecast-week-table';
+
+/** A short fact with an icon, in place of a sentence. */
+const chip =
+  'inline-flex items-center gap-1.5 text-xs font-semibold rounded-full bg-muted px-3 py-1 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0';
 
 const weekUrl = (weekStart: string | null) =>
   `/registrations/me/week${weekStart ? `?weekStart=${weekStart}` : ''}`;
@@ -110,10 +116,10 @@ export function WeekRegistrationScreen() {
             className="flex flex-col gap-4 rounded-lg bg-card p-4 shadow-block sm:p-5"
           >
             <header className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-medium">
+              <h2 className="font-medium flex items-center gap-2">
                 {weekdayName(day.date)}{' '}
-                <span className="text-xs font-normal text-muted-foreground">
-                  ( {formatDate(day.date)} )
+                <span className="font-medium text-sm text-muted-foreground">
+                  ( {formatDayMonth(day.date)} )
                 </span>
               </h2>
               <DayWindowBadge day={day} />
@@ -124,7 +130,7 @@ export function WeekRegistrationScreen() {
               onChange={(itemId, q) => setDraft((d) => setQuantity(d, day.date, itemId, q))}
               showForecast={forecastTaken}
             />
-            <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2">
+            <footer className="-mx-4 -mb-4 mt-auto flex flex-wrap items-center justify-between gap-2 rounded-b-lg bg-muted/50 px-4 py-2.5 sm:-mx-5 sm:-mb-5 sm:px-5">
               <span className="text-sm font-medium">
                 {t('week.dayTotal', { count: dayTotal(draft, day.date) })}
               </span>
@@ -133,9 +139,12 @@ export function WeekRegistrationScreen() {
         ))}
       </div>
 
-      <div className="sticky bottom-0 z-20 -mx-5 flex flex-wrap items-center justify-between gap-3 bg-card px-5 py-3 sm:-mx-6 sm:px-6 shadow-[0_-6px_16px_-6px_rgb(41_37_36/0.12)]">
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-raised">
         <div className="text-sm">
-          <p className="font-medium">{t('week.totalMeals', { count: total })}</p>
+          <p>
+            <span className="text-base font-semibold tabular-nums">{total}</span>{' '}
+            {t('week.totalMeals')}
+          </p>
           <p className="text-muted-foreground">
             {changed.length > 0 ? t('week.unsaved') : t('week.noChanges')}
           </p>
@@ -146,9 +155,11 @@ export function WeekRegistrationScreen() {
             disabled={changed.length === 0 || save.isPending}
             onClick={() => setDraft(draftFromDays(days))}
           >
+            <Undo2 className="h-4 w-4" aria-hidden />
             {t('week.discard')}
           </Button>
           <Button disabled={changed.length === 0 || save.isPending} onClick={() => save.mutate()}>
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? t('common.saving') : t('week.save')}
           </Button>
         </div>
@@ -157,7 +168,7 @@ export function WeekRegistrationScreen() {
   );
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1.5">
@@ -188,27 +199,45 @@ export function WeekRegistrationScreen() {
 
         {published ? (
           <>
-            <Alert variant={'default'}>
-              <p>{t('week.canteen', { canteen: published.canteenName })}</p>
-              <p className="font-medium">
+            {/* Short facts as chips: where you eat, the week's deadline, and the daily cut-off. */}
+            <ul className="flex flex-wrap gap-2 text-sm">
+              <li className={chip}>
+                <UtensilsCrossed aria-hidden />
+                <span className="sr-only">{t('week.canteen')}:</span>
+                {published.canteenName}
+              </li>
+              <li
+                className={cn(
+                  chip,
+                  !published.noForecast && !forecastTaken && 'bg-primary/10 text-primary',
+                )}
+              >
+                {published.noForecast || forecastTaken ? (
+                  <Lock aria-hidden />
+                ) : (
+                  <CalendarClock aria-hidden />
+                )}
                 {published.noForecast
-                  ? t('week.noForecast', { lock: lockTime })
+                  ? t('week.noForecast')
                   : forecastTaken
-                    ? t('week.afterClose', { lock: lockTime })
-                    : t('week.beforeClose', {
-                        time: formatCloseAt(published.closeAt),
-                        lock: lockTime,
-                      })}
-              </p>
-            </Alert>
+                    ? t('week.afterClose')
+                    : t('week.beforeClose', { time: formatCloseAt(published.closeAt) })}
+              </li>
+              {lockTime ? (
+                <li className={chip}>
+                  <Clock aria-hidden />
+                  {t('week.dailyLock', { lock: lockTime })}
+                </li>
+              ) : null}
+            </ul>
 
             <Tabs value={tab} onValueChange={(v) => setSelectedTab(v as Tab)}>
               <TabsList aria-label={t('week.tabs.label')}>
                 <TabsTrigger value="forecast">{t('week.tabs.forecast')}</TabsTrigger>
-                {/* Hidden until the forecast is taken (product owner, 2026-10-27). */}
-                {forecastTaken ? (
-                  <TabsTrigger value="actual">{t('week.tabs.actual')}</TabsTrigger>
-                ) : null}
+                {/* Shown but disabled until the forecast is taken (was hidden, product owner 2026-10-27). */}
+                <TabsTrigger value="actual" disabled={!forecastTaken}>
+                  {t('week.tabs.actual')}
+                </TabsTrigger>
               </TabsList>
               <TabsContent
                 value="forecast"
@@ -216,11 +245,21 @@ export function WeekRegistrationScreen() {
               >
                 {forecastTaken ? (
                   <>
-                    <p className="text-sm text-muted-foreground">
-                      {published.noForecast
-                        ? t('week.forecastTable.noForecast')
-                        : t('week.forecastTable.intro', { time: formatCloseAt(published.closeAt) })}
-                    </p>
+                    {published.noForecast ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t('week.forecastTable.noForecast')}
+                      </p>
+                    ) : (
+                      <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <Badge variant="outline">
+                          <Lock aria-hidden />
+                          {t('week.forecastTable.closedAt', {
+                            time: formatCloseAt(published.closeAt),
+                          })}
+                        </Badge>
+                        {t('week.forecastTable.intro')}
+                      </p>
+                    )}
                     <ForecastWeekTable days={days} />
                   </>
                 ) : (

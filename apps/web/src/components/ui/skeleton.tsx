@@ -25,4 +25,29 @@ function LoadingRows({ rows = 5, className }: { rows?: number; className?: strin
   );
 }
 
-export { LoadingRows, Skeleton, Spinner };
+/**
+ * Wraps a result that stays on screen while the next one loads (React Query `placeholderData`),
+ * so changing a filter never swaps the list for a skeleton and back. It dims only after a short
+ * beat, so a quick answer shows no change at all. Not inert, so keyboard focus is never lost;
+ * a screen disables the actions that must not run on the old result (save, import, print).
+ */
+function Refreshing({
+  busy,
+  className,
+  children,
+}: {
+  busy: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      aria-busy={busy || undefined}
+      className={cn('transition-opacity duration-200', busy && 'opacity-50 delay-150', className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+export { LoadingRows, Refreshing, Skeleton, Spinner };

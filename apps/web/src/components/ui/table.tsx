@@ -21,19 +21,26 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead
-    ref={ref}
-    className={cn('bg-muted/50 [&_tr]:border-b [&_tr]:border-border/60', className)}
-    {...props}
-  />
+  <thead ref={ref} className={cn('bg-muted/70 [&_tr]:bg-transparent', className)} {...props} />
 ));
 TableHeader.displayName = 'TableHeader';
 
+/**
+ * Rows are told apart by a faint zebra fill, not lines. A dense grid with frozen cells (which
+ * paint their own solid background) turns it off with `striped={false}` and draws its own lines.
+ */
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={cn('[&_tr:last-child]:border-0', className)} {...props} />
+  React.HTMLAttributes<HTMLTableSectionElement> & { striped?: boolean }
+>(({ className, striped = true, ...props }, ref) => (
+  <tbody
+    ref={ref}
+    className={cn(
+      striped && '[&>tr:nth-child(even)]:bg-muted/30 [&>tr:nth-child(even):hover]:bg-muted/50',
+      className,
+    )}
+    {...props}
+  />
 ));
 TableBody.displayName = 'TableBody';
 
@@ -42,7 +49,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        'border-b border-border/50 transition-colors hover:bg-muted/40 data-[state=selected]:bg-muted',
+        'transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
         className,
       )}
       {...props}

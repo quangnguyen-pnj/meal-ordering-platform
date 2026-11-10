@@ -1,5 +1,6 @@
 'use client';
 
+import { UserMinus, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -80,7 +81,7 @@ export function SystemScreen() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card>
+      <Card variant="page">
         <CardHeader>
           <CardTitle>{t('system.rolesTitle')}</CardTitle>
         </CardHeader>
@@ -109,6 +110,7 @@ export function SystemScreen() {
               />
             </div>
             <Button type="submit" disabled={!pick || assign.isPending}>
+              <UserPlus className="h-4 w-4" aria-hidden />
               {t('system.assign')}
             </Button>
           </form>
@@ -137,7 +139,8 @@ export function SystemScreen() {
                   <TableCell>{formatVnDateTime(r.createdAt)}</TableCell>
                   <TableCell className="text-right">
                     <Button
-                      variant="ghost"
+                      variant="tertiary"
+                      className="text-destructive hover:bg-destructive/10"
                       size="sm"
                       onClick={async () => {
                         const ok = await confirm({
@@ -152,6 +155,7 @@ export function SystemScreen() {
                         if (ok) revoke.mutate(r.id);
                       }}
                     >
+                      <UserMinus className="h-4 w-4" aria-hidden />
                       {t('system.revoke')}
                     </Button>
                   </TableCell>
@@ -161,7 +165,7 @@ export function SystemScreen() {
           </Table>
         </CardContent>
       </Card>
-      <Card>
+      <Card variant="page">
         <CardHeader>
           <CardTitle className="text-lg">{t('system.syncTitle')}</CardTitle>
         </CardHeader>

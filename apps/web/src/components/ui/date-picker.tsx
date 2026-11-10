@@ -4,6 +4,7 @@ import { CalendarDays } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { fieldSurface } from '@/components/ui/field';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -52,9 +53,10 @@ function DatePicker({
         <Button
           id={id}
           type="button"
-          variant="outline"
+          variant="ghost"
           disabled={disabled}
           className={cn(
+            fieldSurface,
             'h-11 w-full justify-start px-3 text-left text-base font-normal md:text-sm',
             !selected && 'text-muted-foreground',
             className,

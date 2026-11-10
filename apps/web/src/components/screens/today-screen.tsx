@@ -1,5 +1,6 @@
 'use client';
 
+import { Ban, Save } from 'lucide-react';
 import type {
   MyAttendanceView,
   MyDayRegistrationView,
@@ -82,7 +83,7 @@ export function TodayScreen() {
   const total = Object.values(quantities).reduce((s, n) => s + n, 0);
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader>
         <CardTitle>{t('today.title')}</CardTitle>
         <CardDescription>
@@ -144,6 +145,7 @@ export function TodayScreen() {
             {!locked ? (
               <div className="flex flex-wrap gap-2">
                 <Button disabled={!dirty || save.isPending} onClick={() => save.mutate(quantities)}>
+                  <Save className="h-4 w-4" aria-hidden />
                   {save.isPending ? t('common.saving') : t('common.save')}
                 </Button>
                 <Button
@@ -161,6 +163,7 @@ export function TodayScreen() {
                     save.mutate(none);
                   }}
                 >
+                  <Ban className="h-4 w-4" aria-hidden />
                   {t('today.notEating')}
                 </Button>
               </div>
@@ -191,7 +194,7 @@ function AttendanceBlock({ attendance }: { attendance: MyAttendanceView }) {
   return (
     <section
       aria-label={t('today.attendanceTitle')}
-      className="flex max-w-xl flex-col gap-1 rounded-lg bg-card p-4 text-sm shadow-block"
+      className="flex max-w-xl flex-col gap-1 rounded-lg bg-card p-4 shadow-block text-sm"
     >
       <h2 className="font-medium">{t('today.attendanceTitle')}</h2>
       <p

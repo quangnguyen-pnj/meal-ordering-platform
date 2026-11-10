@@ -1,8 +1,8 @@
 'use client';
 
 import type { DessertView, DishTypeView, DishView, LibraryImportView } from '@/lib/api-types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderInput } from 'lucide-react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Archive, ArchiveRestore, FolderInput, Pencil, Plus, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DishName, DishTypeTag } from '@/components/dish-name';
@@ -17,7 +17,7 @@ import { AppDialog } from '@/components/app-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
-import { LoadingRows } from '@/components/ui/skeleton';
+import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -66,7 +66,7 @@ export function DishesScreen() {
   const canteen = canteens.data?.items.find((c) => c.id === canteenId);
 
   return (
-    <Card>
+    <Card variant="page">
       <CardHeader className="gap-4">
         <div className="flex flex-col gap-1.5">
           <CardTitle>{t('dishes.title')}</CardTitle>
@@ -120,6 +120,8 @@ function useLibrary<T>(path: string, canteenId: string, includeArchived: boolean
     queryKey: [path, canteenId, includeArchived],
     queryFn: () =>
       api.get<{ items: T[] }>(`${path}?canteenId=${canteenId}&includeArchived=${includeArchived}`),
+    // Showing or hiding archived items keeps the list on screen instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -297,6 +299,7 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
               setEditing({ id: null, name: '', typeId: activeTypes[0]?.id ?? '' });
             }}
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {t('dishes.addMain')}
           </Button>
         </div>
@@ -363,57 +366,65 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
       {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
 
       {list.isLoading ? <LoadingRows /> : null}
-      <Table containerClassName={list.isLoading ? 'hidden' : undefined} className="min-w-[30rem]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('dishes.displayName')}</TableHead>
-            <TableHead>{t('dishes.type')}</TableHead>
-            <TableHead>{t('dishes.sessions')}</TableHead>
-            <TableHead className="text-right">{t('common.actions')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageItems.map((d) => (
-            <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
-              <TableCell>
-                <DishName type={d.type} name={d.name} />{' '}
-                {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
-              </TableCell>
-              <TableCell>{d.type.name}</TableCell>
-              <TableCell>{d.sessions.map((s) => vi.sessions[s]).join(', ')}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      save.reset();
-                      setEditing({ id: d.id, name: d.name, typeId: d.typeId });
-                    }}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={archive.isPending}
-                    onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
-                  >
-                    {d.archivedAt ? t('common.restore') : t('common.archive')}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {items.length === 0 && !list.isLoading ? (
+      <Refreshing busy={list.isPlaceholderData}>
+        <Table containerClassName={list.isLoading ? 'hidden' : undefined} className="min-w-[30rem]">
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground">
-                {t('dishes.empty')}
-              </TableCell>
+              <TableHead>{t('dishes.displayName')}</TableHead>
+              <TableHead>{t('dishes.type')}</TableHead>
+              <TableHead>{t('dishes.sessions')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
-          ) : null}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((d) => (
+              <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
+                <TableCell>
+                  <DishName type={d.type} name={d.name} />{' '}
+                  {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
+                </TableCell>
+                <TableCell>{d.type.name}</TableCell>
+                <TableCell>{d.sessions.map((s) => vi.sessions[s]).join(', ')}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => {
+                        save.reset();
+                        setEditing({ id: d.id, name: d.name, typeId: d.typeId });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      disabled={archive.isPending}
+                      onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
+                    >
+                      {d.archivedAt ? (
+                        <ArchiveRestore className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Archive className="h-4 w-4" aria-hidden />
+                      )}
+                      {d.archivedAt ? t('common.restore') : t('common.archive')}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && !list.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-muted-foreground">
+                  {t('dishes.empty')}
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </Refreshing>
       <Pagination {...pagination} />
     </div>
   );
@@ -470,6 +481,7 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
               setEditing({ id: null, name: '' });
             }}
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {t('dishes.addDessert')}
           </Button>
         </div>
@@ -508,53 +520,61 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
       </AppDialog>
       {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
       {list.isLoading ? <LoadingRows /> : null}
-      <Table containerClassName={list.isLoading ? 'hidden' : undefined}>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('common.name')}</TableHead>
-            <TableHead className="text-right">{t('common.actions')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageItems.map((d) => (
-            <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
-              <TableCell>
-                {d.name}{' '}
-                {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      save.reset();
-                      setEditing({ id: d.id, name: d.name });
-                    }}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={archive.isPending}
-                    onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
-                  >
-                    {d.archivedAt ? t('common.restore') : t('common.archive')}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {items.length === 0 && !list.isLoading ? (
+      <Refreshing busy={list.isPlaceholderData}>
+        <Table containerClassName={list.isLoading ? 'hidden' : undefined}>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={2} className="text-muted-foreground">
-                {t('dishes.empty')}
-              </TableCell>
+              <TableHead>{t('common.name')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
-          ) : null}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((d) => (
+              <TableRow key={d.id} className={d.archivedAt ? 'text-muted-foreground' : undefined}>
+                <TableCell>
+                  {d.name}{' '}
+                  {d.archivedAt ? <Badge variant="outline">{t('dishes.archived')}</Badge> : null}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => {
+                        save.reset();
+                        setEditing({ id: d.id, name: d.name });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      disabled={archive.isPending}
+                      onClick={() => archive.mutate({ id: d.id, archived: !d.archivedAt })}
+                    >
+                      {d.archivedAt ? (
+                        <ArchiveRestore className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Archive className="h-4 w-4" aria-hidden />
+                      )}
+                      {d.archivedAt ? t('common.restore') : t('common.archive')}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && !list.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-muted-foreground">
+                  {t('dishes.empty')}
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </Refreshing>
       <Pagination {...pagination} />
     </div>
   );
@@ -637,6 +657,7 @@ function DishTypes() {
             });
           }}
         >
+          <Plus className="h-4 w-4" aria-hidden />
           {t('dishes.types.add')}
         </Button>
       </div>
@@ -701,7 +722,7 @@ function DishTypes() {
                   onChange={(e) => setEditing({ ...editing, color: e.target.value })}
                 />
               </div>
-              <p className="text-sm">
+              <p className="text-xs mt-1">
                 {t('dishes.types.preview')}:{' '}
                 {validColor ? (
                   <DishName
@@ -711,19 +732,21 @@ function DishTypes() {
                 ) : null}
               </p>
             </fieldset>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="type-order">{t('dishes.types.sortOrder')}</Label>
-                <Input
-                  id="type-order"
-                  inputMode="numeric"
-                  value={editing.sortOrder}
-                  onChange={(e) => setEditing({ ...editing, sortOrder: e.target.value })}
-                />
-              </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="type-order">{t('dishes.types.sortOrder')}</Label>
+              <Input
+                id="type-order"
+                inputMode="numeric"
+                value={editing.sortOrder}
+                onChange={(e) => setEditing({ ...editing, sortOrder: e.target.value })}
+              />
+            </div>
+
+            <div className="flex justify-between items-center">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="type-min">
-                  {t('dishes.types.perDay')}: {t('dishes.types.minPerDay')}
+                  {t('dishes.types.perDay')} ({t('dishes.types.minPerDay')})
                 </Label>
                 <Input
                   id="type-min"
@@ -736,7 +759,7 @@ function DishTypes() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="type-max">
-                  {t('dishes.types.perDay')}: {t('dishes.types.maxPerDay')}
+                  {t('dishes.types.perDay')} ({t('dishes.types.maxPerDay')})
                 </Label>
                 <Input
                   id="type-max"
@@ -748,16 +771,22 @@ function DishTypes() {
                 />
               </div>
             </div>
+
             {editing.id ? (
-              <label className="flex min-h-11 items-center gap-2 text-sm">
+              <label className="flex items-start min-h-11 gap-2 ">
                 <Checkbox
                   checked={editing.active}
                   onCheckedChange={(v) => setEditing({ ...editing, active: v === true })}
                 />
-                {t('common.active')}
-                <span className="text-muted-foreground">· {t('dishes.types.inactiveHint')}</span>
+                <span className="flex flex-col text-sm gap-0.5">
+                  {t('common.active')}
+                  <span className="text-xs text-muted-foreground">
+                    {t('dishes.types.inactiveHint')}
+                  </span>
+                </span>
               </label>
             ) : null}
+
             {save.error ? (
               <Alert variant="destructive">
                 {save.error instanceof ApiError && save.error.code === 'CONFLICT'
@@ -765,6 +794,7 @@ function DishTypes() {
                   : apiErrorText(save.error)}
               </Alert>
             ) : null}
+
             <DialogActions
               pending={save.isPending}
               disabled={
@@ -804,7 +834,7 @@ function DishTypes() {
               <TableCell className="tabular-nums">{type.dishCount}</TableCell>
               <TableCell className="text-right">
                 <Button
-                  variant="ghost"
+                  variant="tertiary"
                   size="sm"
                   onClick={() => {
                     save.reset();
@@ -820,6 +850,7 @@ function DishTypes() {
                     });
                   }}
                 >
+                  <Pencil className="h-4 w-4" aria-hidden />
                   {t('common.edit')}
                 </Button>
               </TableCell>
@@ -853,6 +884,7 @@ function DialogActions({
         {t('common.cancel')}
       </Button>
       <Button type="submit" disabled={pending || disabled}>
+        <Save className="h-4 w-4" aria-hidden />
         {pending ? t('common.saving') : t('common.save')}
       </Button>
     </div>

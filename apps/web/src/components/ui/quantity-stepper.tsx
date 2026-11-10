@@ -2,6 +2,7 @@
 
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { fieldSurface } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 
 /**
@@ -50,9 +51,11 @@ export function QuantityStepper({
           onChange(Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0);
         }}
         className={cn(
-          'h-10 w-12 rounded-md border border-gray-200 sm:w-14 bg-background text-center text-base tabular-nums md:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+          fieldSurface,
+          'h-10 w-12 text-center text-base tabular-nums sm:w-14 md:text-sm',
           '[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none',
-          value > 0 && 'border-primary font-semibold',
+          value > 0 &&
+            'bg-primary/10 font-semibold text-primary ring-primary/30 hover:bg-primary/15',
         )}
       />
       <Button

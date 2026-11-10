@@ -39,7 +39,9 @@ function Calendar({
         ),
         selected:
           '[&>button]:bg-primary [&>button]:text-primary-foreground [&>button:hover]:bg-primary [&>button:hover]:text-primary-foreground',
-        today: '[&>button]:font-semibold [&>button]:shadow-[inset_0_0_0_1px_hsl(var(--ring))]',
+        // Today is a small dot under the number (in the text colour, so it shows on the selected fill too) instead of an outline.
+        today:
+          "[&>button]:relative [&>button]:font-semibold [&>button]:after:absolute [&>button]:after:bottom-1.5 [&>button]:after:left-1/2 [&>button]:after:h-1 [&>button]:after:w-1 [&>button]:after:-translate-x-1/2 [&>button]:after:rounded-full [&>button]:after:bg-current [&>button]:after:content-['']",
         outside: 'text-muted-foreground opacity-50',
         disabled: 'text-muted-foreground opacity-50',
         hidden: 'invisible',
