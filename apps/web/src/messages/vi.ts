@@ -193,7 +193,7 @@ export const vi = {
       dishCount: 'Số món',
       preview: 'Xem trước',
       previewDish: 'Cá kho tộ',
-      inactiveHint: 'Loại ngưng dùng không chọn được cho món mới; món cũ giữ nguyên.',
+      inactiveHint: 'Món mới không chọn được Loại đã ngưng dùng; món cũ giữ nguyên.',
       codeTaken: 'Mã loại món này đã có.',
       empty: 'Chưa có loại món nào.',
     },
