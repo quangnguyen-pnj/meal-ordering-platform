@@ -183,20 +183,27 @@ class AttendanceRulesTest {
     @Test
     @DisplayName("BR-30: polling starts at 07:00 and repeats every 5 minutes")
     void poll() {
-      assertThat(AttendanceRules.isPollDue(at("06:59"), DAY, POLL_START, 5, null, false)).isFalse();
-      assertThat(AttendanceRules.isPollDue(at("07:00"), DAY, POLL_START, 5, null, false)).isTrue();
-      assertThat(AttendanceRules.isPollDue(at("07:04"), DAY, POLL_START, 5, at("07:00"), false))
-          .isFalse();
-      assertThat(AttendanceRules.isPollDue(at("07:05"), DAY, POLL_START, 5, at("07:00"), false))
-          .isTrue();
+      assertThat(poll(at("06:59"), DAY, null, false)).isFalse();
+      assertThat(poll(at("07:00"), DAY, null, false)).isTrue();
+      assertThat(poll(at("07:04"), DAY, at("07:00"), false)).isFalse();
+      assertThat(poll(at("07:05"), DAY, at("07:00"), false)).isTrue();
+    }
+
+    private boolean poll(Instant now, LocalDate date, Instant lastRunAt, boolean finalized) {
+      return AttendanceRules.isPollDue(
+          now, date, POLL_START, 5, lastRunAt, finalized, LocalTime.of(10, 30));
     }
 
     @Test
-    @DisplayName("BR-30: polling stops at finalization and on other days")
-    void pollStops() {
-      assertThat(AttendanceRules.isPollDue(at("08:40"), DAY, POLL_START, 5, null, true)).isFalse();
-      assertThat(
-              AttendanceRules.isPollDue(at("07:30"), DAY.plusDays(1), POLL_START, 5, null, false))
+    @DisplayName(
+        "BR-30 (v1.4): after finalization polling goes on until 10:30, only to record; never on"
+            + " other days")
+    void pollAfterFinalization() {
+      assertThat(poll(at("08:40"), DAY, null, true)).isTrue();
+      assertThat(poll(at("10:29"), DAY, at("10:20"), true)).isTrue();
+      assertThat(poll(at("10:30"), DAY, null, true)).isFalse();
+      assertThat(poll(at("11:00"), DAY, null, false)).isTrue();
+      assertThat(poll(VnTime.vnToUtc(DAY.plusDays(1), LocalTime.of(7, 30)), DAY, null, false))
           .isFalse();
     }
 
@@ -209,13 +216,18 @@ class AttendanceRulesTest {
     }
 
     @Test
-    @DisplayName("BR-33: an admin confirms presence on day D until finalization")
+    @DisplayName(
+        "BR-33: an admin confirms presence on day D until finalization (at the latest the 12:00"
+            + " auto-finalization)")
     void confirmWindow() {
-      assertThat(AttendanceRules.canConfirmPresence(at("08:25"), DAY, false)).isTrue();
-      assertThat(AttendanceRules.canConfirmPresence(at("08:35"), DAY, true)).isFalse();
+      Instant auto = at("12:00");
+      assertThat(AttendanceRules.canConfirmPresence(at("08:25"), DAY, false, auto)).isTrue();
+      assertThat(AttendanceRules.canConfirmPresence(at("11:59"), DAY, false, auto)).isTrue();
+      assertThat(AttendanceRules.canConfirmPresence(at("08:35"), DAY, true, auto)).isFalse();
+      assertThat(AttendanceRules.canConfirmPresence(at("12:00"), DAY, false, auto)).isFalse();
       assertThat(
               AttendanceRules.canConfirmPresence(
-                  VnTime.vnToUtc(DAY.plusDays(1), LocalTime.of(8, 0)), DAY, false))
+                  VnTime.vnToUtc(DAY.plusDays(1), LocalTime.of(8, 0)), DAY, false, auto))
           .isFalse();
     }
   }

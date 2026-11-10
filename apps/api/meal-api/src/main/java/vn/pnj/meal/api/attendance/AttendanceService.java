@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 import vn.pnj.meal.api.audit.AuditService;
 import vn.pnj.meal.api.clock.ClockService;
+import vn.pnj.meal.api.close.DayCloseStore;
 import vn.pnj.meal.api.common.ApiErrorCode;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.db.Ids;
@@ -29,6 +30,7 @@ import vn.pnj.meal.rules.VnTime;
 import vn.pnj.meal.rules.attendance.AttendanceRules;
 import vn.pnj.meal.rules.attendance.AttendanceRules.CutoffOutcome;
 import vn.pnj.meal.rules.attendance.AttendanceRules.PresenceState;
+import vn.pnj.meal.rules.close.DayCloseRules;
 
 /**
  * Attendance on day D (BR-30 to BR-35): the attendance sync, the 08:10 cutoff run with its safety
@@ -39,16 +41,13 @@ import vn.pnj.meal.rules.attendance.AttendanceRules.PresenceState;
  * whole read succeeded (plan section 5). Automatic cancellations and restores are audited with no
  * actor (BR-70).
  *
- * <p>TODO(BR-43): finalization (DayClose) arrives in P4; until then nothing here is finalized.
+ * <p>After finalization (BR-43) attendance is only recorded until {@code close.adjustmentDeadline}:
+ * nothing is restored, and what arrives for a cancelled employee is a case to review (BR-32, plan
+ * v1.4).
  */
 @Service
 public class AttendanceService {
   private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
-
-  /**
-   * Postgres advisory-lock key, so syncs, the cutoff and confirmations of a day never interleave.
-   */
-  static final long LOCK_KEY = 4_100_002;
 
   /** BR-35 / plan 6.5: leave flags from today to 14 days ahead. */
   static final int LEAVE_DAYS_AHEAD = 14;
@@ -60,6 +59,7 @@ public class AttendanceService {
   private final AuditService audit;
   private final SettingsService settings;
   private final DmpClient dmp;
+  private final DayCloseStore days;
 
   public AttendanceService(
       JdbcClient jdbc,
@@ -68,7 +68,8 @@ public class AttendanceService {
       ClockService clock,
       AuditService audit,
       SettingsService settings,
-      DmpClient dmp) {
+      DmpClient dmp,
+      DayCloseStore days) {
     this.jdbc = jdbc;
     this.tx = tx;
     this.json = json;
@@ -76,6 +77,7 @@ public class AttendanceService {
     this.audit = audit;
     this.settings = settings;
     this.dmp = dmp;
+    this.days = days;
   }
 
   // --- reads -------------------------------------------------------------------------------------
@@ -92,10 +94,11 @@ public class AttendanceService {
       @Nullable Instant provisionalAt,
       @Nullable String confirmedByName,
       @Nullable Instant confirmedAt,
-      @Nullable String confirmReason) {
+      @Nullable String confirmReason,
+      @Nullable Instant lateCheckInAt) {
 
     public static final Presence NONE =
-        new Presence(PresenceState.UNKNOWN, null, null, null, null, null, null);
+        new Presence(PresenceState.UNKNOWN, null, null, null, null, null, null, null);
 
     public boolean confirmedByAdmin() {
       return confirmedAt != null;
@@ -112,7 +115,7 @@ public class AttendanceService {
             """
             SELECT p."employeeId", p.state::text, p."firstCheckInAt", p."dmpConfirmedAt",
                    p."provisionalAt", c.name AS "confirmedByName", p."confirmedAt",
-                   p."confirmReason"
+                   p."confirmReason", p."lateCheckInAt"
             FROM "DailyPresence" p LEFT JOIN "Employee" c ON c.id = p."confirmedById"
             WHERE p.date = :date AND p."employeeId" IN (:ids)
             """)
@@ -129,7 +132,8 @@ public class AttendanceService {
                         SqlTime.instant(rs, "provisionalAt"),
                         rs.getString("confirmedByName"),
                         SqlTime.instant(rs, "confirmedAt"),
-                        rs.getString("confirmReason"))))
+                        rs.getString("confirmReason"),
+                        SqlTime.instant(rs, "lateCheckInAt"))))
         .list();
     return out;
   }
@@ -346,6 +350,10 @@ public class AttendanceService {
       String factoryId, LocalDate date, Map<String, Seen> seen, LocalTime cutoff) {
     lockDay(factoryId, date);
     Instant now = clock.now();
+    // BR-32 (v1.4): after finalization a sync only records; ABSENT stays
+    // (AttendanceRules.afterSync)
+    // and a check-in seen for a cancelled employee is marked as a case to review.
+    boolean finalized = days.isFinalized(factoryId, date);
     Map<String, EmployeeRef> byCode = new HashMap<>();
     if (!seen.isEmpty()) {
       jdbc.sql(
@@ -382,7 +390,14 @@ public class AttendanceService {
         present++;
       }
       boolean restoring =
-          before == PresenceState.PROVISIONAL_ABSENT && after == PresenceState.PRESENT;
+          !finalized
+              && before == PresenceState.PROVISIONAL_ABSENT
+              && after == PresenceState.PRESENT;
+      boolean lateCheckIn =
+          finalized
+              && before == PresenceState.ABSENT
+              && first != null
+              && !java.util.Objects.equals(first, row == null ? null : row.firstCheckInAt());
       if (row == null) {
         insertRow(e.id(), date, after, first, dmpConfirmedAt, now);
       } else if (after != before
@@ -393,6 +408,8 @@ public class AttendanceService {
                 UPDATE "DailyPresence" SET state = CAST(:state AS "PresenceState"),
                     "firstCheckInAt" = :first, "dmpConfirmedAt" = :confirmed,
                     "restoredAt" = CASE WHEN :restoring THEN :now ELSE "restoredAt" END,
+                    "lateCheckInAt" = CASE WHEN :late THEN COALESCE("lateCheckInAt", :now)
+                                           ELSE "lateCheckInAt" END,
                     "updatedAt" = :now
                 WHERE id = :id
                 """)
@@ -400,6 +417,7 @@ public class AttendanceService {
             .param("first", first == null ? null : SqlTime.utc(first))
             .param("confirmed", dmpConfirmedAt == null ? null : SqlTime.utc(dmpConfirmedAt))
             .param("restoring", restoring)
+            .param("late", lateCheckIn)
             .param("now", SqlTime.utc(now))
             .param("id", row.id())
             .update();
@@ -482,11 +500,7 @@ public class AttendanceService {
   }
 
   private void lockDay(String factoryId, LocalDate date) {
-    jdbc.sql("SELECT pg_advisory_xact_lock(:key, hashtext(:day))")
-        .param("key", (int) LOCK_KEY)
-        .param("day", factoryId + ":" + date)
-        .query()
-        .singleRow();
+    days.lockDay(factoryId, date);
   }
 
   // --- cutoff (BR-31, BR-34) ---------------------------------------------------------------------
@@ -510,13 +524,20 @@ public class AttendanceService {
         status -> {
           lockDay(factoryId, date);
           CutoffSummary existing = cutoffOf(factoryId, date);
+          // BR-43: nothing is cancelled after finalization; the outcome stays as it was.
+          boolean finalized = days.isFinalized(factoryId, date);
           if (existing != null
-              && (!reevaluate || existing.outcome().equals(CutoffOutcome.CANCELLED.name()))) {
+              && (finalized
+                  || !reevaluate
+                  || existing.outcome().equals(CutoffOutcome.CANCELLED.name()))) {
             return new CutoffResult(
                 existing.outcome(),
                 existing.withMeals(),
                 existing.presentWithMeals(),
                 existing.cancelledCount());
+          }
+          if (finalized) {
+            return null;
           }
           Instant now = clock.now();
           SyncRunSummary latest = latestFinishedRun(factoryId, date);
@@ -666,8 +687,10 @@ public class AttendanceService {
     }
     LocalTime cutoff = cutoffTime(factoryId);
     SyncRunSummary last = latestRun("ATTENDANCE", factoryId, today);
+    boolean finalized = days.isFinalized(factoryId, today);
     boolean cutoffDue =
-        AttendanceRules.isCutoffDue(now, today, cutoff, cutoffOf(factoryId, today) != null, false);
+        AttendanceRules.isCutoffDue(
+            now, today, cutoff, cutoffOf(factoryId, today) != null, finalized);
     boolean pollDue =
         AttendanceRules.isPollDue(
             now,
@@ -675,7 +698,8 @@ public class AttendanceService {
             settings.getTime(factoryId, SettingKey.ATTENDANCE_POLL_START),
             settings.getInt(factoryId, SettingKey.ATTENDANCE_POLL_INTERVAL_MIN),
             last == null ? null : last.startedAt(),
-            false);
+            finalized,
+            days.adjustmentDeadline(factoryId));
     boolean staleForCutoff =
         cutoffDue
             && (last == null || last.startedAt().isBefore(AttendanceRules.cutoffAt(today, cutoff)));
@@ -697,7 +721,11 @@ public class AttendanceService {
   public void catchUpCutoff(String factoryId, LocalDate date) {
     Instant now = clock.now();
     if (AttendanceRules.isCutoffDue(
-            now, date, cutoffTime(factoryId), cutoffOf(factoryId, date) != null, false)
+            now,
+            date,
+            cutoffTime(factoryId),
+            cutoffOf(factoryId, date) != null,
+            days.isFinalized(factoryId, date))
         && isServingDay(factoryId, date)) {
       runCutoff(factoryId, date, null, false);
     }
@@ -708,6 +736,21 @@ public class AttendanceService {
    * cutoff is evaluated again. A failed read answers 502.
    */
   public RerunResult rerun(String factoryId, LocalDate date, String actorId) {
+    // BR-32 (v1.4): after finalization the re-run only records, until close.adjustmentDeadline;
+    // from then on no sync runs for that day.
+    boolean finalized = days.isFinalized(factoryId, date);
+    if (finalized
+        && !clock
+            .now()
+            .isBefore(
+                DayCloseRules.adjustmentDeadlineAt(date, days.adjustmentDeadline(factoryId)))) {
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          ApiErrorCode.DAY_FINALIZED,
+          "No attendance sync after close.adjustmentDeadline of a finalized day (BR-32)",
+          Map.of("date", date.toString()),
+          null);
+    }
     SyncResult attendance = syncAttendance(factoryId, date, actorId);
     if (attendance.status().equals("FAILED")) {
       Map<String, Object> details = new LinkedHashMap<>();
@@ -722,7 +765,8 @@ public class AttendanceService {
     }
     LeaveResult leave = syncLeave(factoryId, actorId);
     CutoffResult cutoff = null;
-    if (!clock.now().isBefore(AttendanceRules.cutoffAt(date, cutoffTime(factoryId)))
+    if (!finalized
+        && !clock.now().isBefore(AttendanceRules.cutoffAt(date, cutoffTime(factoryId)))
         && VnTime.vnDateOf(clock.now()).equals(date)
         && isServingDay(factoryId, date)) {
       cutoff = runCutoff(factoryId, date, actorId, true);
@@ -854,19 +898,21 @@ public class AttendanceService {
       String employeeCode,
       LocalDate date,
       String reason) {
-    if (!AttendanceRules.canConfirmPresence(clock.now(), date, false)) {
-      throw new ApiException(
-          HttpStatus.CONFLICT,
-          ApiErrorCode.DAY_LOCKED,
-          "Presence can only be confirmed on day D until finalization (BR-33)",
-          Map.of("date", date.toString()),
-          null);
+    if (!AttendanceRules.canConfirmPresence(
+        clock.now(),
+        date,
+        days.isFinalized(factoryId, date),
+        days.autoFinalizeAt(factoryId, date))) {
+      throw confirmClosed(factoryId, date);
     }
     String cleanReason = reason == null || reason.isBlank() ? null : reason.strip();
     tx.executeWithoutResult(
         status -> {
           lockDay(factoryId, date);
           Instant now = clock.now();
+          if (days.isFinalized(factoryId, date)) {
+            throw confirmClosed(factoryId, date);
+          }
           Row row = rowsOf(List.of(employeeId), date).get(employeeId);
           if (row != null && row.confirmedByAdmin()) {
             return;
@@ -898,6 +944,16 @@ public class AttendanceService {
                   .withReason(cleanReason));
         });
     return presenceOf(List.of(employeeId), date).get(employeeId);
+  }
+
+  private ApiException confirmClosed(String factoryId, LocalDate date) {
+    boolean finalized = days.isFinalized(factoryId, date);
+    return new ApiException(
+        HttpStatus.CONFLICT,
+        finalized ? ApiErrorCode.DAY_FINALIZED : ApiErrorCode.DAY_LOCKED,
+        "Presence can only be confirmed on day D until finalization (BR-33)",
+        Map.of("date", date.toString()),
+        null);
   }
 
   // --- SyncRun -----------------------------------------------------------------------------------

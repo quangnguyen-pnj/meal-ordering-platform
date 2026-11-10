@@ -24,6 +24,7 @@ import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.audit.AuditService;
 import vn.pnj.meal.api.clock.ClockService;
 import vn.pnj.meal.api.common.ApiException;
+import vn.pnj.meal.api.db.SqlTime;
 import vn.pnj.meal.api.registrations.RegistrationStore.Employee;
 import vn.pnj.meal.api.registrations.RegistrationStore.LoadedDay;
 import vn.pnj.meal.api.registrations.RegistrationStore.LoadedWeek;
@@ -35,6 +36,8 @@ import vn.pnj.meal.api.registrations.RegistrationViews.HistoryDayView;
 import vn.pnj.meal.api.registrations.RegistrationViews.HistoryMeal;
 import vn.pnj.meal.api.registrations.RegistrationViews.HistoryView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyAttendanceView;
+import vn.pnj.meal.api.registrations.RegistrationViews.MyClosedDay;
+import vn.pnj.meal.api.registrations.RegistrationViews.MyClosedMeal;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyDayRegistrationView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyDayView;
 import vn.pnj.meal.api.registrations.RegistrationViews.MyWeekView;
@@ -199,9 +202,75 @@ public class MyRegistrationsService {
                           w.forecastTaken(),
                           d,
                           clock.now(),
-                          myAttendance(p, target)))
+                          myAttendance(p, target),
+                          myClosedDay(p, target)))
               .orElseGet(() -> new DayNoMenu(target, w.canteenName()));
     };
+  }
+
+  private record ClosedLine(
+      String menuItemId, String dishName, String typeName, int finalQuantity, int adjusted) {}
+
+  /** BR-43 / BR-46: the caller's final and effective meals once the day is finalized. */
+  private MyClosedDay myClosedDay(RequestPrincipal p, LocalDate date) {
+    Instant finalizedAt =
+        jdbc.sql(
+                """
+                SELECT "finalizedAt" FROM "DayClose"
+                WHERE "factoryId" = :factoryId AND date = :date AND session = 'LUNCH'
+                """)
+            .param("factoryId", p.factoryId())
+            .param("date", date)
+            .query((rs, i) -> SqlTime.instant(rs, "finalizedAt"))
+            .optional()
+            .orElse(null);
+    if (finalizedAt == null) {
+      return null;
+    }
+    List<ClosedLine> lines =
+        jdbc.sql(
+                """
+                SELECT x."menuItemId", d.name AS "dishName", t.name AS "typeName",
+                       SUM(x.fin)::int AS "finalQuantity", SUM(x.adj)::int AS adjusted
+                FROM (
+                  SELECT l."menuItemId", l.quantity AS fin, 0 AS adj FROM "FinalEmployeeLine" l
+                  JOIN "DayClose" c ON c.id = l."dayCloseId"
+                  WHERE l."employeeId" = :employeeId AND c."factoryId" = :factoryId
+                    AND c.date = :date
+                  UNION ALL
+                  SELECT l."menuItemId", 0, l.delta FROM "AdjustmentLine" l
+                  JOIN "Adjustment" a ON a.id = l."adjustmentId"
+                  JOIN "DayClose" c ON c.id = a."dayCloseId"
+                  WHERE l."employeeId" = :employeeId AND c."factoryId" = :factoryId
+                    AND c.date = :date
+                ) x
+                JOIN "MenuItem" i ON i.id = x."menuItemId"
+                JOIN "Dish" d ON d.id = i."dishId"
+                JOIN "DishType" t ON t.id = d."typeId"
+                GROUP BY x."menuItemId", d.name, t.name, i."sortOrder"
+                ORDER BY i."sortOrder", x."menuItemId"
+                """)
+            .param("employeeId", p.employeeId())
+            .param("factoryId", p.factoryId())
+            .param("date", date)
+            .query(ClosedLine.class)
+            .list();
+    int fin = lines.stream().mapToInt(ClosedLine::finalQuantity).sum();
+    int adj = lines.stream().mapToInt(ClosedLine::adjusted).sum();
+    return new MyClosedDay(
+        finalizedAt,
+        fin,
+        fin + adj,
+        lines.stream().anyMatch(l -> l.adjusted() != 0),
+        lines.stream()
+            .filter(l -> l.finalQuantity() != 0 || l.adjusted() != 0)
+            .map(
+                l ->
+                    new MyClosedMeal(
+                        MenuRules.mealDisplayName(l.typeName(), l.dishName()),
+                        l.finalQuantity(),
+                        l.finalQuantity() + l.adjusted()))
+            .toList());
   }
 
   /** BR-30 to BR-35: the caller's own presence and leave flag, on day D itself only. */
@@ -403,6 +472,41 @@ public class MyRegistrationsService {
         meal[2] += r.quantity();
       }
     }
+    // BR-43 / BR-46: finalized days show the final and the effective count.
+    jdbc.sql(
+            """
+            SELECT c.date,
+                   COALESCE((SELECT SUM(l.quantity) FROM "FinalEmployeeLine" l
+                             WHERE l."dayCloseId" = c.id AND l."employeeId" = :employeeId), 0)
+                     AS fin,
+                   (SELECT SUM(l.delta) FROM "AdjustmentLine" l
+                    JOIN "Adjustment" a ON a.id = l."adjustmentId"
+                    WHERE a."dayCloseId" = c.id AND l."employeeId" = :employeeId) AS adj
+            FROM "DayClose" c
+            WHERE c."factoryId" = :factoryId AND c.date BETWEEN :start AND :end
+            """)
+        .param("employeeId", p.employeeId())
+        .param("factoryId", p.factoryId())
+        .param("start", start)
+        .param("end", end)
+        .query(
+            (rs, i) -> {
+              LocalDate date = rs.getObject("date", LocalDate.class);
+              int fin = rs.getInt("fin");
+              Object adj = rs.getObject("adj");
+              HistoryEntry e = byDate.get(date);
+              if (e == null && (fin != 0 || adj != null)) {
+                e = new HistoryEntry(date, forecastWeeks);
+                byDate.put(date, e);
+              }
+              if (e != null) {
+                e.finalTotal = fin;
+                e.adjusted = adj != null;
+                e.effectiveTotal = fin + (adj == null ? 0 : ((Number) adj).intValue());
+              }
+              return date;
+            })
+        .list();
     List<HistoryDayView> items =
         byDate.values().stream()
             .map(HistoryEntry::view)
@@ -416,6 +520,9 @@ public class MyRegistrationsService {
     private final LocalDate date;
     private Integer forecast;
     private int actual;
+    private Integer finalTotal;
+    private Integer effectiveTotal;
+    private boolean adjusted;
 
     /** Display name → forecast, actual, cancelled. */
     private final Map<String, int[]> meals = new LinkedHashMap<>();
@@ -441,7 +548,8 @@ public class MyRegistrationsService {
           actual > 0
               ? "REGISTERED"
               : list.stream().anyMatch(m -> m.cancelled() > 0) ? "CANCELLED" : "NOT_REGISTERED";
-      return new HistoryDayView(date, forecast, actual, list, status);
+      return new HistoryDayView(
+          date, forecast, actual, list, status, finalTotal, effectiveTotal, adjusted);
     }
   }
 

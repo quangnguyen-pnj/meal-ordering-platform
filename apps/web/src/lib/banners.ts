@@ -59,6 +59,15 @@ export function toBanners(views: readonly BannerView[]): Banner[] {
         action: { href: '/admin/today', label: t('banners.openAdminToday') },
       };
     }
+    if (b.kind === 'DAY_NOT_FINALIZED') {
+      return {
+        id: b.id,
+        severity: b.severity,
+        message: t('banners.dayNotFinalized', { date: asDate(b.params.date) }),
+        // Only HC admins get it (BR-43), and they can finalize on the reconciliation screen.
+        action: { href: '/admin/reconciliation', label: t('banners.openReconciliation') },
+      };
+    }
     const type = b.notificationType as NotificationType;
     const template = vi.banners.notifications[type] ?? '';
     const params: Record<string, string> = {};

@@ -84,6 +84,7 @@ export function HistoryScreen() {
                   <TableHead>{t('history.date')}</TableHead>
                   <TableHead className="text-right">{t('history.forecast')}</TableHead>
                   <TableHead className="text-right">{t('history.actual')}</TableHead>
+                  <TableHead className="text-right">{t('history.effective')}</TableHead>
                   <TableHead>{t('history.meals')}</TableHead>
                   <TableHead>{t('history.statusLabel')}</TableHead>
                 </TableRow>
@@ -98,6 +99,14 @@ export function HistoryScreen() {
                       {d.forecast ?? t('common.none')}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{d.actual}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {d.effectiveTotal ?? t('common.none')}
+                      {d.adjusted ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {t('history.adjusted')}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-sm">
                       {d.meals
                         .map(

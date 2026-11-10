@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import vn.pnj.meal.api.attendance.AttendanceService;
+import vn.pnj.meal.api.close.ClosedView;
 import vn.pnj.meal.api.dishes.DishTypeLabel;
 import vn.pnj.meal.rules.attendance.AttendanceRules.PresenceState;
 import vn.pnj.meal.rules.attendance.DayCases.CaseType;
@@ -156,6 +157,8 @@ public final class RegistrationViews {
   /**
    * @param now server time (ClockService), so the countdown to the lock follows fake time too
    * @param attendance BR-30 to BR-35 on day D itself; null on other days
+   * @param closed BR-43 / BR-46: once the day is finalized, the meals counted for the employee and
+   *     the effective count after adjustments (product owner, 2026-11-10); null before
    */
   public record DayOpen(
       @Schema(allowableValues = "DAY") String state,
@@ -165,7 +168,8 @@ public final class RegistrationViews {
       boolean forecastTaken,
       MyDayView day,
       Instant now,
-      @Nullable MyAttendanceView attendance)
+      @Nullable MyAttendanceView attendance,
+      @Nullable MyClosedDay closed)
       implements MyDayRegistrationView {
     DayOpen(
         LocalDate date,
@@ -174,10 +178,25 @@ public final class RegistrationViews {
         boolean forecastTaken,
         MyDayView day,
         Instant now,
-        MyAttendanceView attendance) {
-      this("DAY", date, canteenName, closeAt, forecastTaken, day, now, attendance);
+        MyAttendanceView attendance,
+        MyClosedDay closed) {
+      this("DAY", date, canteenName, closeAt, forecastTaken, day, now, attendance, closed);
     }
   }
+
+  /** One meal of the employee's finalized day: the final count and the effective count. */
+  public record MyClosedMeal(String displayName, int finalQuantity, int effective) {}
+
+  /**
+   * The employee's finalized day (BR-43). No reason and no admin name: the employee only sees that
+   * their meals were adjusted after finalization (BR-46).
+   */
+  public record MyClosedDay(
+      Instant finalizedAt,
+      int finalTotal,
+      int effectiveTotal,
+      boolean adjusted,
+      List<MyClosedMeal> meals) {}
 
   public record SaveResult<T>(T view, List<LocalDate> changedDays) {}
 
@@ -187,12 +206,19 @@ public final class RegistrationViews {
    * @param forecast null when no forecast was taken for that week
    * @param status REGISTERED, NOT_REGISTERED or CANCELLED
    */
+  /**
+   * @param finalTotal BR-43: meals counted at finalization; null while the day is not finalized
+   * @param effectiveTotal BR-46: final count plus adjustments; null while not finalized
+   */
   public record HistoryDayView(
       LocalDate date,
       @Nullable Integer forecast,
       int actual,
       List<HistoryMeal> meals,
-      @Schema(allowableValues = {"REGISTERED", "NOT_REGISTERED", "CANCELLED"}) String status) {}
+      @Schema(allowableValues = {"REGISTERED", "NOT_REGISTERED", "CANCELLED"}) String status,
+      @Nullable Integer finalTotal,
+      @Nullable Integer effectiveTotal,
+      boolean adjusted) {}
 
   public record HistoryView(LocalDate from, LocalDate to, List<HistoryDayView> items) {}
 
@@ -355,6 +381,7 @@ public final class RegistrationViews {
    * @param window BR-21 / BR-24: ON_BEHALF before the lock, EXTRA (edits with a reason) until
    *     finalization, CLOSED after
    * @param canConfirmPresence BR-33: day D until finalization
+   * @param closed BR-43: set once the day is finalized
    */
   public record AdminTodayView(
       LocalDate date,
@@ -362,6 +389,7 @@ public final class RegistrationViews {
       AdminDayWindow window,
       Instant lockAt,
       boolean canConfirmPresence,
+      @Nullable ClosedView closed,
       AttendanceService.AttendanceStatus attendance,
       TodaySummary summary,
       List<TodayMenu> menus,

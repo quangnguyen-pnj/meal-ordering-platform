@@ -885,7 +885,11 @@ class OrgTest extends IntegrationTest {
     assertThat(node).containsEntry("active", false);
     assertThat(floorOf("OrgUnit", "name", "id", "ou_IT")).isEqualTo("Phòng IT");
     assertThat(
-            jdbc.sql("SELECT status::text FROM \"SyncRun\" ORDER BY \"startedAt\" DESC LIMIT 1")
+            jdbc.sql(
+                    """
+                    SELECT status::text FROM "SyncRun" WHERE type = 'ORG_EMPLOYEES'
+                    ORDER BY "startedAt" DESC LIMIT 1
+                    """)
                 .query(String.class)
                 .single())
         .isEqualTo("SUCCESS");

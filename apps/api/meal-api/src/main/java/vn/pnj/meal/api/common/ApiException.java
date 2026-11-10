@@ -26,6 +26,10 @@ public class ApiException extends RuntimeException {
     return status;
   }
 
+  public ApiErrorCode code() {
+    return code;
+  }
+
   public ApiErrorBody body() {
     return new ApiErrorBody(status.value(), code, getMessage(), details, lockedUntil);
   }

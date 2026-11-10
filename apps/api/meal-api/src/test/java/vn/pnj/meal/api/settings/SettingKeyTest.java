@@ -27,9 +27,9 @@ class SettingKeyTest {
   }
 
   @Test
-  @DisplayName("holds the 17 documented keys")
+  @DisplayName("holds the 17 keys of plan 6.4 and close.autoFinalizeAt (BR-43, 2026-11-10)")
   void keys() {
-    assertThat(SettingKey.values()).hasSize(17);
+    assertThat(SettingKey.values()).hasSize(18);
     assertThat(SettingKey.fromCode("pin.maxAttempts")).isEqualTo(SettingKey.PIN_MAX_ATTEMPTS);
     assertThat(SettingKey.fromCode("nope")).isNull();
   }

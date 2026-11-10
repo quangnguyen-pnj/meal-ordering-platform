@@ -154,6 +154,7 @@ BR-20 examples with a menu of Mặn Cá kho, Mặn Thịt kho, Chay, Cháo:
 - **BR-41** Cases to review: provisionally cancelled or cancelled for absence; self-reported not eating or reduced; added or increased by the employee after closeAt, including employees without a forecast; dish changed from forecast; extra; presence confirmed by an admin or by a manager in DMP; DMP presence confirmation that arrived after finalization; on leave but still has meals. Each row shows code, name, unit, forecast meal, actual meal and case type.
 - **BR-42** Warn when a meal's actual count deviates more than 10% from its forecast.
 - **BR-43** At 08:30 the HC admin presses "Finalize": provisional cancellations become cancellations, the system stores a final-count snapshot by unit × meal and locks the day. Normal edits are blocked after finalization; only HC admin adjustments under BR-46 remain. If not finalized by 08:45, the HC admin is reminded.
+  - (product owner, 2026-11-10) "Finalize" is available from `close.time` (08:30), also after a held cutoff (BR-34: every meal then counts, and the screen says so). A serving day not finalized by `close.autoFinalizeAt` (12:00) is finalized by the system, with no actor; admin changes "until finalization" end then at the latest.
 - **BR-44** Final Excel file: rows are meal units grouped by canteen and floor, with floor columns; columns are meals, cells are counts, with a total row and a total column; plus a box-label sheet with one label per unit showing unit, floor and counts. The weekly forecast file uses the same layout, one sheet per day.
 - **BR-45** The HC admin sends files to the caterer outside the system; the caterer is not a user.
 - **BR-46** Adjustments after finalization (BRQ case "Đã chốt với nhà cung cấp", MEAL-REPORT.14). The system never adds anything to a finalized order by itself. The HC admin may record an adjustment for day D until `close.adjustmentDeadline` (10:30) and before the final delivery confirmation: lines of employee, meal and a positive or negative quantity, a required reason, and a required "Caterer confirmed" tick when any line adds meals. FinalCount never changes; effective count = FinalCount + sum of adjustment lines. Delivery, cost and reports use the effective count and still show the original. Each adjustment exports a supplementary Excel file in the BR-44 layout with only the changed cells.
@@ -417,6 +418,7 @@ meal-ordering-platform/
 | reconciliation.dishDeviationPct | 10 | BR-42 |
 | close.time / close.reminderAt | 08:30 / 08:45 | BR-43 |
 | close.adjustmentDeadline | 10:30 | BR-46 |
+| close.autoFinalizeAt | 12:00 | BR-43 (product owner, 2026-11-10) |
 | delivery.tolerancePct | 5 | BR-50 |
 | delivery.confirmDeadline | 15:00 | BR-51 |
 | pin.maxAttempts / pin.lockMinutes | 5 / 15 | PIN sign-in |
@@ -434,6 +436,7 @@ Every job is idempotent per (factory, date). If a job is missed, the first reque
 | close-week | At each week's closeAt | ForecastLine snapshot (BR-07) |
 | menu-publish-warning | Monday 12:00, then hourly until published | BR-06 |
 | close-reminder | 08:45 on serving days | BR-43 |
+| close-day (auto-finalize) | `close.autoFinalizeAt` (12:00) on serving days | BR-43: finalize a day the HC admin did not finalize (product owner, 2026-11-10) |
 | delivery-autoconfirm | 15:00 on serving days | BR-51 |
 
 ## 7. Phases for agents

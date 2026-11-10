@@ -4,6 +4,54 @@
  */
 
 export interface paths {
+    "/api/admin/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adjustments"];
+        put?: never;
+        post: operations["createAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/adjustments/employees/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["employeeDay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/adjustments/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportAdjustment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/attendance/sync": {
         parameters: {
             query?: never;
@@ -542,6 +590,86 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["assignDeptAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["view_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reconciliation/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportFinal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reconciliation/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["closeDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reconciliation/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["forecastWeek"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reconciliation/forecast/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportForecast"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1208,9 +1336,60 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdjustmentBody: {
+            catererConfirmed?: boolean;
+            date: string;
+            lines: components["schemas"]["AdjustmentLineBody"][];
+            reason?: string;
+        };
+        AdjustmentCreated: {
+            id: string;
+            /** Format: int32 */
+            number: number;
+            /** Format: int32 */
+            totalDelta: number;
+        };
+        AdjustmentLineBody: {
+            /** Format: double */
+            delta: number;
+            employeeCode: string;
+            menuItemId: string;
+        };
+        AdjustmentLineView: {
+            /** Format: int32 */
+            delta: number;
+            displayName: string;
+            employeeCode: string;
+            employeeName: string;
+            mealUnitName: string | null;
+            menuItemId: string;
+        };
+        AdjustmentView: {
+            catererConfirmed: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            id: string;
+            lines: components["schemas"]["AdjustmentLineView"][];
+            /** Format: int32 */
+            number: number;
+            reason: string;
+            /** Format: int32 */
+            totalDelta: number;
+        };
+        AdjustmentsView: {
+            /** Format: date-time */
+            adjustmentDeadlineAt: string;
+            canAdjust: boolean;
+            closed: components["schemas"]["ClosedView"] | null;
+            /** Format: date */
+            date: string;
+            items: components["schemas"]["AdjustmentView"][];
+        };
         AdminTodayView: {
             attendance: components["schemas"]["AttendanceStatus"];
             canConfirmPresence: boolean;
+            closed: components["schemas"]["ClosedView"] | null;
             /** Format: date */
             date: string;
             /** Format: date-time */
@@ -1225,7 +1404,7 @@ export interface components {
         };
         ApiErrorBody: {
             /** @enum {string} */
-            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "WEEK_OVER" | "DMP_UNAVAILABLE" | "INTERNAL";
+            code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_FAILED" | "INVALID_CREDENTIALS" | "PIN_LOCKED" | "PIN_CHANGE_REQUIRED" | "PIN_UNCHANGED" | "SSO_NOT_LINKED" | "SSO_FAILED" | "CONFLICT" | "IN_USE" | "INVALID_STATE" | "DAY_LOCKED" | "MENU_INCOMPLETE" | "WEEK_OVER" | "DAY_FINALIZED" | "TOO_EARLY" | "ADJUSTMENT_CLOSED" | "DMP_UNAVAILABLE" | "INTERNAL";
             details: unknown;
             lockedUntil: string;
             message: string;
@@ -1250,7 +1429,7 @@ export interface components {
         BannerView: {
             id: string;
             /** @enum {string} */
-            kind: "MENU_NOT_PUBLISHED" | "ATTENDANCE_SYNC_FAILED" | "ATTENDANCE_CUTOFF_HELD" | "NOTIFICATION";
+            kind: "MENU_NOT_PUBLISHED" | "ATTENDANCE_SYNC_FAILED" | "ATTENDANCE_CUTOFF_HELD" | "DAY_NOT_FINALIZED" | "NOTIFICATION";
             notificationId?: string;
             notificationType?: string;
             params: {
@@ -1296,6 +1475,12 @@ export interface components {
             fake: boolean;
             now: string;
         };
+        ClosedView: {
+            autoFinalized: boolean;
+            /** Format: date-time */
+            finalizedAt: string;
+            finalizedByName: string | null;
+        };
         CodeName: {
             code: string;
             name: string;
@@ -1340,6 +1525,9 @@ export interface components {
             /** Format: int32 */
             withMeals: number;
         };
+        DateBody: {
+            date: string;
+        };
         DayBody: {
             date: string;
             dessertIds: string[];
@@ -1358,6 +1546,7 @@ export interface components {
             canteenName: string;
             /** Format: date-time */
             closeAt: string;
+            closed: components["schemas"]["MyClosedDay"] | null;
             /** Format: date */
             date: string;
             day: components["schemas"]["MyDayView"];
@@ -1493,6 +1682,24 @@ export interface components {
             /** Format: int32 */
             updated: number;
         };
+        EmployeeDayMeal: {
+            /** Format: int32 */
+            adjusted: number;
+            displayName: string;
+            /** Format: int32 */
+            effective: number;
+            /** Format: int32 */
+            finalQuantity: number;
+            menuItemId: string;
+            onMenu: boolean;
+        };
+        EmployeeDayView: {
+            canteenName: string | null;
+            employeeCode: string;
+            meals: components["schemas"]["EmployeeDayMeal"][];
+            name: string;
+            orgPath: string;
+        };
         EmployeeMappingView: {
             canRegister: boolean;
             canteenId: string | null;
@@ -1544,6 +1751,21 @@ export interface components {
             name: string;
             parentId: string | null;
         };
+        FinalizeResult: {
+            autoFinalized: boolean;
+            /** Format: int32 */
+            cancelled: number;
+            /** @enum {string|null} */
+            cutoffOutcome: "CANCELLED" | "HELD_SYNC_FAILED" | "HELD_TOO_FEW_PRESENT" | null;
+            /** Format: date */
+            date: string;
+            /** Format: int32 */
+            employees: number;
+            /** Format: date-time */
+            finalizedAt: string;
+            /** Format: int32 */
+            meals: number;
+        };
         FloorInput: {
             code: string;
             name: string;
@@ -1553,6 +1775,31 @@ export interface components {
         FloorOverrideBody: {
             floorId?: string;
             reason: string;
+        };
+        ForecastCanteen: {
+            canteenId: string;
+            canteenName: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            days: components["schemas"]["ForecastDay"][];
+        };
+        ForecastDay: {
+            /** Format: date */
+            date: string;
+            meals: components["schemas"]["ForecastMeal"][];
+            /** Format: int32 */
+            total: number;
+        };
+        ForecastMeal: {
+            displayName: string;
+            /** Format: int32 */
+            quantity: number;
+        };
+        ForecastWeekView: {
+            canteens: components["schemas"]["ForecastCanteen"][];
+            exportable: boolean;
+            /** Format: date */
+            weekStart: string;
         };
         GridCellView: {
             blocked: boolean;
@@ -1629,8 +1876,13 @@ export interface components {
         HistoryDayView: {
             /** Format: int32 */
             actual: number;
+            adjusted: boolean;
             /** Format: date */
             date: string;
+            /** Format: int32 */
+            effectiveTotal: number | null;
+            /** Format: int32 */
+            finalTotal: number | null;
             /** Format: int32 */
             forecast: number | null;
             meals: components["schemas"]["HistoryMeal"][];
@@ -1865,6 +2117,23 @@ export interface components {
             /** @enum {string} */
             state: "UNKNOWN" | "PRESENT" | "PROVISIONAL_ABSENT" | "ABSENT";
         };
+        MyClosedDay: {
+            adjusted: boolean;
+            /** Format: int32 */
+            effectiveTotal: number;
+            /** Format: int32 */
+            finalTotal: number;
+            /** Format: date-time */
+            finalizedAt: string;
+            meals: components["schemas"]["MyClosedMeal"][];
+        };
+        MyClosedMeal: {
+            displayName: string;
+            /** Format: int32 */
+            effective: number;
+            /** Format: int32 */
+            finalQuantity: number;
+        };
         MyDayRegistrationView: components["schemas"]["DayUnassigned"] | components["schemas"]["DayNoMenu"] | components["schemas"]["DayOpen"];
         MyDayView: {
             /** Format: int32 */
@@ -1983,6 +2252,71 @@ export interface components {
         };
         Read: {
             id: string;
+        };
+        ReconciliationMeal: {
+            /** Format: int32 */
+            actual: number;
+            /** Format: int32 */
+            adjustment: number | null;
+            canteenId: string;
+            canteenName: string;
+            deviates: boolean;
+            /** Format: double */
+            deviationPct: number | null;
+            /** Format: int32 */
+            difference: number;
+            displayName: string;
+            /** Format: int32 */
+            effective: number | null;
+            /** Format: int32 */
+            finalCount: number | null;
+            /** Format: int32 */
+            forecast: number;
+            menuItemId: string;
+            /** @enum {string} */
+            status: "MATCHED" | "MISMATCHED";
+        };
+        ReconciliationSummary: {
+            /** Format: int32 */
+            actual: number;
+            /** Format: int32 */
+            adjustment: number | null;
+            /** Format: int32 */
+            cases: number;
+            /** Format: int32 */
+            deviatingMeals: number;
+            /** Format: int32 */
+            difference: number;
+            /** Format: int32 */
+            effective: number | null;
+            /** Format: int32 */
+            finalCount: number | null;
+            /** Format: int32 */
+            forecast: number;
+        };
+        ReconciliationView: {
+            /** Format: date-time */
+            adjustmentDeadlineAt: string;
+            attendance: components["schemas"]["AttendanceStatus"];
+            /** Format: date-time */
+            autoFinalizeAt: string;
+            canAdjust: boolean;
+            canFinalize: boolean;
+            closed: components["schemas"]["ClosedView"] | null;
+            cutoffHeld: boolean;
+            /** Format: date */
+            date: string;
+            /** Format: double */
+            deviationThresholdPct: number;
+            exceptions: components["schemas"]["TodayRow"][];
+            /** Format: date-time */
+            finalizeOpensAt: string;
+            forecastTaken: boolean;
+            meals: components["schemas"]["ReconciliationMeal"][];
+            /** Format: date-time */
+            now: string;
+            servingDay: boolean;
+            summary: components["schemas"]["ReconciliationSummary"];
         };
         RegistrationImportError: {
             /** @enum {string} */
@@ -2200,7 +2534,7 @@ export interface components {
             /** Format: int32 */
             actualTotal: number;
             canteenId: string | null;
-            cases: ("PROVISIONALLY_CANCELLED" | "CANCELLED_ABSENT" | "NOT_EATING" | "REDUCED" | "ADDED" | "DISH_CHANGED" | "EXTRA" | "PRESENCE_CONFIRMED_BY_ADMIN" | "PRESENCE_CONFIRMED_IN_DMP" | "ON_LEAVE_WITH_MEALS")[];
+            cases: ("PROVISIONALLY_CANCELLED" | "CANCELLED_ABSENT" | "NOT_EATING" | "REDUCED" | "ADDED" | "DISH_CHANGED" | "EXTRA" | "PRESENCE_CONFIRMED_BY_ADMIN" | "PRESENCE_CONFIRMED_IN_DMP" | "ON_LEAVE_WITH_MEALS" | "LATE_DMP_CONFIRMATION" | "LATE_CHECK_IN")[];
             employeeCode: string;
             /** Format: int32 */
             forecastTotal: number | null;
@@ -2310,6 +2644,98 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    adjustments: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdjustmentsView"];
+                };
+            };
+        };
+    };
+    createAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustmentBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdjustmentCreated"];
+                };
+            };
+        };
+    };
+    employeeDay: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeDayView"];
+                };
+            };
+        };
+    };
+    exportAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     rerun: {
         parameters: {
             query?: never;
@@ -3256,6 +3682,119 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DeptAdminAssigned"];
+                };
+            };
+        };
+    };
+    view_1: {
+        parameters: {
+            query?: {
+                date?: string;
+                orgUnitId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReconciliationView"];
+                };
+            };
+        };
+    };
+    exportFinal: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    closeDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FinalizeResult"];
+                };
+            };
+        };
+    };
+    forecastWeek: {
+        parameters: {
+            query: {
+                weekStart: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ForecastWeekView"];
+                };
+            };
+        };
+    };
+    exportForecast: {
+        parameters: {
+            query: {
+                weekStart: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };

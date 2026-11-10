@@ -28,6 +28,8 @@ public enum SettingKey {
   CLOSE_TIME("close.time", "\"08:30\"", Shape.TIME_OF_DAY),
   CLOSE_REMINDER_AT("close.reminderAt", "\"08:45\"", Shape.TIME_OF_DAY),
   CLOSE_ADJUSTMENT_DEADLINE("close.adjustmentDeadline", "\"10:30\"", Shape.TIME_OF_DAY),
+  /** BR-43 (product owner, 2026-11-10): a day not finalized by then is finalized by the system. */
+  CLOSE_AUTO_FINALIZE_AT("close.autoFinalizeAt", "\"12:00\"", Shape.TIME_OF_DAY),
   DELIVERY_TOLERANCE_PCT("delivery.tolerancePct", "5", Shape.PERCENT),
   DELIVERY_CONFIRM_DEADLINE("delivery.confirmDeadline", "\"15:00\"", Shape.TIME_OF_DAY),
   PIN_MAX_ATTEMPTS("pin.maxAttempts", "5", Shape.POSITIVE_INT),

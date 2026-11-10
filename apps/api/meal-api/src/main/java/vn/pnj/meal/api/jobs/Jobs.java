@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import vn.pnj.meal.api.attendance.AttendanceService;
+import vn.pnj.meal.api.close.DayCloseService;
 import vn.pnj.meal.api.me.MeService;
 import vn.pnj.meal.api.org.OrgSyncService;
 import vn.pnj.meal.api.registrations.ForecastService;
@@ -27,18 +28,21 @@ public class Jobs {
   private final MeService me;
   private final ForecastService forecast;
   private final AttendanceService attendance;
+  private final DayCloseService dayClose;
 
   public Jobs(
       JdbcClient jdbc,
       OrgSyncService orgSync,
       MeService me,
       ForecastService forecast,
-      AttendanceService attendance) {
+      AttendanceService attendance,
+      DayCloseService dayClose) {
     this.jdbc = jdbc;
     this.orgSync = orgSync;
     this.me = me;
     this.forecast = forecast;
     this.attendance = attendance;
+    this.dayClose = dayClose;
   }
 
   private List<String> factories() {
@@ -134,5 +138,29 @@ public class Jobs {
       AttendanceService.LeaveResult result = attendance.syncLeave(factoryId, null);
       log.info("sync-leave {}: {} ({} flags)", factoryId, result.status(), result.flags());
     }
+  }
+
+  /**
+   * BR-43: close-reminder and auto-finalization. From {@code close.reminderAt} (08:45) the HC admin
+   * is reminded while the day is open (the banner is computed per request; the job leaves a trace
+   * in the logs); a serving day not finalized by {@code close.autoFinalizeAt} (12:00) is finalized
+   * by the system (product owner, 2026-11-10). Both times are settings, so the job runs every
+   * minute.
+   */
+  @Scheduled(cron = "45 * * * * *", zone = TZ)
+  @SchedulerLock(name = "close-day", lockAtMostFor = "PT5M", lockAtLeastFor = "PT20S")
+  public void closeDayJob() {
+    closeDay();
+  }
+
+  public int closeDay() {
+    int finalized = 0;
+    for (String factoryId : factories()) {
+      finalized += dayClose.finalizeDue(factoryId).size();
+      if (dayClose.reminderDue(factoryId)) {
+        log.warn("close-reminder {}: today is not finalized yet", factoryId);
+      }
+    }
+    return finalized;
   }
 }

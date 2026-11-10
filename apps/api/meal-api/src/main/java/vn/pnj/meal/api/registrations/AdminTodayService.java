@@ -1,7 +1,6 @@
 package vn.pnj.meal.api.registrations;
 
 import static vn.pnj.meal.api.registrations.RegistrationStore.activeQuantities;
-import static vn.pnj.meal.api.registrations.RegistrationStore.dayLocked;
 
 import java.text.Collator;
 import java.time.Instant;
@@ -22,6 +21,9 @@ import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.attendance.AttendanceService.Presence;
 import vn.pnj.meal.api.audit.AuditService;
 import vn.pnj.meal.api.clock.ClockService;
+import vn.pnj.meal.api.close.ClosedView;
+import vn.pnj.meal.api.close.DayCloseService;
+import vn.pnj.meal.api.close.DayCloseStore;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.employees.EmployeeScopeSql;
 import vn.pnj.meal.api.org.OrgDirectory;
@@ -67,6 +69,8 @@ public class AdminTodayService {
   private final SettingsService settings;
   private final AuditService audit;
   private final ClockService clock;
+  private final DayCloseStore dayClose;
+  private final DayCloseService finalizer;
   private final AttendanceService attendance;
 
   public AdminTodayService(
@@ -77,6 +81,8 @@ public class AdminTodayService {
       SettingsService settings,
       AuditService audit,
       ClockService clock,
+      DayCloseStore dayClose,
+      DayCloseService finalizer,
       AttendanceService attendance) {
     this.tx = tx;
     this.org = org;
@@ -85,6 +91,8 @@ public class AdminTodayService {
     this.settings = settings;
     this.audit = audit;
     this.clock = clock;
+    this.dayClose = dayClose;
+    this.finalizer = finalizer;
     this.attendance = attendance;
   }
 
@@ -94,6 +102,8 @@ public class AdminTodayService {
   public AdminTodayView view(ListScope scope, String factoryId, LocalDate date, String orgUnitId) {
     attendance.catchUpCutoff(factoryId, date);
     forecast.closeDueWeeks(factoryId);
+    finalizer.finalizeDue(factoryId);
+    DayCloseStore.Closed closed = dayClose.closed(factoryId, date);
     OrgSnapshot snapshot = org.load(factoryId);
     Map<String, Object> params = new HashMap<>();
     StringBuilder where = new StringBuilder("(").append(EmployeeScopeSql.where(scope, params));
@@ -186,6 +196,12 @@ public class AdminTodayService {
       Presence p = presence.getOrDefault(e.id(), Presence.NONE);
       boolean inTime = AttendanceRules.checkInInTime(p.firstCheckInAt(), date, cutoff);
       AttendanceService.LeaveFlag flag = leave.get(e.id());
+      // BR-32 (v1.4): what DMP sent for a cancelled employee after finalization is recorded only.
+      boolean lateDmp =
+          closed != null
+              && p.state() == PresenceState.ABSENT
+              && p.dmpConfirmedAt() != null
+              && !p.dmpConfirmedAt().isBefore(closed.finalizedAt());
       List<DayCases.CaseType> rowCases =
           DayCases.casesFor(
               new DayCases.Input(
@@ -196,7 +212,9 @@ public class AdminTodayService {
                   p.dmpConfirmedAt() != null,
                   p.confirmedByAdmin(),
                   flag == null ? null : DayCases.LeaveDayType.valueOf(flag.dayType()),
-                  regs.stream().anyMatch(r -> r.isExtra() && r.activeMeal())));
+                  regs.stream().anyMatch(r -> r.isExtra() && r.activeMeal()),
+                  lateDmp,
+                  p.lateCheckInAt() != null && p.state() == PresenceState.ABSENT));
       int actualTotal = RegistrationStore.sum(actual);
       int forecastTotal = RegistrationStore.sum(fc);
       boolean counts = AttendanceRules.mealsCount(p.state());
@@ -243,10 +261,11 @@ public class AdminTodayService {
     return new AdminTodayView(
         date,
         now,
-        // TODO(BR-43): `finalized` comes from DayClose in P4.
-        RegistrationRules.adminDayWindow(now, date, lockTime, false),
+        dayClose.adminWindow(factoryId, date, now),
         Deadlines.dayLockAt(date, lockTime),
-        AttendanceRules.canConfirmPresence(now, date, false),
+        AttendanceRules.canConfirmPresence(
+            now, date, closed != null, dayClose.autoFinalizeAt(factoryId, date)),
+        ClosedView.of(closed),
         attendance.status(factoryId, date),
         new TodaySummary(
             rows.size(),
@@ -318,12 +337,12 @@ public class AdminTodayService {
               .toList());
     }
     LocalTime lockTime = settings.getTime(factoryId, SettingKey.DAY_LOCK_TIME);
-    AdminDayWindow window = RegistrationRules.adminDayWindow(clock.now(), date, lockTime, false);
+    AdminDayWindow window = dayClose.adminWindow(factoryId, date, clock.now());
     if (window == AdminDayWindow.ON_BEHALF) {
       throw ApiException.invalidState("Before the lock, register on behalf instead (BR-21)", null);
     }
     if (window == AdminDayWindow.CLOSED) {
-      throw dayLocked(date);
+      throw dayClose.closedError(factoryId, date);
     }
     forecast.closeDueWeeks(factoryId);
     Map<String, Integer> wanted = RegistrationRules.quantitiesOf(lines);
@@ -331,9 +350,8 @@ public class AdminTodayService {
         status -> {
           store.lockWeek(found.week().id());
           Instant now = clock.now();
-          if (RegistrationRules.adminDayWindow(now, date, lockTime, false)
-              != AdminDayWindow.EXTRA) {
-            throw dayLocked(date);
+          if (dayClose.adminWindow(factoryId, date, now) != AdminDayWindow.EXTRA) {
+            throw dayClose.closedError(factoryId, date);
           }
           Applied res =
               store.applyDay(

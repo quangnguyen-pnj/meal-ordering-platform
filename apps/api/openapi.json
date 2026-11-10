@@ -9,6 +9,118 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/admin/adjustments" : {
+      "get" : {
+        "operationId" : "adjustments",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "date",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdjustmentsView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      },
+      "post" : {
+        "operationId" : "createAdjustment",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdjustmentBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdjustmentCreated"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/adjustments/employees/{code}" : {
+      "get" : {
+        "operationId" : "employeeDay",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "date",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmployeeDayView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/adjustments/{id}/export" : {
+      "get" : {
+        "operationId" : "exportAdjustment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
     "/api/admin/attendance/sync" : {
       "post" : {
         "operationId" : "rerun",
@@ -1141,6 +1253,149 @@
           }
         },
         "tags" : [ "org-controller" ]
+      }
+    },
+    "/api/admin/reconciliation" : {
+      "get" : {
+        "operationId" : "view_1",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "date",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "orgUnitId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReconciliationView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/reconciliation/export" : {
+      "get" : {
+        "operationId" : "exportFinal",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "date",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/reconciliation/finalize" : {
+      "post" : {
+        "operationId" : "closeDay",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DateBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FinalizeResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/reconciliation/forecast" : {
+      "get" : {
+        "operationId" : "forecastWeek",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "weekStart",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ForecastWeekView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/api/admin/reconciliation/forecast/export" : {
+      "get" : {
+        "operationId" : "exportForecast",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "weekStart",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
       }
     },
     "/api/admin/registrations/employees/{code}/extras" : {
@@ -2573,6 +2828,161 @@
   },
   "components" : {
     "schemas" : {
+      "AdjustmentBody" : {
+        "type" : "object",
+        "properties" : {
+          "catererConfirmed" : {
+            "type" : "boolean"
+          },
+          "date" : {
+            "type" : "string"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdjustmentLineBody"
+            },
+            "maxItems" : 200,
+            "minItems" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "date", "lines" ]
+      },
+      "AdjustmentCreated" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalDelta" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "id", "number", "totalDelta" ]
+      },
+      "AdjustmentLineBody" : {
+        "type" : "object",
+        "properties" : {
+          "delta" : {
+            "type" : "number",
+            "format" : "double",
+            "maximum" : 1000,
+            "minimum" : -1000
+          },
+          "employeeCode" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 1
+          },
+          "menuItemId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 1
+          }
+        },
+        "required" : [ "delta", "employeeCode", "menuItemId" ]
+      },
+      "AdjustmentLineView" : {
+        "type" : "object",
+        "properties" : {
+          "delta" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "employeeCode" : {
+            "type" : "string"
+          },
+          "employeeName" : {
+            "type" : "string"
+          },
+          "mealUnitName" : {
+            "type" : [ "string", "null" ]
+          },
+          "menuItemId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "delta", "displayName", "employeeCode", "employeeName", "mealUnitName", "menuItemId" ]
+      },
+      "AdjustmentView" : {
+        "type" : "object",
+        "properties" : {
+          "catererConfirmed" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdByName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdjustmentLineView"
+            }
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "totalDelta" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "catererConfirmed", "createdAt", "createdByName", "id", "lines", "number", "reason", "totalDelta" ]
+      },
+      "AdjustmentsView" : {
+        "type" : "object",
+        "properties" : {
+          "adjustmentDeadlineAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "canAdjust" : {
+            "type" : "boolean"
+          },
+          "closed" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ClosedView"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdjustmentView"
+            }
+          }
+        },
+        "required" : [ "adjustmentDeadlineAt", "canAdjust", "closed", "date", "items" ]
+      },
       "AdminTodayView" : {
         "type" : "object",
         "properties" : {
@@ -2581,6 +2991,13 @@
           },
           "canConfirmPresence" : {
             "type" : "boolean"
+          },
+          "closed" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ClosedView"
+            }, {
+              "type" : "null"
+            } ]
           },
           "date" : {
             "type" : "string",
@@ -2614,14 +3031,14 @@
             "enum" : [ "ON_BEHALF", "EXTRA", "CLOSED" ]
           }
         },
-        "required" : [ "attendance", "canConfirmPresence", "date", "lockAt", "menus", "now", "rows", "summary", "window" ]
+        "required" : [ "attendance", "canConfirmPresence", "closed", "date", "lockAt", "menus", "now", "rows", "summary", "window" ]
       },
       "ApiErrorBody" : {
         "type" : "object",
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "WEEK_OVER", "DMP_UNAVAILABLE", "INTERNAL" ]
+            "enum" : [ "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_FAILED", "INVALID_CREDENTIALS", "PIN_LOCKED", "PIN_CHANGE_REQUIRED", "PIN_UNCHANGED", "SSO_NOT_LINKED", "SSO_FAILED", "CONFLICT", "IN_USE", "INVALID_STATE", "DAY_LOCKED", "MENU_INCOMPLETE", "WEEK_OVER", "DAY_FINALIZED", "TOO_EARLY", "ADJUSTMENT_CLOSED", "DMP_UNAVAILABLE", "INTERNAL" ]
           },
           "details" : { },
           "lockedUntil" : {
@@ -2696,7 +3113,7 @@
           },
           "kind" : {
             "type" : "string",
-            "enum" : [ "MENU_NOT_PUBLISHED", "ATTENDANCE_SYNC_FAILED", "ATTENDANCE_CUTOFF_HELD", "NOTIFICATION" ]
+            "enum" : [ "MENU_NOT_PUBLISHED", "ATTENDANCE_SYNC_FAILED", "ATTENDANCE_CUTOFF_HELD", "DAY_NOT_FINALIZED", "NOTIFICATION" ]
           },
           "notificationId" : {
             "type" : "string"
@@ -2829,6 +3246,22 @@
         },
         "required" : [ "fake", "now" ]
       },
+      "ClosedView" : {
+        "type" : "object",
+        "properties" : {
+          "autoFinalized" : {
+            "type" : "boolean"
+          },
+          "finalizedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "finalizedByName" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "autoFinalized", "finalizedAt", "finalizedByName" ]
+      },
       "CodeName" : {
         "type" : "object",
         "properties" : {
@@ -2940,6 +3373,15 @@
         },
         "required" : [ "cancelledCount", "outcome", "presentWithMeals", "runAt", "withMeals" ]
       },
+      "DateBody" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "date" ]
+      },
       "DayBody" : {
         "type" : "object",
         "properties" : {
@@ -3000,6 +3442,13 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "closed" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/MyClosedDay"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "date" : {
             "type" : "string",
             "format" : "date"
@@ -3019,7 +3468,7 @@
             "enum" : [ "DAY" ]
           }
         },
-        "required" : [ "attendance", "canteenName", "closeAt", "date", "day", "forecastTaken", "now", "state" ]
+        "required" : [ "attendance", "canteenName", "closeAt", "closed", "date", "day", "forecastTaken", "now", "state" ]
       },
       "DaySelectionBody" : {
         "type" : "object",
@@ -3407,6 +3856,57 @@
         },
         "required" : [ "created", "left", "total", "updated" ]
       },
+      "EmployeeDayMeal" : {
+        "type" : "object",
+        "properties" : {
+          "adjusted" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "effective" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "menuItemId" : {
+            "type" : "string"
+          },
+          "onMenu" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "adjusted", "displayName", "effective", "finalQuantity", "menuItemId", "onMenu" ]
+      },
+      "EmployeeDayView" : {
+        "type" : "object",
+        "properties" : {
+          "canteenName" : {
+            "type" : [ "string", "null" ]
+          },
+          "employeeCode" : {
+            "type" : "string"
+          },
+          "meals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EmployeeDayMeal"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "orgPath" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "canteenName", "employeeCode", "meals", "name", "orgPath" ]
+      },
       "EmployeeMappingView" : {
         "type" : "object",
         "properties" : {
@@ -3555,6 +4055,39 @@
         },
         "required" : [ "id", "level", "levelName", "name", "parentId" ]
       },
+      "FinalizeResult" : {
+        "type" : "object",
+        "properties" : {
+          "autoFinalized" : {
+            "type" : "boolean"
+          },
+          "cancelled" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cutoffOutcome" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "CANCELLED", "HELD_SYNC_FAILED", "HELD_TOO_FEW_PRESENT", null ]
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "employees" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalizedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "meals" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "autoFinalized", "cancelled", "cutoffOutcome", "date", "employees", "finalizedAt", "meals" ]
+      },
       "FloorInput" : {
         "type" : "object",
         "properties" : {
@@ -3593,6 +4126,80 @@
           }
         },
         "required" : [ "reason" ]
+      },
+      "ForecastCanteen" : {
+        "type" : "object",
+        "properties" : {
+          "canteenId" : {
+            "type" : "string"
+          },
+          "canteenName" : {
+            "type" : "string"
+          },
+          "closedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ForecastDay"
+            }
+          }
+        },
+        "required" : [ "canteenId", "canteenName", "closedAt", "days" ]
+      },
+      "ForecastDay" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "meals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ForecastMeal"
+            }
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "date", "meals", "total" ]
+      },
+      "ForecastMeal" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "displayName", "quantity" ]
+      },
+      "ForecastWeekView" : {
+        "type" : "object",
+        "properties" : {
+          "canteens" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ForecastCanteen"
+            }
+          },
+          "exportable" : {
+            "type" : "boolean"
+          },
+          "weekStart" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "canteens", "exportable", "weekStart" ]
       },
       "GridCellView" : {
         "type" : "object",
@@ -3812,9 +4419,20 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "adjusted" : {
+            "type" : "boolean"
+          },
           "date" : {
             "type" : "string",
             "format" : "date"
+          },
+          "effectiveTotal" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "finalTotal" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
           },
           "forecast" : {
             "type" : [ "integer", "null" ],
@@ -3831,7 +4449,7 @@
             "enum" : [ "REGISTERED", "NOT_REGISTERED", "CANCELLED" ]
           }
         },
-        "required" : [ "actual", "date", "forecast", "meals", "status" ]
+        "required" : [ "actual", "adjusted", "date", "effectiveTotal", "finalTotal", "forecast", "meals", "status" ]
       },
       "HistoryMeal" : {
         "type" : "object",
@@ -4507,6 +5125,50 @@
         },
         "required" : [ "checkedInInTime", "confirmedByAdmin", "confirmedInDmp", "cutoffAt", "firstCheckInAt", "leave", "state" ]
       },
+      "MyClosedDay" : {
+        "type" : "object",
+        "properties" : {
+          "adjusted" : {
+            "type" : "boolean"
+          },
+          "effectiveTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalizedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "meals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MyClosedMeal"
+            }
+          }
+        },
+        "required" : [ "adjusted", "effectiveTotal", "finalTotal", "finalizedAt", "meals" ]
+      },
+      "MyClosedMeal" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "effective" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "displayName", "effective", "finalQuantity" ]
+      },
       "MyDayRegistrationView" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/DayUnassigned"
@@ -4879,6 +5541,167 @@
           }
         },
         "required" : [ "id" ]
+      },
+      "ReconciliationMeal" : {
+        "type" : "object",
+        "properties" : {
+          "actual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "adjustment" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "canteenId" : {
+            "type" : "string"
+          },
+          "canteenName" : {
+            "type" : "string"
+          },
+          "deviates" : {
+            "type" : "boolean"
+          },
+          "deviationPct" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "difference" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "effective" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "finalCount" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "forecast" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "menuItemId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "MATCHED", "MISMATCHED" ]
+          }
+        },
+        "required" : [ "actual", "adjustment", "canteenId", "canteenName", "deviates", "deviationPct", "difference", "displayName", "effective", "finalCount", "forecast", "menuItemId", "status" ]
+      },
+      "ReconciliationSummary" : {
+        "type" : "object",
+        "properties" : {
+          "actual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "adjustment" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "cases" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "deviatingMeals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "difference" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "effective" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "finalCount" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "forecast" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "actual", "adjustment", "cases", "deviatingMeals", "difference", "effective", "finalCount", "forecast" ]
+      },
+      "ReconciliationView" : {
+        "type" : "object",
+        "properties" : {
+          "adjustmentDeadlineAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "attendance" : {
+            "$ref" : "#/components/schemas/AttendanceStatus"
+          },
+          "autoFinalizeAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "canAdjust" : {
+            "type" : "boolean"
+          },
+          "canFinalize" : {
+            "type" : "boolean"
+          },
+          "closed" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ClosedView"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "cutoffHeld" : {
+            "type" : "boolean"
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "deviationThresholdPct" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "exceptions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TodayRow"
+            }
+          },
+          "finalizeOpensAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "forecastTaken" : {
+            "type" : "boolean"
+          },
+          "meals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReconciliationMeal"
+            }
+          },
+          "now" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "servingDay" : {
+            "type" : "boolean"
+          },
+          "summary" : {
+            "$ref" : "#/components/schemas/ReconciliationSummary"
+          }
+        },
+        "required" : [ "adjustmentDeadlineAt", "attendance", "autoFinalizeAt", "canAdjust", "canFinalize", "closed", "cutoffHeld", "date", "deviationThresholdPct", "exceptions", "finalizeOpensAt", "forecastTaken", "meals", "now", "servingDay", "summary" ]
       },
       "RegistrationImportError" : {
         "type" : "object",
@@ -5508,7 +6331,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "PROVISIONALLY_CANCELLED", "CANCELLED_ABSENT", "NOT_EATING", "REDUCED", "ADDED", "DISH_CHANGED", "EXTRA", "PRESENCE_CONFIRMED_BY_ADMIN", "PRESENCE_CONFIRMED_IN_DMP", "ON_LEAVE_WITH_MEALS" ]
+              "enum" : [ "PROVISIONALLY_CANCELLED", "CANCELLED_ABSENT", "NOT_EATING", "REDUCED", "ADDED", "DISH_CHANGED", "EXTRA", "PRESENCE_CONFIRMED_BY_ADMIN", "PRESENCE_CONFIRMED_IN_DMP", "ON_LEAVE_WITH_MEALS", "LATE_DMP_CONFIRMATION", "LATE_CHECK_IN" ]
             }
           },
           "employeeCode" : {

@@ -723,3 +723,63 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - **Web:** `WeekNav` shows "Tuần 46 · tuần hiện tại", "· tuần sau" or "· tuần trước" when the viewed week is the current week, the next or the previous one; other weeks show only the number. Copy is in `common.weekRelative` (`vi.ts`).
 - **API:** the current week comes from the server clock (fake time in dev and tests), never from the browser. `Deadlines.currentWeekStart(now)` (pure, in `meal-rules`); `currentWeekStart` is added to `GET /admin/menu/canteens`, `GET /admin/registrations/units` and every `MyWeekView` state (`GET/PUT /registrations/me/week`). `openapi.json` and `openapi.d.ts` regenerated.
 - **No rule changed:** default weeks, deadlines and the "Về tuần sắp tới" link are as before. No new data, so no migration, no audit and nothing for `docs/security.md`.
+
+## Phase 4 – Reconciliation, finalization, export (2026-11-10)
+
+### Answers taken before building (product owner, 2026-11-10)
+
+- **Finalization opens at `close.time` (08:30)**, never before the day's lock, so late check-ins (BR-32) can still restore meals until then. Earlier presses answer `409 TOO_EARLY`.
+- **A day not finalized by `close.autoFinalizeAt` (new setting, default 12:00) is finalized by the system**, with no actor (`DayClose.autoFinalized`, audit `day.finalized` without an actor). The setting is the only new key (plan 6.4 had 17; `SettingKey`, `packages/shared/src/settings.ts`, `/admin/settings`).
+- **After a held cutoff (BR-34) the HC admin may still finalize**; the confirm dialog says every meal will count and that a re-run can come first. The result records the cutoff outcome.
+- **Employees see the effective count after an adjustment** on `/today` ("Đã chốt số", with "Đã điều chỉnh sau chốt: từ x thành y suất") and on `/history` (column "Sau chốt"), never the reason or the admin's name.
+
+### Rules (`apps/api/meal-rules`, package `close`)
+
+- `DayCloseRules`: `finalizeOpensAt` / `canFinalize` (BR-43), `autoFinalizeAt` / `isAutoFinalizeDue`, `isReminderDue` (08:45), `openForAdminChanges` (the "until finalization" windows of BR-24, BR-25, BR-33 end at finalization or at the auto-finalization time, whichever comes first), `presenceAtFinalization` (PROVISIONAL_ABSENT → ABSENT), `attendanceSyncAllowed` (v1.4: after finalization only until `close.adjustmentDeadline`), `adjustmentWindow` (BR-46).
+- `Reconciliation`: Matched/Mismatched (BR-40), the BR-42 deviation ("more than" the threshold; a meal with no forecast deviates as soon as anyone eats it), effective = final + adjustments.
+- `Adjustments.validate` (BR-46): reason required, caterer tick when any line adds, whole non-zero deltas, no duplicate line, the employee's canteen menu of day D, never below zero per employee and meal. Deltas are read as doubles, like registration quantities, so 1.5 is reported per line.
+- `CountGrid` (BR-44): one block per canteen; rows are meal units sorted by floor, with the floor in its own column; columns are meals in menu order; total row and column. The supplementary file keeps only changed rows and columns.
+- `RegistrationRules.adminDayWindow` and `AttendanceRules.isPollDue` / `canConfirmPresence` take the finalization state and its times; the P3 end-of-day bound (Q20, Q31) is gone.
+- `DayCases` gains `LATE_DMP_CONFIRMATION` (a DMP confirmation first seen after finalization) and `LATE_CHECK_IN` (a check-in DMP returned only after finalization, for a cancelled employee).
+
+### Data (Flyway V7)
+
+- `DayClose` (one row per factory, day and session, written at finalization), `FinalEmployeeLine` (per employee and meal, with the meal unit, floor, canteen and cost center in effect, BR-64), `FinalCount` (their sum by unit × floor × canteen × meal), `Adjustment` (numbered 1, 2, … per day under the day lock, the number of its supplementary file) and `AdjustmentLine` (signed delta with the mapping in effect when written).
+- The four snapshot and adjustment tables are write-once in the database, with V2's `reject_snapshot_change` trigger (rule 7).
+- `DailyPresence.absentAt` (finalization made the cancellation final) and `lateCheckInAt` (first sync after finalization that saw a check-in for a cancelled employee).
+- The canteen of a final line is the canteen of the menu the meal was taken from (as for `ForecastLine`), so each supplier still knows what it cooks when meals gather at the fallback meal unit (Q28).
+
+### Finalization and jobs
+
+- **`DayCloseService.finalizeDay`** first does what was due (forecast snapshot, BR-14 cancellations, a missed cutoff), then in one transaction takes the day's menu weeks `FOR UPDATE` (admin edits hold them `FOR SHARE`, so an edit lands before the snapshot or is refused after it) and the day's advisory lock (shared with attendance through `DayCloseStore.lockDay`), turns provisional cancellations into cancellations (audited per employee, `presence.cancelled`), writes the lines and counts and audits `day.finalized`.
+- **`close-day` job, every minute:** finalizes serving days whose `close.autoFinalizeAt` has passed (last 7 days, Q35) and logs the 08:45 reminder. `/admin/today` and `/admin/reconciliation` catch up a missed run (plan 6.5). The reminder is a banner for HC admins (`DAY_NOT_FINALIZED`) from `close.reminderAt` until the day is finalized.
+- **Attendance after finalization (v1.4):** the poll and the HC admin's re-run go on until `close.adjustmentDeadline` and only record: `ABSENT` stays, nothing is restored or audited as restored, and new check-ins or confirmations become cases. From the deadline the poll stops and the re-run answers `409 DAY_FINALIZED`. A finalized day never runs the cutoff again.
+- **Every normal edit is refused once finalized** with `409 DAY_FINALIZED` (new error code, with `TOO_EARLY` and `ADJUSTMENT_CLOSED`): admin edits and extras, presence confirmation, the bulk grid; the employee's own edits were already locked at 08:00. `DayCloseStore.adminWindow` is the one place that reads the window.
+
+### API
+
+- `GET /api/admin/reconciliation?date&orgUnitId` (`reconciliation.view`, list scope): summary (forecast, actual, difference, cases, deviating meals; final, adjustments and effective once finalized), the per-meal table, the cases to review (the `/admin/today` rows that have cases, so both screens always agree), the attendance status, the finalization state and its times. Before finalization "actual" is the meals that count with presence applied; after, it is the final count.
+- `POST /api/admin/reconciliation/finalize` (`day.finalize`), `GET /api/admin/reconciliation/export?date` (final file with the box-label sheet), `GET /api/admin/reconciliation/forecast?weekStart` and `/forecast/export` (`export.finalAndForecast`; the weekly forecast file needs a taken forecast).
+- `GET /api/admin/adjustments?date`, `POST /api/admin/adjustments` (201), `GET /api/admin/adjustments/employees/{code}?date` (the form: final, adjusted and effective per meal) and `GET /api/admin/adjustments/{id}/export` (`adjustment.manage`). Validation errors list `{code, line}`.
+- `/registrations/me/day` gains `closed` (final and effective count, meals, whether adjusted); `/history` rows gain `finalTotal`, `effectiveTotal` and `adjusted`; `/admin/today` gains `closed`.
+- **OpenAPI:** a String with `@Schema(allowableValues)` that is also `@Nullable` makes springdoc drop the whole response schema (seen on `FinalizeResult`). Such a field uses its enum type instead (`CutoffOutcome`), which carries the values and the null.
+
+### Files (BR-44, Apache POI)
+
+- Final file: sheet "Chốt số dd-MM" (title, finalization time, total, then one block per canteen) and "Nhãn hộp cơm" (one label per meal unit with floor, canteen, date, counts and total).
+- Weekly forecast file: one sheet per serving day ("T2 dd-MM"), from the stored `ForecastLine` mapping (BR-64).
+- Supplementary file per adjustment: "Điều chỉnh n", only the changed cells, signed, with the reason.
+- Text cells are strings, counts are numbers; Vietnamese text is plain UTF-8 in the workbook XML.
+
+### Web
+
+- `/admin/reconciliation` (now in the navigation): date and org filter, summary cards, finalize button with a confirm dialog (held-cutoff warning), final file download, the attendance sync panel of `/admin/today` (exported `SyncPanel`), and tabs "Theo món", "Cần xem xét", "Dự trù tuần" (HC: per-day totals and the file) and "Điều chỉnh" (HC, once finalized: list, files, and a dialog with the employee picker, a signed change per meal, the reason and the caterer tick). Dept admins see the first two tabs only.
+- `/admin/today` says when and by whom the day was finalized; its edit and confirm buttons disappear through the API's window.
+- Copy is in `vi.ts` (`reconciliation.*`, the two new case labels, the banner, the three error codes).
+
+### Tests
+
+- `DayCloseRulesTest`, `CountGridTest`, new cases in `DayCasesTest`; `AttendanceRulesTest` and `RegistrationRulesTest` now close the windows at 12:00 instead of midnight.
+- `CloseTest` walks the P4 exit criteria with fake time (week 2029-04-02): reconciliation and its cases, finalization at 08:30 (and 409 at 08:15), every edit route refused, a late DMP confirmation and a late check-in that add nothing, the re-run until 10:30 and nothing after, the three files against `FinalCount`, adjustments (caterer tick, reason, below zero, effective count, supplementary file, the employee's view, 403 for a dept admin, 409 after 10:30), the 08:45 reminder and the 12:00 auto-finalization, finalization after a held cutoff, and 403 on every P4 route. `SecretsTest` reads the new endpoints. `MigrationTest` checks the V7 tables and triggers.
+- `AttendanceTest.morningLeave` now reads `/admin/today` at 13:05 after the 12:00 auto-finalization, so it expects `CANCELLED_ABSENT`. `OrgTest.deactivated` now checks the latest org sync run, not the latest run of any type (CloseTest's failing attendance run in 2029 sorted last).
+- Web: `reconciliation-screen.test.tsx`, a banner test, the nav list.

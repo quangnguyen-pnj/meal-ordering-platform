@@ -82,6 +82,7 @@ describe('role-based navigation (plan section 3 matrix)', () => {
       '/admin/today',
       '/admin/registrations',
       '/admin/print',
+      '/admin/reconciliation',
       '/system',
       '/admin/dishes',
       '/admin/menu',

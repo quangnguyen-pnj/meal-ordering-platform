@@ -111,7 +111,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: 'admin',
     action: 'reconciliation.view',
     phase: 'P4',
-    available: false,
+    available: true,
   },
   {
     href: '/admin/delivery',

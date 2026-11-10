@@ -33,6 +33,7 @@ export const SETTING_DEFINITIONS = {
   'close.time': { schema: TimeOfDaySchema, default: '08:30' }, // BR-43
   'close.reminderAt': { schema: TimeOfDaySchema, default: '08:45' }, // BR-43
   'close.adjustmentDeadline': { schema: TimeOfDaySchema, default: '10:30' }, // BR-46
+  'close.autoFinalizeAt': { schema: TimeOfDaySchema, default: '12:00' }, // BR-43, auto-finalization
   'delivery.tolerancePct': { schema: Pct, default: 5 }, // BR-50
   'delivery.confirmDeadline': { schema: TimeOfDaySchema, default: '15:00' }, // BR-51
   'pin.maxAttempts': { schema: PositiveInt, default: 5 }, // PIN sign-in

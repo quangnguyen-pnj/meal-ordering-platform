@@ -44,6 +44,7 @@ const view: AdminTodayView = {
   window: 'EXTRA',
   lockAt: `${DATE}T01:00:00.000Z`,
   canConfirmPresence: true,
+  closed: null,
   attendance: {
     date: DATE,
     servingDay: true,

@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import vn.pnj.meal.rules.VnTime;
+import vn.pnj.meal.rules.close.DayCloseRules;
 import vn.pnj.meal.rules.deadline.Deadlines;
 
 /**
@@ -137,13 +137,12 @@ public final class RegistrationRules {
    *
    * <ul>
    *   <li>ON_BEHALF: until the day's lock, register and edit on behalf like the employee (BR-21).
-   *   <li>EXTRA: after the lock and before finalization, only add meals flagged "Extra" with a
-   *       reason (BR-25). Editing or reducing after the lock is /admin/today (P3).
-   *   <li>CLOSED: nothing through registration; later changes go through adjustments (BR-46, P4).
+   *   <li>EXTRA: after the lock and before finalization, add meals flagged "Extra" with a reason
+   *       (BR-25), or edit the day with a reason on /admin/today (BR-24).
+   *   <li>CLOSED: finalized, or past {@code close.autoFinalizeAt} (finalization is then due, see
+   *       {@link vn.pnj.meal.rules.close.DayCloseRules#openForAdminChanges}); later changes go
+   *       through adjustments (BR-46).
    * </ul>
-   *
-   * <p>TODO(BR-25): finalization (DayClose) arrives in P4. Until then the extra window also ends
-   * when day D ends in Vietnam time, so past days never change (open-questions Q20).
    */
   public enum AdminDayWindow {
     ON_BEHALF,
@@ -151,15 +150,19 @@ public final class RegistrationRules {
     CLOSED
   }
 
+  /**
+   * @param autoFinalizeAt when the day is finalized by the system if the HC admin has not (BR-43,
+   *     product owner 2026-11-10)
+   */
   public static AdminDayWindow adminDayWindow(
-      Instant now, LocalDate date, LocalTime lockTime, boolean finalized) {
-    if (now.isBefore(Deadlines.dayLockAt(date, lockTime))) {
-      return AdminDayWindow.ON_BEHALF;
-    }
+      Instant now, LocalDate date, LocalTime lockTime, boolean finalized, Instant autoFinalizeAt) {
     if (finalized) {
       return AdminDayWindow.CLOSED;
     }
-    return now.isBefore(VnTime.vnToUtc(date.plusDays(1), LocalTime.MIDNIGHT))
+    if (now.isBefore(Deadlines.dayLockAt(date, lockTime))) {
+      return AdminDayWindow.ON_BEHALF;
+    }
+    return DayCloseRules.openForAdminChanges(now, false, autoFinalizeAt)
         ? AdminDayWindow.EXTRA
         : AdminDayWindow.CLOSED;
   }

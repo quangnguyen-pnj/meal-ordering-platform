@@ -170,7 +170,8 @@ class RegistrationRulesTest {
   @DisplayName("BR-21 / BR-25: what an admin may do for an employee")
   class AdminWindow {
     private AdminDayWindow window(Instant now, boolean finalized) {
-      return RegistrationRules.adminDayWindow(now, MONDAY, LOCK, finalized);
+      return RegistrationRules.adminDayWindow(
+          now, MONDAY, LOCK, finalized, at("2026-11-02", "12:00"));
     }
 
     @Test
@@ -184,13 +185,16 @@ class RegistrationRulesTest {
     @DisplayName("BR-25: after 08:00 and before finalization, admins only add Extra meals")
     void extra() {
       assertThat(window(at("2026-11-02", "08:00"), false)).isEqualTo(AdminDayWindow.EXTRA);
-      assertThat(window(at("2026-11-02", "23:59"), false)).isEqualTo(AdminDayWindow.EXTRA);
+      assertThat(window(at("2026-11-02", "11:59"), false)).isEqualTo(AdminDayWindow.EXTRA);
     }
 
     @Test
-    @DisplayName("BR-25: after finalization, or once day D ends, nothing goes through registration")
+    @DisplayName(
+        "BR-25 / BR-43: after finalization, or once the 12:00 auto-finalization is due, nothing"
+            + " goes through registration")
     void closed() {
       assertThat(window(at("2026-11-02", "08:40"), true)).isEqualTo(AdminDayWindow.CLOSED);
+      assertThat(window(at("2026-11-02", "12:00"), false)).isEqualTo(AdminDayWindow.CLOSED);
       assertThat(window(at("2026-11-03", "00:00"), false)).isEqualTo(AdminDayWindow.CLOSED);
     }
   }
