@@ -5,11 +5,7 @@ import { t } from '@/messages';
 // shadcn/ui Skeleton, plus a spinner and a list placeholder built on it.
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      aria-hidden
-      className={cn('animate-pulse rounded-md bg-foreground/[0.06]', className)}
-      {...props}
-    />
+    <div aria-hidden className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />
   );
 }
 
