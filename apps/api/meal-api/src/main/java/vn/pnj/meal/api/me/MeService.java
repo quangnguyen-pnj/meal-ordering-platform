@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import vn.pnj.meal.api.access.RequestPrincipal;
 import vn.pnj.meal.api.attendance.AttendanceService;
 import vn.pnj.meal.api.clock.ClockService;
+import vn.pnj.meal.api.close.DayCloseService;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.db.SqlTime;
 import vn.pnj.meal.api.settings.SettingKey;
@@ -34,23 +35,26 @@ public class MeService {
   private final SettingsService settings;
   private final ClockService clock;
   private final AttendanceService attendance;
+  private final DayCloseService dayClose;
 
   public MeService(
       JdbcClient jdbc,
       JsonMapper json,
       SettingsService settings,
       ClockService clock,
-      AttendanceService attendance) {
+      AttendanceService attendance,
+      DayCloseService dayClose) {
     this.jdbc = jdbc;
     this.json = json;
     this.settings = settings;
     this.clock = clock;
     this.attendance = attendance;
+    this.dayClose = dayClose;
   }
 
   /**
    * @param kind message key in the web messages file: MENU_NOT_PUBLISHED, ATTENDANCE_SYNC_FAILED,
-   *     ATTENDANCE_CUTOFF_HELD or NOTIFICATION
+   *     ATTENDANCE_CUTOFF_HELD, DAY_NOT_FINALIZED or NOTIFICATION
    * @param notificationId NOTIFICATION banners only: the notification to mark read
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -62,6 +66,7 @@ public class MeService {
                 "MENU_NOT_PUBLISHED",
                 "ATTENDANCE_SYNC_FAILED",
                 "ATTENDANCE_CUTOFF_HELD",
+                "DAY_NOT_FINALIZED",
                 "NOTIFICATION"
               })
           String kind,
@@ -80,6 +85,7 @@ public class MeService {
     if (p.hcFactoryIds().contains(p.factoryId())) {
       banners.addAll(menuWarnings(p.factoryId()));
       banners.addAll(attendanceWarnings(p.factoryId()));
+      banners.addAll(finalizeReminder(p.factoryId()));
     }
     jdbc.sql(
             """
@@ -179,6 +185,22 @@ public class MeService {
               null));
     }
     return out;
+  }
+
+  /** BR-43: from close.reminderAt (08:45) until today is finalized. */
+  public List<BannerView> finalizeReminder(String factoryId) {
+    if (!dayClose.reminderDue(factoryId)) {
+      return List.of();
+    }
+    LocalDate today = VnTime.vnDateOf(clock.now());
+    return List.of(
+        new BannerView(
+            "day-not-finalized:" + today,
+            "warning",
+            "DAY_NOT_FINALIZED",
+            Map.of("date", today.toString()),
+            null,
+            null));
   }
 
   public record Read(String id) {}

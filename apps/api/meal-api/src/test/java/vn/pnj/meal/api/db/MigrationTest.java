@@ -14,8 +14,8 @@ import vn.pnj.meal.api.support.IntegrationTest;
 
 /**
  * Flyway builds the same schema the legacy Prisma migrations built (V1..V3 are copies), plus the
- * ShedLock table of the Java jobs (V4), the fallback meal-unit flag (V5, CR 2026-11-04) and the P3
- * attendance tables (V6).
+ * ShedLock table of the Java jobs (V4), the fallback meal-unit flag (V5, CR 2026-11-04), the P3
+ * attendance tables (V6) and the P4 finalization tables (V7).
  */
 class MigrationTest extends IntegrationTest {
   @Autowired JdbcClient jdbc;
@@ -26,7 +26,7 @@ class MigrationTest extends IntegrationTest {
         jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
             .query(String.class)
             .list();
-    assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6");
+    assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7");
   }
 
   @Test
@@ -65,7 +65,12 @@ class MigrationTest extends IntegrationTest {
             "shedlock",
             "DailyPresence",
             "LeaveFlag",
-            "AttendanceDay");
+            "AttendanceDay",
+            "DayClose",
+            "FinalEmployeeLine",
+            "FinalCount",
+            "Adjustment",
+            "AdjustmentLine");
   }
 
   @Test
@@ -75,6 +80,21 @@ class MigrationTest extends IntegrationTest {
                 .query(Integer.class)
                 .single())
         .isEqualTo(1);
+  }
+
+  @Test
+  @org.junit.jupiter.api.DisplayName(
+      "Rule 7 / BR-46: final lines, final counts and adjustments are write-once in the database")
+  void writeOnceFinalization() {
+    assertThat(
+            jdbc.sql(
+                    """
+                    SELECT count(*) FROM pg_trigger WHERE tgname IN ('FinalEmployeeLine_write_once',
+                      'FinalCount_write_once', 'Adjustment_write_once', 'AdjustmentLine_write_once')
+                    """)
+                .query(Integer.class)
+                .single())
+        .isEqualTo(4);
   }
 
   @Test

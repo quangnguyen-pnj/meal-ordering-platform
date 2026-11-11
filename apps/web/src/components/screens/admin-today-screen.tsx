@@ -155,6 +155,14 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
             </dl>
 
             <SyncPanel status={view.attendance} canSync={canSync} onDone={refresh} />
+            {view.closed ? (
+              <Alert>
+                {t(view.closed.autoFinalized ? 'adminToday.closedAuto' : 'adminToday.closed', {
+                  at: formatVnTime(view.closed.finalizedAt),
+                  name: view.closed.finalizedByName ?? '',
+                })}
+              </Alert>
+            ) : null}
           </Refreshing>
         ) : null}
 
@@ -280,7 +288,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: 'de
   );
 }
 
-function SyncPanel({
+export function SyncPanel({
   status,
   canSync,
   onDone,

@@ -2,7 +2,6 @@ package vn.pnj.meal.api.registrations;
 
 import static vn.pnj.meal.api.registrations.RegistrationStore.activeQuantities;
 import static vn.pnj.meal.api.registrations.RegistrationStore.assertMonday;
-import static vn.pnj.meal.api.registrations.RegistrationStore.dayLocked;
 
 import java.text.Collator;
 import java.time.Instant;
@@ -25,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.pnj.meal.api.audit.AuditService;
 import vn.pnj.meal.api.clock.ClockService;
+import vn.pnj.meal.api.close.DayCloseStore;
 import vn.pnj.meal.api.common.ApiException;
 import vn.pnj.meal.api.employees.EmployeeScopeSql;
 import vn.pnj.meal.api.org.OrgDirectory;
@@ -77,6 +77,7 @@ public class AdminRegistrationsService {
   private final SettingsService settings;
   private final AuditService audit;
   private final ClockService clock;
+  private final DayCloseStore dayClose;
 
   public AdminRegistrationsService(
       JdbcClient jdbc,
@@ -86,7 +87,8 @@ public class AdminRegistrationsService {
       ForecastService forecast,
       SettingsService settings,
       AuditService audit,
-      ClockService clock) {
+      ClockService clock,
+      DayCloseStore dayClose) {
     this.jdbc = jdbc;
     this.tx = tx;
     this.org = org;
@@ -95,6 +97,7 @@ public class AdminRegistrationsService {
     this.settings = settings;
     this.audit = audit;
     this.clock = clock;
+    this.dayClose = dayClose;
   }
 
   private static <T> Comparator<T> vietnamese(java.util.function.Function<T, String> key) {
@@ -407,8 +410,7 @@ public class AdminRegistrationsService {
                 d ->
                     new GridDay(
                         d.date(),
-                        // TODO(BR-25): `finalized` comes from DayClose in P4.
-                        RegistrationRules.adminDayWindow(now, d.date(), lockTime, false),
+                        dayClose.adminWindow(factoryId, d.date(), now),
                         Deadlines.dayLockAt(d.date(), lockTime),
                         d.items().stream()
                             .map(i -> new GridItem(i.id(), i.displayName(), i.type()))
@@ -514,9 +516,8 @@ public class AdminRegistrationsService {
         snapshot = loaded.org();
         unitPath = loaded.unit().path();
       }
-      if (RegistrationRules.adminDayWindow(clock.now(), date, lockTime, false)
-          != AdminDayWindow.ON_BEHALF) {
-        throw dayLocked(date);
+      if (dayClose.adminWindow(factoryId, date, clock.now()) != AdminDayWindow.ON_BEHALF) {
+        throw dayClose.closedError(factoryId, date);
       }
       List<String> missing =
           input.rows().stream()
@@ -575,9 +576,8 @@ public class AdminRegistrationsService {
           for (GridDayInput input : days) {
             LocalDate date = input.date();
             Instant now = clock.now();
-            if (RegistrationRules.adminDayWindow(now, date, lockTime, false)
-                != AdminDayWindow.ON_BEHALF) {
-              throw dayLocked(date);
+            if (dayClose.adminWindow(factoryId, date, now) != AdminDayWindow.ON_BEHALF) {
+              throw dayClose.closedError(factoryId, date);
             }
             List<String> ids =
                 input.rows().stream().map(r -> byCode.get(r.employeeCode()).id()).toList();
@@ -663,13 +663,12 @@ public class AdminRegistrationsService {
           List.of(Map.of("code", "ITEM_NOT_ON_MENU", "menuItemId", menuItemId)));
     }
     LocalTime lockTime = settings.getTime(factoryId, SettingKey.DAY_LOCK_TIME);
-    // TODO(BR-25): `finalized` comes from DayClose in P4.
-    AdminDayWindow window = RegistrationRules.adminDayWindow(clock.now(), date, lockTime, false);
+    AdminDayWindow window = dayClose.adminWindow(factoryId, date, clock.now());
     if (window == AdminDayWindow.ON_BEHALF) {
       throw ApiException.invalidState("Before the lock, register on behalf instead (BR-21)", null);
     }
     if (window == AdminDayWindow.CLOSED) {
-      throw dayLocked(date);
+      throw dayClose.closedError(factoryId, date);
     }
 
     forecast.closeDueWeeks(factoryId);
@@ -677,9 +676,8 @@ public class AdminRegistrationsService {
         status -> {
           store.lockWeek(found.week().id());
           Instant now = clock.now();
-          if (RegistrationRules.adminDayWindow(now, date, lockTime, false)
-              != AdminDayWindow.EXTRA) {
-            throw dayLocked(date);
+          if (dayClose.adminWindow(factoryId, date, now) != AdminDayWindow.EXTRA) {
+            throw dayClose.closedError(factoryId, date);
           }
           RegRow existing =
               store.rowsOf(List.of(e.id()), List.of(date)).stream()

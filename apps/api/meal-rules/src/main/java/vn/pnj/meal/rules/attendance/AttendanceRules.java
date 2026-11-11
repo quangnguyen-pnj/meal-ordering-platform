@@ -7,6 +7,7 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Objects;
 import vn.pnj.meal.rules.VnTime;
+import vn.pnj.meal.rules.close.DayCloseRules;
 
 /**
  * Attendance and cancellation on day D (BR-30 to BR-35). Presence is kept per employee and day;
@@ -23,7 +24,7 @@ public final class AttendanceRules {
    *   <li>UNKNOWN: nothing in time yet, before the cutoff (or without meals at the cutoff).
    *   <li>PRESENT: checked in by the cutoff, confirmed by a manager in DMP or by an admin.
    *   <li>PROVISIONAL_ABSENT: had meals and was not present at the cutoff (BR-31).
-   *   <li>ABSENT: a provisional cancellation made final at finalization (BR-43, P4).
+   *   <li>ABSENT: a provisional cancellation made final at finalization (BR-43).
    * </ul>
    */
   public enum PresenceState {
@@ -127,10 +128,8 @@ public final class AttendanceRules {
 
   /**
    * BR-30 / plan 6.5: attendance is polled from {@code attendance.pollStart}, every {@code
-   * attendance.pollIntervalMin} minutes, until finalization.
-   *
-   * <p>TODO(BR-43): finalization (DayClose) arrives in P4. Until then polling also ends when day D
-   * ends in Vietnam time, like the admin windows (open question Q20).
+   * attendance.pollIntervalMin} minutes, until finalization, then only to record until {@code
+   * close.adjustmentDeadline} (plan v1.4, {@link DayCloseRules#attendanceSyncAllowed}).
    *
    * @param lastRunAt start of the latest attendance sync of day D, null if none
    */
@@ -140,8 +139,9 @@ public final class AttendanceRules {
       LocalTime pollStart,
       int intervalMinutes,
       Instant lastRunAt,
-      boolean finalized) {
-    if (finalized || !VnTime.vnDateOf(now).equals(date)) {
+      boolean finalized,
+      LocalTime adjustmentDeadline) {
+    if (!DayCloseRules.attendanceSyncAllowed(now, date, finalized, adjustmentDeadline)) {
       return false;
     }
     if (now.isBefore(VnTime.vnToUtc(date, pollStart))) {
@@ -161,11 +161,11 @@ public final class AttendanceRules {
 
   /**
    * BR-33: a dept or HC admin confirms presence on day D until finalization. The reason is optional
-   * (v1.3).
-   *
-   * <p>TODO(BR-43): until finalization exists (P4) the window ends with day D in Vietnam time.
+   * (v1.3). Past {@code close.autoFinalizeAt} the finalization is due, so confirming is closed too.
    */
-  public static boolean canConfirmPresence(Instant now, LocalDate date, boolean finalized) {
-    return !finalized && VnTime.vnDateOf(now).equals(date);
+  public static boolean canConfirmPresence(
+      Instant now, LocalDate date, boolean finalized, Instant autoFinalizeAt) {
+    return VnTime.vnDateOf(now).equals(date)
+        && DayCloseRules.openForAdminChanges(now, finalized, autoFinalizeAt);
   }
 }

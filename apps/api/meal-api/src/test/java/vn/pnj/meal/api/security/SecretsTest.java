@@ -65,7 +65,11 @@ class SecretsTest extends IntegrationTest {
           "/api/team",
           "/api/registrations/me/week?weekStart=2026-10-26",
           "/api/registrations/me/day",
-          "/api/registrations/me/history");
+          "/api/registrations/me/history",
+          "/api/admin/reconciliation",
+          "/api/admin/reconciliation?date=2026-10-26",
+          "/api/admin/reconciliation/forecast?weekStart=2026-10-26",
+          "/api/admin/adjustments?date=2026-10-26");
 
   @ParameterizedTest(name = "{0}: no PIN hash, token hash or configured secret in any read")
   @ValueSource(strings = {Demo.HC_ADMIN, Demo.SYS_ADMIN, Demo.DEPT_ADMIN_PRODUCTION})

@@ -96,4 +96,45 @@ class DayCasesTest {
       }
     }
   }
+
+  @Test
+  @DisplayName(
+      "BR-32 / BR-41 (v1.4): a DMP confirmation after finalization is a case of its own and adds"
+          + " nothing")
+  void lateDmpConfirmation() {
+    Input late =
+        new Input(
+            Map.of("a", 1),
+            Map.of("a", 1),
+            PresenceState.ABSENT,
+            false,
+            true,
+            false,
+            null,
+            false,
+            true,
+            false);
+    assertThat(DayCases.casesFor(late))
+        .containsExactly(
+            DayCases.CaseType.CANCELLED_ABSENT, DayCases.CaseType.LATE_DMP_CONFIRMATION);
+  }
+
+  @Test
+  @DisplayName("BR-32 (v1.4): a check-in DMP returned only after finalization is a case to review")
+  void lateCheckIn() {
+    Input late =
+        new Input(
+            Map.of("a", 1),
+            Map.of("a", 1),
+            PresenceState.ABSENT,
+            true,
+            false,
+            false,
+            null,
+            false,
+            false,
+            true);
+    assertThat(DayCases.casesFor(late))
+        .containsExactly(DayCases.CaseType.CANCELLED_ABSENT, DayCases.CaseType.LATE_CHECK_IN);
+  }
 }

@@ -99,4 +99,17 @@ describe('banners', () => {
     expect(failed!.action).toEqual({ href: '/admin/today', label: 'Mở Hôm nay (quản trị)' });
     expect(held!.message).toContain('chỉ 34/74 người có suất đã chấm công');
   });
+
+  it('BR-43: an unfinalized day points the HC admin to /admin/reconciliation', () => {
+    const [b] = toBanners([
+      {
+        id: 'day-not-finalized:2027-03-01',
+        severity: 'warning',
+        kind: 'DAY_NOT_FINALIZED',
+        params: { date: '2027-03-01' },
+      },
+    ]);
+    expect(b!.message).toContain('Ngày 01/03/2027 chưa chốt số');
+    expect(b!.action).toEqual({ href: '/admin/reconciliation', label: 'Mở Đối soát' });
+  });
 });

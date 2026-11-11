@@ -21,6 +21,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 import vn.pnj.meal.api.audit.AuditService;
+import vn.pnj.meal.api.close.DayCloseStore;
 import vn.pnj.meal.api.db.Ids;
 import vn.pnj.meal.api.dmp.MockDmpClient;
 import vn.pnj.meal.api.seed.SeedEmployees.Demo;
@@ -47,6 +48,7 @@ class AttendanceTest extends IntegrationTest {
   @Autowired TransactionTemplate tx;
   @Autowired AuditService audit;
   @Autowired SettingsService settings;
+  @Autowired DayCloseStore dayClose;
 
   private final Map<LocalDate, String> items = new HashMap<>();
   private final List<String> withMeals = new ArrayList<>();
@@ -60,7 +62,8 @@ class AttendanceTest extends IntegrationTest {
         clock,
         audit,
         settings,
-        new MockDmpClient(scenario, jsonMapper, clock::now));
+        new MockDmpClient(scenario, jsonMapper, clock::now),
+        dayClose);
   }
 
   private static String code(int n) {
@@ -372,14 +375,17 @@ class AttendanceTest extends IntegrationTest {
             JsonPath.<List<String>>read(
                 view, "$.rows[?(@.employeeCode == 'PNJP000010')].leave.dayType"))
         .containsExactly("AM");
+    // Read at 13:05: the day was not finalized by 12:00, so the system finalized it (BR-43) and the
+    // provisional cancellations became cancellations.
+    assertThat(JsonPath.<Boolean>read(view, "$.closed.autoFinalized")).isTrue();
     assertThat(
             JsonPath.<List<String>>read(view, "$.rows[?(@.employeeCode == 'PNJP000010')].cases[*]"))
-        .contains("PROVISIONALLY_CANCELLED", "ON_LEAVE_WITH_MEALS");
+        .contains("CANCELLED_ABSENT", "ON_LEAVE_WITH_MEALS");
     assertThat(
             JsonPath.<List<Boolean>>read(
                 view, "$.rows[?(@.employeeCode == 'PNJP000010')].mealsCount"))
         .containsExactly(false);
-    assertThat(JsonPath.<Integer>read(view, "$.summary.provisionallyCancelled")).isEqualTo(13);
+    assertThat(JsonPath.<Integer>read(view, "$.summary.provisionallyCancelled")).isZero();
     assertThat(JsonPath.<Integer>read(view, "$.summary.countedMeals")).isEqualTo(21);
     // Registrations are never touched (plan 6.3, rule 7).
     assertThat(
@@ -502,7 +508,7 @@ class AttendanceTest extends IntegrationTest {
     assertThat(JsonPath.<String>read(today, "$.attendance.state")).isEqualTo("PRESENT");
     assertThat(today).doesNotContain("Quên chấm công").doesNotContain("confirmReason");
 
-    // The next day the window is closed (TODO(BR-43): finalization in P4).
+    // The next day the window is closed: the day was finalized at 12:00 at the latest (BR-43).
     setVnTime("2029-03-15", "08:00");
     hc = signInReady(Demo.HC_ADMIN);
     expect(

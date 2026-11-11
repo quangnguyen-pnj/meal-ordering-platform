@@ -3,6 +3,7 @@
 import { Ban, Save } from 'lucide-react';
 import type {
   MyAttendanceView,
+  MyClosedDay,
   MyDayRegistrationView,
   SaveRegistrationResult,
 } from '@/lib/api-types';
@@ -124,6 +125,7 @@ export function TodayScreen() {
             </dl>
 
             {view.attendance ? <AttendanceBlock attendance={view.attendance} /> : null}
+            {view.closed ? <ClosedBlock closed={view.closed} /> : null}
 
             {!locked && left !== null ? (
               <Alert role="timer">
@@ -172,6 +174,37 @@ export function TodayScreen() {
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * BR-43 / BR-46: once the day is finalized, the meals counted for the employee and, after an
+ * adjustment, the effective count (product owner, 2026-11-10). Never the reason.
+ */
+function ClosedBlock({ closed }: { closed: MyClosedDay }) {
+  return (
+    <section
+      aria-label={t('today.closedTitle')}
+      className="flex max-w-xl flex-col gap-1 rounded-lg bg-card p-4 shadow-block text-sm"
+    >
+      <h2 className="font-medium">{t('today.closedTitle')}</h2>
+      <p>
+        {t('today.closedAt', {
+          at: formatVnTime(closed.finalizedAt),
+          count: closed.effectiveTotal,
+        })}
+      </p>
+      {closed.meals.length > 0 ? (
+        <p className="text-muted-foreground">
+          {closed.meals.map((m) => `${m.effective} × ${m.displayName}`).join(', ')}
+        </p>
+      ) : null}
+      {closed.adjusted ? (
+        <p className="text-muted-foreground">
+          {t('today.adjusted', { final: closed.finalTotal, effective: closed.effectiveTotal })}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

@@ -27,6 +27,12 @@ public enum ApiErrorCode {
   MENU_INCOMPLETE,
   /** BR-04: every serving day of the week has locked, so its menu can no longer be published. */
   WEEK_OVER,
+  /** BR-43: the day is finalized; only HC admin adjustments (BR-46) change it now. */
+  DAY_FINALIZED,
+  /** BR-43: finalizing before {@code close.time} (08:30) on day D. */
+  TOO_EARLY,
+  /** BR-46: the day is not finalized, past {@code close.adjustmentDeadline} or delivered. */
+  ADJUSTMENT_CLOSED,
   /** A DMP call failed; nothing was written. */
   DMP_UNAVAILABLE,
   INTERNAL

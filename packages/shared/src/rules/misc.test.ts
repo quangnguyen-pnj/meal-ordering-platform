@@ -30,8 +30,8 @@ describe('settings (plan 6.4)', () => {
     expect(defaultSettingValue('registration.close')).toEqual({ weekday: 4, time: '23:59' });
   });
 
-  it('holds the 17 documented keys', () => {
-    expect(SETTING_KEYS).toHaveLength(17);
+  it('holds the 17 keys of plan 6.4 and close.autoFinalizeAt', () => {
+    expect(SETTING_KEYS).toHaveLength(18);
     expect(isSettingKey('pin.maxAttempts')).toBe(true);
     expect(isSettingKey('nope')).toBe(false);
   });

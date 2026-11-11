@@ -30,6 +30,9 @@ export const API_ERROR_CODES = [
   'MENU_INCOMPLETE',
   /** BR-04: every serving day of the week has locked, so its menu can no longer be published. */
   'WEEK_OVER',
+  'DAY_FINALIZED',
+  'TOO_EARLY',
+  'ADJUSTMENT_CLOSED',
   /** A DMP call failed; nothing was written. */
   'DMP_UNAVAILABLE',
   'INTERNAL',

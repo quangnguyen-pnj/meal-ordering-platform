@@ -59,6 +59,18 @@ export type TodayEditResult = Schemas['TodayEditResult'];
 export type AttendanceStatus = Schemas['AttendanceStatus'];
 export type AttendanceRerunResult = Schemas['RerunResult'];
 export type MyAttendanceView = Schemas['MyAttendanceView'];
+export type MyClosedDay = Schemas['MyClosedDay'];
+
+export type ClosedView = Schemas['ClosedView'];
+export type ReconciliationView = Schemas['ReconciliationView'];
+export type ReconciliationMeal = Schemas['ReconciliationMeal'];
+export type FinalizeResult = Schemas['FinalizeResult'];
+export type ForecastWeekView = Schemas['ForecastWeekView'];
+export type AdjustmentsView = Schemas['AdjustmentsView'];
+export type AdjustmentView = Schemas['AdjustmentView'];
+export type AdjustmentCreated = Schemas['AdjustmentCreated'];
+export type AdjustmentBody = Schemas['AdjustmentBody'];
+export type EmployeeDayView = Schemas['EmployeeDayView'];
 
 /**
  * The error codes the web has copy for (packages/shared, used to parse error bodies at run time)

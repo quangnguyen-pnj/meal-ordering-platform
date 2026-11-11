@@ -10,7 +10,7 @@ import vn.pnj.meal.rules.registration.RegistrationRules.ComparisonLine;
 
 /**
  * BR-41: the cases to review for one employee on day D, shown on the exceptions tab of /admin/today
- * (and, from P4, on reconciliation).
+ * and on reconciliation.
  */
 public final class DayCases {
   private DayCases() {}
@@ -18,7 +18,7 @@ public final class DayCases {
   public enum CaseType {
     /** BR-31: had meals and was not present at the cutoff. */
     PROVISIONALLY_CANCELLED,
-    /** BR-43: a provisional cancellation made final (P4). */
+    /** BR-43: a provisional cancellation made final at finalization. */
     CANCELLED_ABSENT,
     /** Had a forecast and has no meal now. */
     NOT_EATING,
@@ -35,7 +35,17 @@ public final class DayCases {
     /** BR-32: a manager confirmed presence in DMP, without a check-in in time. */
     PRESENCE_CONFIRMED_IN_DMP,
     /** BR-35: a full-day or morning leave while the employee still has lunch (Q33). */
-    ON_LEAVE_WITH_MEALS
+    ON_LEAVE_WITH_MEALS,
+    /**
+     * BR-32 / BR-41 (v1.4): a manager's DMP confirmation that arrived after finalization. It adds
+     * nothing; the HC admin decides on an adjustment (BR-46).
+     */
+    LATE_DMP_CONFIRMATION,
+    /**
+     * BR-32 (v1.4): a check-in of a cancelled employee that DMP returned only after finalization.
+     * Recorded only; the HC admin decides on an adjustment (BR-46).
+     */
+    LATE_CHECK_IN
   }
 
   /**
@@ -44,6 +54,8 @@ public final class DayCases {
    * @param actual active quantities by menu item (before presence is applied)
    * @param checkedInInTime BR-30: a check-in no later than the cutoff
    * @param leave the day's leave flag, null when none
+   * @param lateDmpConfirmation the DMP confirmation was first seen after finalization
+   * @param lateCheckIn a check-in was first seen after finalization for a cancelled employee
    */
   public record Input(
       Map<String, Integer> forecast,
@@ -53,7 +65,33 @@ public final class DayCases {
       boolean confirmedInDmp,
       boolean confirmedByAdmin,
       LeaveDayType leave,
-      boolean hasExtra) {}
+      boolean hasExtra,
+      boolean lateDmpConfirmation,
+      boolean lateCheckIn) {
+
+    /** Before finalization nothing can be late. */
+    public Input(
+        Map<String, Integer> forecast,
+        Map<String, Integer> actual,
+        PresenceState presence,
+        boolean checkedInInTime,
+        boolean confirmedInDmp,
+        boolean confirmedByAdmin,
+        LeaveDayType leave,
+        boolean hasExtra) {
+      this(
+          forecast,
+          actual,
+          presence,
+          checkedInInTime,
+          confirmedInDmp,
+          confirmedByAdmin,
+          leave,
+          hasExtra,
+          false,
+          false);
+    }
+  }
 
   /** A leave flag as DMP gives it: full day, morning or afternoon (BR-35). */
   public enum LeaveDayType {
@@ -100,8 +138,13 @@ public final class DayCases {
     if (in.confirmedByAdmin()) {
       cases.add(CaseType.PRESENCE_CONFIRMED_BY_ADMIN);
     }
-    if (in.confirmedInDmp() && !in.checkedInInTime()) {
+    if (in.lateDmpConfirmation()) {
+      cases.add(CaseType.LATE_DMP_CONFIRMATION);
+    } else if (in.confirmedInDmp() && !in.checkedInInTime()) {
       cases.add(CaseType.PRESENCE_CONFIRMED_IN_DMP);
+    }
+    if (in.lateCheckIn() && !in.lateDmpConfirmation()) {
+      cases.add(CaseType.LATE_CHECK_IN);
     }
     if (leavesOutLunch(in.leave()) && hasMeals) {
       cases.add(CaseType.ON_LEAVE_WITH_MEALS);
