@@ -151,7 +151,7 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
           <div className="flex flex-col gap-1.5">
             <CardTitle>{t('reconciliation.title')}</CardTitle>
             <CardDescription>
-              {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
+              {/* {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''} */}
               {t('reconciliation.intro')}
             </CardDescription>
           </div>
