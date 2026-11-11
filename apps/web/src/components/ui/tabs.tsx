@@ -33,8 +33,10 @@ const TabsTrigger = React.forwardRef<
       e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       onFocus?.(e);
     }}
+    // relative: hidden text for screen readers (sr-only is absolute) stays inside the scrolling row
+    // instead of widening the whole page on a phone.
     className={cn(
-      'inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow',
+      'relative inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow',
       className,
     )}
     {...props}

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FilterField } from '@/components/filter-field';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { t } from '@/messages';
 
 export interface UnitsResponse {
@@ -40,17 +41,23 @@ export function useRegistrationGrid(unitId: string, weekStart: string | null, ca
 
 export function UnitPicker({
   id,
+  className,
   units,
   value,
   onChange,
 }: {
   id: string;
+  className?: string;
   units: readonly RegistrationUnitOption[];
   value: string;
   onChange: (id: string) => void;
 }) {
   return (
-    <FilterField label={t('registrations.unit')} htmlFor={id} className="min-w-0 sm:max-w-md">
+    <FilterField
+      label={t('registrations.unit')}
+      htmlFor={id}
+      className={cn('min-w-0 sm:max-w-md', className)}
+    >
       <ResponsiveSelect
         id={id}
         value={value}

@@ -449,9 +449,12 @@ function GridTab({ weekStart }: { weekStart: string }) {
   return (
     <div className="flex flex-col gap-4">
       {confirmDialog}
+      {/* "Who": the unit, its canteen, and the week's Excel import into them, all from the left.
+        Phones keep the import as an icon beside the unit; the canteen wraps under them. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
         <UnitPicker
           id="grid-unit"
+          className="w-auto flex-1 basis-0 sm:w-full sm:flex-none sm:basis-auto"
           units={units.data?.items ?? []}
           value={unitId}
           onChange={(id) => {
@@ -462,18 +465,18 @@ function GridTab({ weekStart }: { weekStart: string }) {
             save.reset();
           }}
         />
-        <CanteenPicker id="grid-canteen" grid={view} disabled={stale} onChange={setCanteenId} />
         {view?.state === 'PUBLISHED' && view.days.some((d) => d.window === 'ON_BEHALF') ? (
           <Button
             variant="outline"
-            className="ml-auto"
+            className="shrink-0 px-3 sm:order-last sm:px-4"
             disabled={stale}
             onClick={() => setImportOpen(true)}
           >
             <FolderInput className="h-5 w-5 text-primary" aria-hidden />
-            {t('registrations.import.open')}
+            <span className="sr-only sm:not-sr-only">{t('registrations.import.open')}</span>
           </Button>
         ) : null}
+        <CanteenPicker id="grid-canteen" grid={view} disabled={stale} onChange={setCanteenId} />
       </div>
 
       {view?.state === 'PUBLISHED' ? (
@@ -508,17 +511,16 @@ function GridTab({ weekStart }: { weekStart: string }) {
 
         {view?.state === 'PUBLISHED' && day && groups ? (
           <>
-            {/* Days on their own row. Then one toolbar: search and row filter (side by side, also on
-              phones) and the day's window, whose entry hint opens from the info button. */}
-            <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {/* "Which day, which rows": the day tabs, then search and row filter (side by side, also
+              on phones). The day's entry window sits in the bar under the grid, next to "Lưu". */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
+              <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
               <div className="flex w-full min-w-0 gap-2 lg:w-auto">
                 <SearchField
                   label={t('registrations.gridSearch')}
                   value={q}
                   onChange={setQ}
-                  className="min-w-0 flex-1 lg:w-64 lg:flex-none"
+                  className="min-w-0 flex-1 lg:w-60 lg:flex-none"
                 />
                 <FilterField
                   label={t('registrations.gridFilter')}
@@ -556,38 +558,6 @@ function GridTab({ weekStart }: { weekStart: string }) {
                   </Button>
                 </p>
               ) : null}
-              <div
-                className={cn(
-                  'flex min-h-9 items-center gap-1.5 text-sm lg:ml-auto',
-                  editable ? 'text-muted-foreground' : 'rounded-md bg-warning/15 px-2.5 py-1',
-                )}
-              >
-                {editable ? (
-                  <Clock className="h-4 w-4 shrink-0" aria-hidden />
-                ) : (
-                  <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                )}
-                <span>
-                  {t(`registrations.windows.${day.window}`, { lock: formatVnTime(day.lockAt) })}
-                </span>
-                {editable ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        aria-label={t('registrations.gridHintLabel')}
-                      >
-                        <Info className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-72 text-sm">
-                      {t('registrations.gridHint')}
-                    </PopoverContent>
-                  </Popover>
-                ) : null}
-              </div>
             </div>
 
             {save.error && Object.keys(serverRowErrors).length === 0 ? (
@@ -805,26 +775,68 @@ function GridTab({ weekStart }: { weekStart: string }) {
               }}
             />
 
-            {editable && dirty ? (
-              <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-raised">
-                <p className="flex flex-wrap items-center gap-x-2 text-sm" role="status">
+            {/* Always under the grid: the day's entry window on the left, and once something changed,
+              what is unsaved and the buttons to undo or save it. */}
+            <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-card px-4 py-2 shadow-raised">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <div
+                  className={cn(
+                    'flex min-h-9 items-center gap-1.5',
+                    editable ? 'text-muted-foreground' : 'rounded-md bg-warning/15 px-2.5 py-1',
+                  )}
+                >
+                  {editable ? (
+                    <Clock className="h-4 w-4 shrink-0" aria-hidden />
+                  ) : (
+                    <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                  )}
                   <span>
-                    {invalidCount > 0
-                      ? t('registrations.invalidRows', { count: invalidCount })
-                      : errorRows > 0
-                        ? t('registrations.saveErrorRows', { count: errorRows })
-                        : t('registrations.unsaved')}
+                    {t(`registrations.windows.${day.window}`, { lock: formatVnTime(day.lockAt) })}
                   </span>
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    className="h-auto px-0"
-                    onClick={() => pickFilter(errorRows > 0 ? 'errors' : 'changed')}
-                  >
-                    <Eye className="h-4 w-4" aria-hidden />
-                    {errorRows > 0 ? t('registrations.viewErrors') : t('registrations.viewChanged')}
-                  </Button>
+                  {editable ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          aria-label={t('registrations.gridHintLabel')}
+                        >
+                          <Info className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-72 text-sm">
+                        {t('registrations.gridHint')}
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
+                </div>
+                <p className="flex flex-wrap items-center gap-x-2 empty:hidden" role="status">
+                  {editable && dirty ? (
+                    <>
+                      <span>
+                        {invalidCount > 0
+                          ? t('registrations.invalidRows', { count: invalidCount })
+                          : errorRows > 0
+                            ? t('registrations.saveErrorRows', { count: errorRows })
+                            : t('registrations.unsaved')}
+                      </span>
+                      <Button
+                        variant="tertiary"
+                        size="sm"
+                        className="h-auto px-0"
+                        onClick={() => pickFilter(errorRows > 0 ? 'errors' : 'changed')}
+                      >
+                        <Eye className="h-4 w-4" aria-hidden />
+                        {errorRows > 0
+                          ? t('registrations.viewErrors')
+                          : t('registrations.viewChanged')}
+                      </Button>
+                    </>
+                  ) : null}
                 </p>
+              </div>
+              {editable && dirty ? (
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -850,8 +862,8 @@ function GridTab({ weekStart }: { weekStart: string }) {
                       : t('registrations.saveDay', { day: weekdayName(date) })}
                   </Button>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </>
         ) : null}
       </Refreshing>
@@ -882,8 +894,10 @@ export function GridDayTabs({
             {d.window !== 'ON_BEHALF' ? (
               <Lock className="h-3.5 w-3.5 opacity-70" aria-hidden />
             ) : null}
-            <span className="sm:hidden">{weekdayShort(d.date)}</span>
-            <span className="hidden sm:inline">{weekdayName(d.date)}</span>
+            {/* "T2 16/11" on screen, so the days, the search and the row filter share one line;
+              the full day name is what is read out. */}
+            <span aria-hidden>{weekdayShort(d.date)}</span>
+            <span className="sr-only">{weekdayName(d.date)}</span>
             <span className="tabular-nums">{formatDate(d.date).slice(0, 5)}</span>
             {d.window !== 'ON_BEHALF' ? (
               <span className="sr-only">{t('registrations.dayLocked')}</span>
