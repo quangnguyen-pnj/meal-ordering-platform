@@ -514,58 +514,57 @@ function GridTab({ weekStart }: { weekStart: string }) {
             {/* "Which day, which rows": the day tabs, then search and row filter (side by side, also
               on phones). The wider gap between the two groups sets them apart without a line:
               a day changes the data, the search and filter only the view. A column gap is only
-              there on a shared line, so a group that wraps starts at the left edge.
-              The day's entry window sits in the bar under the grid, next to "Lưu". */}
+              there on a shared line, so a group that wraps starts at the left edge. "Đang hiện …"
+              is its own item: when it does not fit it wraps alone, and the search box being typed
+              in stays put. The day's entry window sits in the bar under the grid, next to "Lưu". */}
             <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
               <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
-              <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 lg:w-auto">
-                <div className="flex w-full min-w-0 gap-2 lg:w-auto">
-                  <SearchField
-                    label={t('registrations.gridSearch')}
-                    value={q}
-                    onChange={setQ}
-                    className="min-w-0 flex-1 lg:w-60 lg:flex-none"
+              <div className="flex w-full min-w-0 gap-2 lg:w-auto">
+                <SearchField
+                  label={t('registrations.gridSearch')}
+                  value={q}
+                  onChange={setQ}
+                  className="min-w-0 flex-1 lg:w-60 lg:flex-none"
+                />
+                <FilterField
+                  label={t('registrations.gridFilter')}
+                  htmlFor="grid-filter"
+                  className="w-40 shrink-0 sm:w-52"
+                >
+                  <ResponsiveSelect
+                    id="grid-filter"
+                    value={filter}
+                    onValueChange={(v) => pickFilter(v as GridFilter)}
+                    options={GRID_FILTERS.map((f) => ({
+                      value: f,
+                      label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
+                      disabled: f !== 'all' && f !== filter && groups[f].length === 0,
+                    }))}
                   />
-                  <FilterField
-                    label={t('registrations.gridFilter')}
-                    htmlFor="grid-filter"
-                    className="w-40 shrink-0 sm:w-52"
-                  >
-                    <ResponsiveSelect
-                      id="grid-filter"
-                      value={filter}
-                      onValueChange={(v) => pickFilter(v as GridFilter)}
-                      options={GRID_FILTERS.map((f) => ({
-                        value: f,
-                        label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
-                        disabled: f !== 'all' && f !== filter && groups[f].length === 0,
-                      }))}
-                    />
-                  </FilterField>
-                </div>
-                {filtered ? (
-                  <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
-                    <span aria-live="polite">
-                      {t('registrations.gridShown', {
-                        shown: shown.length,
-                        total: view.rows.length,
-                      })}
-                    </span>
-                    <Button
-                      variant="tertiary"
-                      size="sm"
-                      className="h-auto px-0"
-                      onClick={() => {
-                        setQ('');
-                        pickFilter('all');
-                      }}
-                    >
-                      <FilterX className="h-4 w-4" aria-hidden />
-                      {t('registrations.clearFilter')}
-                    </Button>
-                  </p>
-                ) : null}
+                </FilterField>
               </div>
+              {filtered ? (
+                <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
+                  <span aria-live="polite">
+                    {t('registrations.gridShown', {
+                      shown: shown.length,
+                      total: view.rows.length,
+                    })}
+                  </span>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    className="h-auto px-0"
+                    onClick={() => {
+                      setQ('');
+                      pickFilter('all');
+                    }}
+                  >
+                    <FilterX className="h-4 w-4" aria-hidden />
+                    {t('registrations.clearFilter')}
+                  </Button>
+                </p>
+              ) : null}
             </div>
 
             {save.error && Object.keys(serverRowErrors).length === 0 ? (
@@ -896,9 +895,9 @@ export function GridDayTabs({
 }) {
   return (
     <Tabs value={value} onValueChange={onPick} activationMode="manual" className="min-w-0">
-      <TabsList aria-label={t('registrations.tabs.grid')}>
+      <TabsList variant="line" aria-label={t('registrations.tabs.grid')}>
         {days.map((d) => (
-          <TabsTrigger key={d.date} value={d.date} className="gap-1 px-2.5 sm:px-3">
+          <TabsTrigger key={d.date} value={d.date} className="gap-1">
             {d.window !== 'ON_BEHALF' ? (
               <Lock className="h-3.5 w-3.5 opacity-70" aria-hidden />
             ) : null}
