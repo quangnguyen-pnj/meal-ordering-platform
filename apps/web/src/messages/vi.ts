@@ -545,7 +545,7 @@ export const vi = {
     extraReasonPlaceholder: 'Ví dụ: Nhân viên mới, quên đăng ký',
     extraSaved: 'Đã thêm suất bổ sung.',
     discard: 'Bỏ thay đổi',
-    unsaved: 'Có thay đổi chưa lưu trong ngày này.',
+    unsaved: 'Có thay đổi chưa lưu.',
     invalidRows: '{count} dòng có ô chưa hợp lệ',
     leaveConfirm: 'Ngày đang có thay đổi chưa lưu. Bỏ thay đổi?',
     gridSearch: 'Tìm tên hoặc mã',

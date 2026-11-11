@@ -77,6 +77,7 @@ import {
   useRegistrationGrid,
   useRegistrationUnits,
 } from './registration-admin-shared';
+import { Separator } from '../ui/separator';
 
 type SelectionErrorKey = keyof typeof vi.registrations.selectionErrors;
 
@@ -495,6 +496,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
 
       {grid.error ? <Alert variant="destructive">{apiErrorText(grid.error)}</Alert> : null}
       {grid.isLoading ? <LoadingRows /> : null}
+
       <Refreshing busy={stale} className="flex flex-col gap-4 empty:hidden">
         {view?.state === 'NOT_PUBLISHED' ? (
           <Alert>{t('week.notPublished', { canteen: view.canteenName ?? '' })}</Alert>
@@ -513,8 +515,9 @@ function GridTab({ weekStart }: { weekStart: string }) {
           <>
             {/* "Which day, which rows": the day tabs, then search and row filter (side by side, also
               on phones). The day's entry window sits in the bar under the grid, next to "Lưu". */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
               <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
+              <Separator orientation="vertical" className="min-h-6" />
               <div className="flex w-full min-w-0 gap-2 lg:w-auto">
                 <SearchField
                   label={t('registrations.gridSearch')}
@@ -811,6 +814,9 @@ function GridTab({ weekStart }: { weekStart: string }) {
                     </Popover>
                   ) : null}
                 </div>
+
+                {editable && dirty && <Separator orientation="vertical" className="min-h-6" />}
+
                 <p className="flex flex-wrap items-center gap-x-2 empty:hidden" role="status">
                   {editable && dirty ? (
                     <>
