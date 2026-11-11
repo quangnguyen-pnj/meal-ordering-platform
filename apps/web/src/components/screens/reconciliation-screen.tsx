@@ -41,7 +41,7 @@ import { WeekNav } from '@/components/week-nav';
 import { api, ApiError } from '@/lib/api';
 import { BANNERS_KEY } from '@/lib/banners';
 import { apiErrorText } from '@/lib/errors';
-import { formatDate, formatVnTime } from '@/lib/utils';
+import { formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
 import { t } from '@/messages';
 import { SyncPanel } from './admin-today-screen';
 import { weekdayName } from './day-meals';
@@ -159,6 +159,8 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
               id="recon-date"
               value={date || view?.date || ''}
               onChange={setDate}
+              // Only today and the past: "today" is the server's clock, never the browser's.
+              max={view ? vnDateOf(view.now) : undefined}
               placeholder={t('adminToday.datePlaceholder')}
             />
           </div>

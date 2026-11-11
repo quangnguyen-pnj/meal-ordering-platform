@@ -123,6 +123,20 @@ describe('AdminTodayScreen', () => {
     expect(screen.getByText('Trần Thị Lan')).toBeInTheDocument();
   });
 
+  it('does not let the date picker pick a future day', async () => {
+    const user = userEvent.setup();
+    show();
+    await screen.findByText('Nguyễn Văn An');
+    await user.click(document.getElementById('today-date')!);
+    const dayButton = (iso: string) =>
+      screen
+        .getAllByRole('gridcell')
+        .find((c) => c.getAttribute('data-day') === iso)!
+        .querySelector('button')!;
+    expect(dayButton('2026-11-03')).toBeEnabled();
+    expect(dayButton('2026-11-04')).toBeDisabled();
+  });
+
   it('BR-33: confirms presence without a reason', async () => {
     const user = userEvent.setup();
     const fetchMock = show(true);
