@@ -783,3 +783,22 @@ Registration now runs on Java, so the web uses the Java API alone. The NestJS AP
 - `CloseTest` walks the P4 exit criteria with fake time (week 2029-04-02): reconciliation and its cases, finalization at 08:30 (and 409 at 08:15), every edit route refused, a late DMP confirmation and a late check-in that add nothing, the re-run until 10:30 and nothing after, the three files against `FinalCount`, adjustments (caterer tick, reason, below zero, effective count, supplementary file, the employee's view, 403 for a dept admin, 409 after 10:30), the 08:45 reminder and the 12:00 auto-finalization, finalization after a held cutoff, and 403 on every P4 route. `SecretsTest` reads the new endpoints. `MigrationTest` checks the V7 tables and triggers.
 - `AttendanceTest.morningLeave` now reads `/admin/today` at 13:05 after the 12:00 auto-finalization, so it expects `CANCELLED_ABSENT`. `OrgTest.deactivated` now checks the latest org sync run, not the latest run of any type (CloseTest's failing attendance run in 2029 sorted last).
 - Web: `reconciliation-screen.test.tsx`, a banner test, the nav list.
+
+## CR 2026-11-11: one job per admin screen
+
+The product owner asked whether `/admin/reconciliation` makes the other admin screens redundant. It does not: each screen is one step of the day (plan section 5) and one role. But they repeated data under different names, so they were tidied, and plan 4.1 changed with them.
+
+| Screen | When | Job |
+| --- | --- | --- |
+| `/admin/registrations` | Before and right after closeAt | Progress, not registered, bulk entry; and (HC) the week's forecast file for the caterer |
+| `/admin/today` | Day D, before 08:00 | Act on each person: confirm presence, edit meals, handle the cases to review |
+| `/admin/reconciliation` | Day D, from 08:30 | Totals against the forecast, finalize, final file, adjustments |
+| `/admin/reports` (P6) | Afterwards | Several days at once, read-only |
+
+- **One name per figure.** The meals that count after presence are "Thực tế" on both day screens (it was "Suất tính" on `/admin/today`), and the BR-41 cases are "Cần xem xét" on both (the tab and the column were "Ngoại lệ" on `/admin/today`). The intro of each screen says when to use it and where the other job is.
+- **Cases are handled in one place.** Each row of the "Cần xem xét" tab on `/admin/reconciliation` links to `/admin/today?date=D&q=CODE`, which opens on that day with the search filled. The admin-today page reads `date` (YYYY-MM-DD only) and `q` (trimmed, at most 50 characters) once, as the initial state; the employee code is not a secret.
+- **The attendance sync is one line on `/admin/reconciliation`** (`SyncPanel compact`: last sync and cutoff outcome, red when failed or held, and the HC re-run); the full panel stays on `/admin/today`.
+- **The weekly forecast moved to `/admin/registrations`** as the HC tab "Dự trù gửi NCC", driven by the screen's week picker (`ForecastSnapshotTab`). Reconciliation works one day at a time, and the forecast is a weekly figure taken at closeAt next to that week's progress. Only the screen moved: the API stays `GET /api/admin/reconciliation/forecast` and `/forecast/export` with `export.finalAndForecast`, so the OpenAPI files do not change. The "not taken" text no longer hardcodes "23:59 thứ Năm" (rule 3).
+- **Day picker.** Every action of `/admin/reconciliation` belongs to day D (finalize from 08:30, adjust until 10:30, re-run until 10:30), so the screen opens on today and a past day is only for looking back and downloading its files again; a past day says so in a banner. Both day screens now use `DayNav` (back to today, previous / next day, the picker), which never goes past today by the server's clock (the picker limit itself came with PR #15).
+- **For P6:** once `/admin/reports` lists days with their final and adjustment files, the past-day lookup moves there and `/admin/reconciliation` can drop the picker and show today only. Not done now (one phase per run).
+- Tests: `reconciliation-screen.test.tsx` (case link, one-line sync, no forecast tab, past-day banner, no next day), `admin-today-screen.test.tsx` (day arrows, opening from a link), `forecast-snapshot-tab.test.tsx`.

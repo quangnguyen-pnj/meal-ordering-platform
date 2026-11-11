@@ -71,6 +71,7 @@ import {
 import { cn, formatDate, formatVnTime } from '@/lib/utils';
 import { t, vi } from '@/messages';
 import { weekdayName, weekdayShort } from './day-meals';
+import { ForecastSnapshotTab } from './forecast-snapshot-tab';
 import {
   CanteenPicker,
   UnitPicker,
@@ -87,8 +88,9 @@ const isRegistrationQuery = (key: readonly unknown[]) =>
 /**
  * /admin/registrations (plan 4.1, J2): progress by unit, the not-registered list (BR-21) and the
  * bulk-entry grid, usable on a 768 px tablet. Dept admins see their units, HC admins the factory.
+ * The HC admin also gets the week's forecast snapshot and its file for the caterer (BR-07, BR-44).
  */
-export function RegistrationsAdminScreen() {
+export function RegistrationsAdminScreen({ canForecast = false }: { canForecast?: boolean }) {
   const units = useRegistrationUnits();
   const [weekStart, setWeekStart] = useState<string | null>(null);
   const home = units.data?.upcomingWeekStart;
@@ -123,6 +125,9 @@ export function RegistrationsAdminScreen() {
                 {t('registrations.tabs.notRegistered')}
               </TabsTrigger>
               <TabsTrigger value="grid">{t('registrations.tabs.grid')}</TabsTrigger>
+              {canForecast ? (
+                <TabsTrigger value="forecast">{t('registrations.tabs.forecast')}</TabsTrigger>
+              ) : null}
             </TabsList>
             <TabsContent value="progress">
               <ProgressTab weekStart={week} />
@@ -133,6 +138,11 @@ export function RegistrationsAdminScreen() {
             <TabsContent value="grid">
               <GridTab weekStart={week} />
             </TabsContent>
+            {canForecast ? (
+              <TabsContent value="forecast">
+                <ForecastSnapshotTab weekStart={week} />
+              </TabsContent>
+            ) : null}
           </Tabs>
         ) : null}
       </CardContent>

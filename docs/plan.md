@@ -233,13 +233,13 @@ The UI is desktop-first for office staff, but dept-admin screens must work well 
 | /week | Weekly registration | Employee | One card per day, a quantity stepper per meal from 0 with no cap; closeAt deadline banner (23:59 Thursday); Same as last week and Apply to whole week buttons; after closeAt each day stays editable until its own 08:00 and shows its difference from the forecast (BR-23) |
 | /team | My unit | Employee | Colleagues in the same unit today: name, meal, status; search by name or code |
 | /history | History | Employee | Past days: forecast, actual, status |
-| /admin/today | Today (admin) | Dept admin, HC admin | Default filter: today, lunch, the user's units; search by name or code; inline edit while allowed; confirm presence through a dialog with an optional reason; Exceptions tab |
-| /admin/registrations | Weekly registration (admin) | Dept admin, HC admin | Progress by unit; not-registered list; bulk-entry grid |
+| /admin/today | Today (admin) | Dept admin, HC admin | Default filter: today, lunch, the user's units; search by name or code; inline edit while allowed; confirm presence through a dialog with an optional reason; Cases to review tab; opened from a reconciliation case on that day and person |
+| /admin/registrations | Weekly registration (admin) | Dept admin, HC admin | Progress by unit; not-registered list; bulk-entry grid; weekly forecast tab and file (HC admin, BR-07, BR-44) |
 | /admin/print | Print forms | Dept admin, HC admin | Pick week and unit; one table per day, rows are employees, columns are meals, blank cells for counts; printed with browser print CSS |
 | /admin/dishes | Dish library | HC admin | Main dishes and Desserts tabs; add, edit, archive; filter by type |
 | /admin/master | Canteens, floors, cost centers | HC admin | Three tabs; add, edit, deactivate (BR-62) |
 | /admin/menu | Weekly menu | HC admin | Canteen picker; library on the left, day grid on the right; drag main dishes and desserts; enable Saturday; mark non-serving days; mix warning; Save draft and Publish, showing the expected closeAt |
-| /admin/reconciliation | Reconciliation | Dept admin (view), HC admin | Summary cards; per-meal table; filterable exceptions list; attendance sync status and re-run button; Finalize button; Export Excel; Weekly forecast tab; Adjustments tab after finalization (BR-46) |
+| /admin/reconciliation | Reconciliation | Dept admin (view), HC admin | Opens on today, past days read-only; summary cards; per-meal table; cases to review, each linked to /admin/today; one-line attendance sync status and re-run button; Finalize button; Export Excel; Adjustments tab after finalization (BR-46) |
 | /admin/delivery | Delivery | Dept admin, HC admin | Final count per unit; enter received, leftovers, note; flag outside ±5%; HC admin final confirmation |
 | /admin/reports | Reports | Dept admin, HC admin | Day, week, month: forecast, final, adjustments, effective, received, leftovers, cost; filter and group by canteen, floor, cost center and org level; Excel export |
 | /admin/org | Org structure | HC admin | 6-level tree from DMP; set meal-unit flags; map floor, canteen and cost center with inherited values shown; assign dept admins; unassigned and missing-cost-center lists; Excel import and export of mapping (BR-64) |

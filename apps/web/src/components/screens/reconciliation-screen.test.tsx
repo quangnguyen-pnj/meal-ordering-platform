@@ -140,13 +140,36 @@ describe('ReconciliationScreen', () => {
     expect(await screen.findByText('Mặn Cơm gà')).toBeInTheDocument();
     expect(screen.getByText('Lệch')).toBeInTheDocument();
     expect(screen.getByText('Lệch -15% (ngưỡng 10%)')).toBeInTheDocument();
-    // A dept admin views only: no finalize button, no file, no forecast tab.
+    // A dept admin views only: no finalize button, no file.
     expect(screen.queryByRole('button', { name: 'Chốt số' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Dự trù tuần' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Cần xem xét (1)' }));
     expect(screen.getByText('Trần Thị Lan')).toBeInTheDocument();
     expect(screen.getByText('Tạm hủy do chưa chấm công')).toBeInTheDocument();
+    // Cases are handled on /admin/today: each row opens that page on the day, searching the person.
+    expect(screen.getByRole('link', { name: 'Mở Trần Thị Lan ở trang Hôm nay' })).toHaveAttribute(
+      'href',
+      '/admin/today?date=2026-11-03&q=PNJP000010',
+    );
+  });
+
+  it('works one day at a time: no weekly forecast tab, a one-line sync, no day after today', async () => {
+    show(base, HC);
+    await screen.findByText('Mặn Cơm gà');
+    // The weekly forecast lives on /admin/registrations now.
+    expect(screen.queryByRole('tab', { name: /Dự trù/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Đồng bộ chấm công' })).toHaveTextContent(
+      'Chấm công: Chưa đồng bộ lần nào trong ngày. · Chốt chấm công lúc 08:10: chưa chạy.',
+    );
+    expect(screen.getByRole('button', { name: 'Ngày sau' })).toBeDisabled();
+    expect(screen.queryByText(/Đang xem ngày đã qua/)).not.toBeInTheDocument();
+  });
+
+  it('says a past day is for looking back only', async () => {
+    show({ ...base, now: '2026-11-05T02:00:00.000Z' }, HC);
+    expect(await screen.findByText(/Đang xem ngày đã qua/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ngày sau' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Về hôm nay' })).toBeEnabled();
   });
 
   it('does not let the date picker pick a future day', async () => {
