@@ -67,6 +67,13 @@ export const vi = {
     hidePin: 'Ẩn mã PIN',
     weekNumber: 'Tuần {week}',
     weekRelative: { current: 'tuần hiện tại', next: 'tuần sau', previous: 'tuần trước' },
+    dayNav: {
+      label: 'Ngày',
+      placeholder: 'Chọn ngày',
+      today: 'Về hôm nay',
+      previous: 'Ngày trước',
+      next: 'Ngày sau',
+    },
     orgFilter: 'Lọc theo đơn vị',
     orgLevelAll: 'Tất cả {level}',
     filters: 'Bộ lọc',
@@ -375,10 +382,9 @@ export const vi = {
   },
   adminToday: {
     title: 'Hôm nay (quản trị)',
-    intro: 'Suất ăn và chấm công hôm nay của các đơn vị bạn phụ trách.',
-    date: 'Ngày',
-    datePlaceholder: 'Chọn ngày',
-    tabs: { all: 'Tất cả', exceptions: 'Ngoại lệ ({count})' },
+    intro:
+      'Trước 08:00: xử lý từng người ở các đơn vị bạn phụ trách (xác nhận có mặt, sửa suất). Tổng số, chốt số và file gửi nhà cung cấp ở trang Đối soát.',
+    tabs: { all: 'Tất cả', exceptions: 'Cần xem xét ({count})' },
     closed:
       'Đã chốt số lúc {at} ({name}). Không sửa suất được nữa; mọi thay đổi do admin hành chánh điều chỉnh trên Đối soát.',
     closedAuto:
@@ -387,7 +393,7 @@ export const vi = {
       withMeals: 'Người có suất',
       present: 'Đã có mặt',
       provisional: 'Tạm hủy',
-      counted: 'Suất tính',
+      counted: 'Thực tế',
       forecast: 'Dự trù',
     },
     sync: {
@@ -409,11 +415,12 @@ export const vi = {
       rerunning: 'Đang đồng bộ…',
       rerunDone: 'Đã đồng bộ chấm công và nghỉ phép.',
       notServing: 'Ngày này không phục vụ bữa trưa.',
+      short: 'Chấm công',
     },
     columns: {
       meals: 'Suất ăn',
       presence: 'Chấm công',
-      cases: 'Ngoại lệ',
+      cases: 'Cần xem xét',
     },
     forecastShort: 'dự trù {count}',
     noMeal: 'Không ăn',
@@ -473,8 +480,12 @@ export const vi = {
   },
   reconciliation: {
     title: 'Đối soát',
-    intro: 'So sánh suất thực tế với dự trù, chốt số và điều chỉnh sau chốt.',
-    date: 'Ngày',
+    intro:
+      'Từ 08:30: xem tổng thực tế so với dự trù, chốt số, tải file gửi nhà cung cấp và điều chỉnh sau chốt. Xử lý từng người ở trang Hôm nay.',
+    pastDay:
+      'Đang xem ngày đã qua: chỉ xem và tải lại file. Chốt số và điều chỉnh chỉ làm được trong ngày.',
+    openInToday: 'Mở ở trang Hôm nay',
+    openInTodayFor: 'Mở {name} ở trang Hôm nay',
     notServing: 'Ngày này không phục vụ bữa trưa.',
     summary: {
       forecast: 'Dự trù',
@@ -488,7 +499,6 @@ export const vi = {
     tabs: {
       meals: 'Theo món',
       exceptions: 'Cần xem xét ({count})',
-      forecast: 'Dự trù tuần',
       adjustments: 'Điều chỉnh',
     },
     columns: {
@@ -525,14 +535,6 @@ export const vi = {
     exportFinal: 'Tải file chốt số',
     adjustUntil: 'Điều chỉnh được đến {deadline}.',
     adjustClosed: 'Đã quá hạn điều chỉnh ({deadline}).',
-    forecast: {
-      week: 'Tuần',
-      notTaken: 'Chưa chốt dự trù tuần này (đóng đăng ký lúc 23:59 thứ Năm).',
-      export: 'Tải file dự trù tuần',
-      takenAt: 'Chốt dự trù lúc {at}',
-      total: '{count} suất',
-      none: 'Chưa có thực đơn công bố cho tuần này.',
-    },
     adjustments: {
       notFinalized: 'Chỉ điều chỉnh được sau khi chốt số.',
       empty: 'Chưa có điều chỉnh nào.',
@@ -587,8 +589,21 @@ export const vi = {
   },
   registrations: {
     title: 'Đăng ký tuần (quản trị)',
-    intro: 'Theo dõi và nhập đăng ký tuần cho các đơn vị bạn quản lý.',
-    tabs: { progress: 'Tiến độ', notRegistered: 'Chưa đăng ký', grid: 'Nhập theo bảng' },
+    intro:
+      'Trước hạn đăng ký: theo dõi, đôn đốc và nhập hộ đăng ký tuần. Sau hạn: tải file dự trù tuần gửi nhà cung cấp.',
+    tabs: {
+      progress: 'Tiến độ',
+      notRegistered: 'Chưa đăng ký',
+      grid: 'Nhập theo bảng',
+      forecast: 'Dự trù gửi NCC',
+    },
+    forecast: {
+      notTaken: 'Chưa chốt dự trù tuần này: dự trù được chốt khi đóng đăng ký tuần.',
+      export: 'Tải file dự trù tuần',
+      takenAt: 'Chốt dự trù lúc {at}',
+      total: '{count} suất',
+      none: 'Chưa có thực đơn công bố cho tuần này.',
+    },
     week: 'Tuần bắt đầu',
     unit: 'Đơn vị',
     chooseUnit: 'Chọn đơn vị',

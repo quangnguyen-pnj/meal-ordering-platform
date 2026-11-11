@@ -1,13 +1,12 @@
 'use client';
 
-import { addDays } from '@meal/shared';
-import { Download, Lock, Plus, Save } from 'lucide-react';
+import { Download, ExternalLink, Lock, Plus, Save } from 'lucide-react';
+import Link from 'next/link';
 import type {
   AdjustmentCreated,
   AdjustmentsView,
   EmployeeDayView,
   FinalizeResult,
-  ForecastWeekView,
   OrgFilterOption,
   ReconciliationView,
   TodayCase,
@@ -17,6 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
+import { DayNav } from '@/components/day-nav';
 import { EmployeePicker, type PickedEmployee } from '@/components/employee-picker';
 import { OrgLevelFilter } from '@/components/org-level-filter';
 import { Alert } from '@/components/ui/alert';
@@ -24,7 +24,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
@@ -37,7 +36,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WeekNav } from '@/components/week-nav';
 import { api, ApiError } from '@/lib/api';
 import { BANNERS_KEY } from '@/lib/banners';
 import { apiErrorText } from '@/lib/errors';
@@ -54,7 +52,7 @@ const URGENT: readonly TodayCase[] = [
   'LATE_CHECK_IN',
 ];
 
-type Tab = 'meals' | 'exceptions' | 'forecast' | 'adjustments';
+type Tab = 'meals' | 'exceptions' | 'adjustments';
 
 export interface ReconciliationPermissions {
   /** day.finalize (BR-43) */
@@ -72,8 +70,10 @@ const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 /**
  * /admin/reconciliation (plan 4.1, P4): summary cards and the per-meal comparison with the
  * forecast (BR-40, BR-42), the cases to review (BR-41), the attendance sync, finalization (BR-43),
- * the final and weekly forecast files (BR-44) and adjustments after finalization (BR-46). Dept
- * admins see their units, read-only.
+ * the final file (BR-44) and adjustments after finalization (BR-46). Dept admins see their units,
+ * read-only. It works one day at a time and opens on today; a past day is for looking back and
+ * downloading its files again. The weekly forecast tab moved to /admin/registrations, and the cases
+ * link to /admin/today, where they are handled (docs/decisions.md).
  */
 export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }) {
   const qc = useQueryClient();
@@ -137,33 +137,34 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
   };
 
   const tabs: Tab[] = ['meals', 'exceptions'];
-  if (can.export) tabs.push('forecast');
   if (can.adjust && view?.closed) tabs.push('adjustments');
   const shownTab = tabs.includes(tab) ? tab : 'meals';
+  // "Today" is the server's clock, never the browser's.
+  const today = view ? vnDateOf(view.now) : undefined;
 
   return (
     <Card variant="page">
       {confirmDialog}
       <CardHeader>
-        <CardTitle>{t('reconciliation.title')}</CardTitle>
-        <CardDescription>
-          {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
-          {t('reconciliation.intro')}
-        </CardDescription>
+        {/* The day is what the whole page is about: it sits with the title, as on /admin/today. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle>{t('reconciliation.title')}</CardTitle>
+            <CardDescription>
+              {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
+              {t('reconciliation.intro')}
+            </CardDescription>
+          </div>
+          <DayNav
+            id="recon-date"
+            date={date || view?.date || ''}
+            today={today}
+            onChange={setDate}
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="flex w-full flex-col gap-2 sm:w-44">
-            <Label htmlFor="recon-date">{t('reconciliation.date')}</Label>
-            <DatePicker
-              id="recon-date"
-              value={date || view?.date || ''}
-              onChange={setDate}
-              // Only today and the past: "today" is the server's clock, never the browser's.
-              max={view ? vnDateOf(view.now) : undefined}
-              placeholder={t('adminToday.datePlaceholder')}
-            />
-          </div>
           <OrgLevelFilter
             id="recon-org"
             options={orgUnits.data?.items ?? []}
@@ -178,6 +179,9 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
         {view ? (
           <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-6">
             {!view.servingDay ? <Alert>{t('reconciliation.notServing')}</Alert> : null}
+            {view.servingDay && today && view.date < today ? (
+              <Alert>{t('reconciliation.pastDay')}</Alert>
+            ) : null}
 
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label={t('reconciliation.summary.forecast')} value={view.summary.forecast} />
@@ -266,7 +270,8 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
               </div>
             </section>
 
-            <SyncPanel status={view.attendance} canSync={can.sync} onDone={refresh} />
+            {/* One line here: the details and the per-person view are on /admin/today. */}
+            <SyncPanel compact status={view.attendance} canSync={can.sync} onDone={refresh} />
 
             <Tabs value={shownTab} onValueChange={(v) => setTab(v as Tab)}>
               <TabsList>
@@ -274,9 +279,6 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
                 <TabsTrigger value="exceptions">
                   {t('reconciliation.tabs.exceptions', { count: view.exceptions.length })}
                 </TabsTrigger>
-                {tabs.includes('forecast') ? (
-                  <TabsTrigger value="forecast">{t('reconciliation.tabs.forecast')}</TabsTrigger>
-                ) : null}
                 {tabs.includes('adjustments') ? (
                   <TabsTrigger value="adjustments">
                     {t('reconciliation.tabs.adjustments')}
@@ -287,7 +289,6 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
 
             {shownTab === 'meals' ? <MealsTable view={view} /> : null}
             {shownTab === 'exceptions' ? <ExceptionsTable view={view} /> : null}
-            {shownTab === 'forecast' ? <ForecastTab date={view.date} /> : null}
             {shownTab === 'adjustments' ? (
               <AdjustmentsTab date={view.date} onChanged={refresh} />
             ) : null}
@@ -374,7 +375,12 @@ function MealsTable({ view }: { view: ReconciliationView }) {
   );
 }
 
-/** BR-41: code, name, unit, forecast meal, actual meal and case type. */
+/** The person's row on /admin/today for that day: the search box is filled with their code. */
+export function todayHref(date: string, employeeCode: string): string {
+  return `/admin/today?${new URLSearchParams({ date, q: employeeCode })}`;
+}
+
+/** BR-41: code, name, unit, forecast meal, actual meal and case type, each linked to /admin/today. */
 function ExceptionsTable({ view }: { view: ReconciliationView }) {
   if (view.exceptions.length === 0) {
     return <p className="text-sm text-muted-foreground">{t('reconciliation.noExceptions')}</p>;
@@ -394,6 +400,9 @@ function ExceptionsTable({ view }: { view: ReconciliationView }) {
           <TableHead>{t('reconciliation.columns.forecastMeals')}</TableHead>
           <TableHead>{t('reconciliation.columns.actualMeals')}</TableHead>
           <TableHead>{t('reconciliation.columns.cases')}</TableHead>
+          <TableHead>
+            <span className="sr-only">{t('common.actions')}</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -417,94 +426,22 @@ function ExceptionsTable({ view }: { view: ReconciliationView }) {
                 ))}
               </div>
             </TableCell>
+            <TableCell className="text-right">
+              {/* Cases are handled per person on /admin/today: this page only counts them. */}
+              <Button asChild variant="ghost" size="sm">
+                <Link
+                  href={todayHref(view.date, r.employeeCode)}
+                  aria-label={t('reconciliation.openInTodayFor', { name: r.name })}
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  <span className="hidden lg:inline">{t('reconciliation.openInToday')}</span>
+                </Link>
+              </Button>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
-  );
-}
-
-function mondayOf(date: string): string {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return addDays(date, -((day + 6) % 7));
-}
-
-/** BR-07 / BR-44: the weekly forecast per day and its Excel file. */
-function ForecastTab({ date }: { date: string }) {
-  const [weekStart, setWeekStart] = useState(() => mondayOf(date));
-  const query = useQuery({
-    queryKey: ['/admin/reconciliation/forecast', weekStart],
-    queryFn: () =>
-      api.get<ForecastWeekView>(`/admin/reconciliation/forecast?weekStart=${weekStart}`),
-    placeholderData: keepPreviousData,
-  });
-  const download = useMutation({
-    mutationFn: () =>
-      api.download(
-        `/admin/reconciliation/forecast/export?weekStart=${weekStart}`,
-        `du-tru-tuan-${weekStart}.xlsx`,
-      ),
-  });
-  const view = query.data;
-  return (
-    <div className="flex flex-col gap-4">
-      <WeekNav weekStart={weekStart} onChange={setWeekStart} homeWeekStart={mondayOf(date)} />
-      {query.error ? <Alert variant="destructive">{apiErrorText(query.error)}</Alert> : null}
-      {download.error ? <Alert variant="destructive">{apiErrorText(download.error)}</Alert> : null}
-      {view ? (
-        <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-4">
-          {view.canteens.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('reconciliation.forecast.none')}</p>
-          ) : null}
-          {view.canteens.map((c) => (
-            <section key={c.canteenId} className="flex flex-col gap-2">
-              <h3 className="font-medium">{c.canteenName}</h3>
-              {c.closedAt === null ? (
-                <p className="text-sm text-muted-foreground">
-                  {t('reconciliation.forecast.notTaken')}
-                </p>
-              ) : (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    {t('reconciliation.forecast.takenAt', { at: formatVnTime(c.closedAt) })}
-                  </p>
-                  <Table>
-                    <TableBody>
-                      {c.days.map((d) => (
-                        <TableRow key={d.date}>
-                          <TableCell className="whitespace-nowrap">
-                            {weekdayName(d.date)} {formatDate(d.date)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {d.meals.map((m) => `${m.quantity} × ${m.displayName}`).join(', ') ||
-                              t('common.none')}
-                          </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            {t('reconciliation.forecast.total', { count: d.total })}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </>
-              )}
-            </section>
-          ))}
-          {view.exportable ? (
-            <div>
-              <Button
-                variant="outline"
-                disabled={download.isPending}
-                onClick={() => download.mutate()}
-              >
-                <Download className="h-4 w-4" aria-hidden />
-                {t('reconciliation.forecast.export')}
-              </Button>
-            </div>
-          ) : null}
-        </Refreshing>
-      ) : null}
-    </div>
   );
 }
 

@@ -14,14 +14,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
+import { DayNav } from '@/components/day-nav';
 import { FilterBar } from '@/components/filter-bar';
-import { FilterField, SearchField } from '@/components/filter-field';
+import { SearchField } from '@/components/filter-field';
 import { OrgLevelFilter } from '@/components/org-level-filter';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
@@ -70,14 +70,24 @@ function matches(row: TodayRow, term: string): boolean {
  * /admin/today (plan 4.1, P3): day D of the caller's units. Meals and forecast per employee,
  * attendance (BR-30 to BR-32), leave flags (BR-35) and the cases to review (BR-41). Admins confirm
  * presence with an optional reason (BR-33) and, after the lock, edit meals with a reason (BR-24).
- * The HC admin re-runs the attendance sync (BR-34).
+ * The HC admin re-runs the attendance sync (BR-34). /admin/reconciliation links each case here with
+ * the day and the employee code (`?date=…&q=…`), which open the page on that day and search.
  */
-export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
+export function AdminTodayScreen({
+  canSync,
+  initialDate = '',
+  initialQuery = '',
+}: {
+  canSync: boolean;
+  /** YYYY-MM-DD from the link, or '' for today. */
+  initialDate?: string;
+  initialQuery?: string;
+}) {
   const qc = useQueryClient();
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(initialDate);
   const [orgUnitId, setOrgUnitId] = useState('');
   const [tab, setTab] = useState<'all' | 'exceptions'>('all');
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQuery);
   const term = useDebounced(q.trim().toLocaleLowerCase('vi'), 200);
   const [confirmFor, setConfirmFor] = useState<TodayRow | null>(null);
   const [editFor, setEditFor] = useState<TodayRow | null>(null);
@@ -128,16 +138,13 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
               {t('adminToday.intro')}
             </CardDescription>
           </div>
-          <FilterField label={t('adminToday.date')} htmlFor="today-date" className="sm:w-44">
-            <DatePicker
-              id="today-date"
-              value={date || view?.date || ''}
-              onChange={setDate}
-              // Only today and the past: "today" is the server's clock, never the browser's.
-              max={view ? vnDateOf(view.now) : undefined}
-              placeholder={t('adminToday.datePlaceholder')}
-            />
-          </FilterField>
+          <DayNav
+            id="today-date"
+            date={date || view?.date || ''}
+            // Only today and the past: "today" is the server's clock, never the browser's.
+            today={view ? vnDateOf(view.now) : undefined}
+            onChange={setDate}
+          />
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
@@ -290,14 +297,20 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: 'de
   );
 }
 
+/**
+ * The attendance sync of day D (BR-30, BR-34). `compact` is the one-line form for
+ * /admin/reconciliation: last sync and cutoff outcome, plus the re-run button.
+ */
 export function SyncPanel({
   status,
   canSync,
   onDone,
+  compact = false,
 }: {
   status: AttendanceStatus;
   canSync: boolean;
   onDone: () => void;
+  compact?: boolean;
 }) {
   const qc = useQueryClient();
   const rerun = useMutation({
@@ -314,6 +327,51 @@ export function SyncPanel({
   }
   const sync = status.lastAttendanceSync;
   const cutoff = status.cutoff;
+  const button = canSync ? (
+    <Button size="sm" variant="outline" disabled={rerun.isPending} onClick={() => rerun.mutate()}>
+      <RefreshCw className="h-4 w-4" aria-hidden />
+      {rerun.isPending ? t('adminToday.sync.rerunning') : t('adminToday.sync.rerun')}
+    </Button>
+  ) : null;
+  const lastText = sync
+    ? t('adminToday.sync.last', {
+        at: formatVnTime(sync.startedAt),
+        status: t(`adminToday.sync.status.${sync.status}`),
+      })
+    : t('adminToday.sync.never');
+  const cutoffText = cutoff
+    ? t(`adminToday.sync.cutoff.${cutoff.outcome}`, {
+        at: formatVnTime(cutoff.runAt),
+        count: cutoff.cancelledCount,
+        present: cutoff.presentWithMeals,
+        total: cutoff.withMeals,
+      })
+    : t('adminToday.sync.cutoffPending', { cutoff: formatVnTime(status.cutoffAt) });
+  const failed = sync?.status === 'FAILED';
+  const held = !!cutoff && cutoff.outcome !== 'CANCELLED';
+  if (compact) {
+    return (
+      <section
+        aria-label={t('adminToday.sync.title')}
+        className="flex flex-col gap-2 rounded-lg bg-card px-4 py-3 text-sm shadow-block"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p>
+            <span className="font-medium">{t('adminToday.sync.short')}: </span>
+            <span className={failed ? 'text-destructive' : 'text-muted-foreground'}>
+              {lastText}
+            </span>
+            <span className="text-muted-foreground"> · </span>
+            <span className={held ? 'text-destructive' : 'text-muted-foreground'}>
+              {cutoffText}
+            </span>
+          </p>
+          {button}
+        </div>
+        {rerun.error ? <Alert variant="destructive">{apiErrorText(rerun.error)}</Alert> : null}
+      </section>
+    );
+  }
   return (
     <section
       aria-label={t('adminToday.sync.title')}
@@ -321,40 +379,14 @@ export function SyncPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">{t('adminToday.sync.title')}</h2>
-        {canSync ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={rerun.isPending}
-            onClick={() => rerun.mutate()}
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            {rerun.isPending ? t('adminToday.sync.rerunning') : t('adminToday.sync.rerun')}
-          </Button>
-        ) : null}
+        {button}
       </div>
       {rerun.error ? <Alert variant="destructive">{apiErrorText(rerun.error)}</Alert> : null}
-      <p className={sync?.status === 'FAILED' ? 'text-destructive' : ''}>
-        {sync
-          ? t('adminToday.sync.last', {
-              at: formatVnTime(sync.startedAt),
-              status: t(`adminToday.sync.status.${sync.status}`),
-            })
-          : t('adminToday.sync.never')}
-      </p>
+      <p className={failed ? 'text-destructive' : ''}>{lastText}</p>
       {sync?.error ? (
         <p className="text-destructive">{t('adminToday.sync.error', { error: sync.error })}</p>
       ) : null}
-      <p className={cutoff && cutoff.outcome !== 'CANCELLED' ? 'text-destructive' : ''}>
-        {cutoff
-          ? t(`adminToday.sync.cutoff.${cutoff.outcome}`, {
-              at: formatVnTime(cutoff.runAt),
-              count: cutoff.cancelledCount,
-              present: cutoff.presentWithMeals,
-              total: cutoff.withMeals,
-            })
-          : t('adminToday.sync.cutoffPending', { cutoff: formatVnTime(status.cutoffAt) })}
-      </p>
+      <p className={held ? 'text-destructive' : ''}>{cutoffText}</p>
       {status.lastLeaveSync?.finishedAt ? (
         <p className="text-muted-foreground">
           {t('adminToday.sync.leave', { at: formatVnTime(status.lastLeaveSync.finishedAt) })}

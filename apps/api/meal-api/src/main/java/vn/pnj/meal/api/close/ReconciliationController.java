@@ -100,7 +100,7 @@ public class ReconciliationController {
     return day;
   }
 
-  /** BR-07: the weekly forecast tab. */
+  /** BR-07: the weekly forecast, shown on /admin/registrations (the path predates the move). */
   @RequirePermission(action = Action.EXPORT_FINAL_AND_FORECAST, scope = ScopeType.FACTORY)
   @GetMapping("/admin/reconciliation/forecast")
   ForecastWeekView forecastWeek(@RequestParam String weekStart, RequestPrincipal p) {

@@ -91,7 +91,7 @@ const view: AdminTodayView = {
   ],
 };
 
-function show(canSync = false) {
+function show(canSync = false, initial: { date?: string; q?: string } = {}) {
   const fetchMock = vi.fn(async (url: string) =>
     String(url).includes('/admin/registrations/org-units')
       ? new Response(JSON.stringify({ items: [] }), { status: 200 })
@@ -102,7 +102,7 @@ function show(canSync = false) {
   vi.stubGlobal('fetch', fetchMock);
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <AdminTodayScreen canSync={canSync} />
+      <AdminTodayScreen canSync={canSync} initialDate={initial.date} initialQuery={initial.q} />
     </QueryClientProvider>,
   );
   return fetchMock;
@@ -118,7 +118,7 @@ describe('AdminTodayScreen', () => {
     // Only the HC admin gets the re-run button.
     expect(screen.queryByRole('button', { name: 'Chạy lại đồng bộ' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: 'Ngoại lệ (1)' }));
+    await user.click(screen.getByRole('tab', { name: 'Cần xem xét (1)' }));
     expect(screen.queryByText('Nguyễn Văn An')).not.toBeInTheDocument();
     expect(screen.getByText('Trần Thị Lan')).toBeInTheDocument();
   });
@@ -135,6 +135,35 @@ describe('AdminTodayScreen', () => {
         .querySelector('button')!;
     expect(dayButton('2026-11-03')).toBeEnabled();
     expect(dayButton('2026-11-04')).toBeDisabled();
+  });
+
+  it('steps a day back with the arrow, never past today, and jumps back to today', async () => {
+    const user = userEvent.setup();
+    const fetchMock = show();
+    await screen.findByText('Nguyễn Văn An');
+    // The fake view is always 2026-11-03, today: no next day, nothing to jump back to.
+    expect(screen.getByRole('button', { name: 'Ngày sau' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Về hôm nay' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Ngày trước' }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/admin/today?date=2026-11-02'),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('opens on the day and the person a reconciliation case links to', async () => {
+    const fetchMock = show(false, { date: '2026-11-03', q: 'PNJP000010' });
+    expect(await screen.findByText('Trần Thị Lan')).toBeInTheDocument();
+    expect(screen.queryByText('Nguyễn Văn An')).not.toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Tìm theo tên hoặc mã' })).toHaveValue(
+      'PNJP000010',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/admin/today?date=2026-11-03'),
+      expect.anything(),
+    );
   });
 
   it('BR-33: confirms presence without a reason', async () => {
