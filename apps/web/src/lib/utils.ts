@@ -25,6 +25,11 @@ export function formatVnTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** The Asia/Ho_Chi_Minh calendar day (YYYY-MM-DD) of an ISO instant, e.g. the server's `now`. */
+export function vnDateOf(iso: string): string {
+  return toVnDateTime(new Date(iso)).date;
+}
+
 /** dd/MM/yyyy for a YYYY-MM-DD calendar date (serving days are dates, not instants). */
 export function formatDate(date: string): string {
   const [y, m, d] = date.split('-');

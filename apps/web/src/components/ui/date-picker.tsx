@@ -30,6 +30,8 @@ type DatePickerProps = {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Latest pickable day, YYYY-MM-DD: later days are greyed out and the calendar cannot page past it. */
+  max?: string;
 };
 
 /**
@@ -43,9 +45,11 @@ function DatePicker({
   placeholder = 'dd/mm/yyyy',
   className,
   disabled,
+  max,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const selected = parseIsoDate(value);
+  const maxDate = max ? parseIsoDate(max) : undefined;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -71,6 +75,8 @@ function DatePicker({
           mode="single"
           selected={selected}
           defaultMonth={selected}
+          disabled={maxDate ? { after: maxDate } : undefined}
+          endMonth={maxDate}
           onSelect={(day) => {
             // Clicking the selected day again clears it in the library; keep the date instead.
             if (!day) return;

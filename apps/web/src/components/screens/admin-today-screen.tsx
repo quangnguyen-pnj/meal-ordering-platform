@@ -42,7 +42,7 @@ import { api } from '@/lib/api';
 import { apiErrorText } from '@/lib/errors';
 import { linesOf } from '@/lib/registration-draft';
 import { BANNERS_KEY } from '@/lib/banners';
-import { formatDate, formatVnTime } from '@/lib/utils';
+import { formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
 import { t } from '@/messages';
 import { weekdayName } from './day-meals';
 
@@ -133,6 +133,8 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
               id="today-date"
               value={date || view?.date || ''}
               onChange={setDate}
+              // Only today and the past: "today" is the server's clock, never the browser's.
+              max={view ? vnDateOf(view.now) : undefined}
               placeholder={t('adminToday.datePlaceholder')}
             />
           </FilterField>
