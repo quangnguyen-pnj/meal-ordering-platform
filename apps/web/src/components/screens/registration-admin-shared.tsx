@@ -2,9 +2,10 @@
 
 import type { RegistrationGridView, RegistrationUnitOption } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
+import { FilterField } from '@/components/filter-field';
 import { ResponsiveSelect } from '@/components/responsive-select';
-import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { t } from '@/messages';
 
 export interface UnitsResponse {
@@ -40,18 +41,23 @@ export function useRegistrationGrid(unitId: string, weekStart: string | null, ca
 
 export function UnitPicker({
   id,
+  className,
   units,
   value,
   onChange,
 }: {
   id: string;
+  className?: string;
   units: readonly RegistrationUnitOption[];
   value: string;
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2 sm:max-w-md">
-      <Label htmlFor={id}>{t('registrations.unit')}</Label>
+    <FilterField
+      label={t('registrations.unit')}
+      htmlFor={id}
+      className={cn('min-w-0 sm:max-w-md', className)}
+    >
       <ResponsiveSelect
         id={id}
         value={value}
@@ -62,7 +68,7 @@ export function UnitPicker({
           label: t('registrations.unitOption', { path: u.pathName, count: u.employeeCount }),
         }))}
       />
-    </div>
+    </FilterField>
   );
 }
 
@@ -80,8 +86,7 @@ export function CanteenPicker({
 }) {
   if (!grid || grid.canteens.length < 2) return null;
   return (
-    <div className="flex w-full flex-col gap-2 sm:w-56">
-      <Label htmlFor={id}>{t('registrations.canteen')}</Label>
+    <FilterField label={t('registrations.canteen')} htmlFor={id} className="sm:w-56">
       <ResponsiveSelect
         id={id}
         value={grid.canteenId ?? ''}
@@ -89,6 +94,6 @@ export function CanteenPicker({
         onValueChange={onChange}
         options={grid.canteens.map((c) => ({ value: c.id, label: c.name }))}
       />
-    </div>
+    </FilterField>
   );
 }

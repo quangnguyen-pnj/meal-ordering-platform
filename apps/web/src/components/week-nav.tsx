@@ -31,16 +31,19 @@ export function WeekNav({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {homeWeekStart && homeWeekStart !== weekStart ? (
-        // Spacing, not a divider line, sets "back" apart from the week arrows.
+      {homeWeekStart ? (
+        // Always there, only disabled on the home week: a button that comes and goes would move the
+        // arrows under the user's finger. Spacing, not a divider line, sets it apart from them.
+        // Phones keep the icon alone so the whole control stays on one line.
         <Button
           variant="tertiary"
           size="sm"
-          className="mr-2"
+          className="mr-2 disabled:text-muted-foreground"
+          disabled={homeWeekStart === weekStart}
           onClick={() => onChange(homeWeekStart)}
         >
           <Undo2 className="h-4 w-4" aria-hidden />
-          {t('menu.backToUpcoming')}
+          <span className="sr-only sm:not-sr-only">{t('menu.backToUpcoming')}</span>
         </Button>
       ) : null}
 

@@ -43,6 +43,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useStore } from 'zustand';
+import { FilterField, SearchField } from '@/components/filter-field';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -140,20 +141,19 @@ export function MenuScreen() {
 
   return (
     <Card variant="page">
-      <CardHeader className="gap-4">
-        <CardTitle>{t('menu.title')}</CardTitle>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex w-full flex-col gap-2 sm:w-60">
-            <Label htmlFor="menu-canteen">{t('menu.canteen')}</Label>
-            <ResponsiveSelect
-              id="menu-canteen"
-              value={canteenId ?? ''}
-              onValueChange={setCanteenId}
-              options={canteens.data.items.map((c) => ({ value: c.id, label: c.name }))}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium leading-none">{t('menu.week')}</p>
+      <CardHeader>
+        {/* Canteen and week set what the page shows, so they sit with the title. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
+          <CardTitle>{t('menu.title')}</CardTitle>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-4">
+            <FilterField label={t('menu.canteen')} htmlFor="menu-canteen" className="sm:w-60">
+              <ResponsiveSelect
+                id="menu-canteen"
+                value={canteenId ?? ''}
+                onValueChange={setCanteenId}
+                options={canteens.data.items.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </FilterField>
             {weekStart ? (
               <WeekNav
                 weekStart={weekStart}
@@ -546,16 +546,10 @@ function Library({ dishes, desserts }: { dishes: DishView[]; desserts: DessertVi
   const [q, setQ] = useState('');
   const match = (name: string) => name.toLowerCase().includes(q.trim().toLowerCase());
   return (
-    <aside className="hidden flex-col gap-4 rounded-lg bg-muted p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
+    <aside className="hidden flex-col gap-4 rounded-lg bg-muted/40 p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
       <p className="font-medium">{t('menu.library')}</p>
       <p className="text-xs text-muted-foreground">{t('menu.libraryHint')}</p>
-      <Input
-        type="search"
-        aria-label={t('common.search')}
-        placeholder={t('common.search')}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
+      <SearchField label={t('common.search')} value={q} onChange={setQ} />
       <p className="text-xs font-semibold uppercase text-muted-foreground">
         {t('menu.mainDishes')}
       </p>

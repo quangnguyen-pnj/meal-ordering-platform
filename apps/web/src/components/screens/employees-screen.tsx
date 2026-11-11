@@ -7,19 +7,13 @@ import type {
   ResetPinResult,
 } from '@/lib/api-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Building2,
-  Check,
-  FilterX,
-  KeyRound,
-  MoreHorizontal,
-  Save,
-  SlidersHorizontal,
-} from 'lucide-react';
+import { Building2, KeyRound, MoreHorizontal, Save } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
 import { returnFocus, useConfirm } from '@/components/confirm-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { FilterField, SearchField } from '@/components/filter-field';
 import { OrgLevelFilter } from '@/components/org-level-filter';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Alert } from '@/components/ui/alert';
@@ -46,13 +40,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PAGE_SIZE as PAGE, Pagination } from '@/components/ui/pagination';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
   Table,
@@ -145,7 +132,6 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
   const qc = useQueryClient();
   const [confirm, confirmElement] = useConfirm();
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [offset, setOffset] = useState(0);
   const [tempPin, setTempPin] = useState<{
     name: string;
@@ -231,9 +217,12 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
   const error = list.error ?? resetPin.error;
 
   // Filters that differ from the defaults, for the count on the phone's "Bộ lọc" button.
-  const activeFilters = (Object.keys(NO_FILTERS) as Array<keyof Filters>).filter(
-    (k) => k !== 'q' && filters[k] !== NO_FILTERS[k],
-  ).length;
+  const changed = (keys: Array<keyof Filters>) =>
+    keys.filter((k) => filters[k] !== NO_FILTERS[k]).length;
+  const activeFilters = changed(
+    (Object.keys(NO_FILTERS) as Array<keyof Filters>).filter((k) => k !== 'q'),
+  );
+  const moreFilters = changed(['mealStatus', 'floorId', 'canteenId', 'costCenterId']);
 
   const masterSelect = (
     prefix: string,
@@ -241,8 +230,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
     label: string,
     options: MasterItemView[] | undefined,
   ) => (
-    <div className="flex w-full flex-col gap-2 sm:w-48">
-      <Label htmlFor={`${prefix}-${id}`}>{label}</Label>
+    <FilterField label={label} htmlFor={`${prefix}-${id}`} className="sm:w-48">
       <ResponsiveSelect
         id={`${prefix}-${id}`}
         value={filters[id]}
@@ -252,11 +240,11 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
           ...(options ?? []).map((o) => ({ value: o.id, label: `${o.code} · ${o.name}` })),
         ]}
       />
-    </div>
+    </FilterField>
   );
 
-  // Every filter but the search; `prefix` keeps ids unique between the page and the phone sheet.
-  const filterFields = (prefix: string) => (
+  // `prefix` keeps ids unique between the row, the "more" popover and the phone sheet.
+  const mainFields = (prefix: string) => (
     <>
       <OrgLevelFilter
         id={`${prefix}-org`}
@@ -264,8 +252,28 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
         value={filters.orgUnitId}
         onChange={(orgUnitId) => update({ orgUnitId })}
       />
-      <div className="flex w-full flex-col gap-2 sm:w-56">
-        <Label htmlFor={`${prefix}-meal`}>{t('employees.mealStatus')}</Label>
+      <FilterField
+        label={t('employees.statusFilter')}
+        htmlFor={`${prefix}-status`}
+        className="sm:w-40"
+      >
+        <ResponsiveSelect
+          id={`${prefix}-status`}
+          value={filters.status}
+          onValueChange={(v) => update({ status: v })}
+          options={[
+            { value: '', label: t('common.all') },
+            { value: 'ACTIVE', label: vi.employees.status.ACTIVE },
+            { value: 'LEFT', label: vi.employees.status.LEFT },
+          ]}
+        />
+      </FilterField>
+    </>
+  );
+  // Used less often: behind "Thêm bộ lọc" on wide screens.
+  const moreFields = (prefix: string) => (
+    <>
+      <FilterField label={t('employees.mealStatus')} htmlFor={`${prefix}-meal`} className="sm:w-56">
         <ResponsiveSelect
           id={`${prefix}-meal`}
           value={filters.mealStatus}
@@ -278,20 +286,7 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
             })),
           ]}
         />
-      </div>
-      <div className="flex w-full flex-col gap-2 sm:w-40">
-        <Label htmlFor={`${prefix}-status`}>{t('employees.statusFilter')}</Label>
-        <ResponsiveSelect
-          id={`${prefix}-status`}
-          value={filters.status}
-          onValueChange={(v) => update({ status: v })}
-          options={[
-            { value: '', label: t('common.all') },
-            { value: 'ACTIVE', label: vi.employees.status.ACTIVE },
-            { value: 'LEFT', label: vi.employees.status.LEFT },
-          ]}
-        />
-      </div>
+      </FilterField>
       {canManageOrg ? (
         <>
           {masterSelect(prefix, 'floorId', t('org.floor'), floors.data?.items)}
@@ -324,70 +319,32 @@ export function EmployeesScreen({ canManageOrg }: { canManageOrg: boolean }) {
         <CardDescription>{t('employees.intro')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div
-          role="group"
-          className="flex flex-wrap items-end gap-4"
-          aria-label={t('employees.filters')}
-        >
-          <div className="flex min-w-0 flex-1 flex-col gap-2 md:w-64 md:flex-none">
-            <Label htmlFor="f-q">{t('common.search')}</Label>
-            <Input
+        <FilterBar
+          search={
+            <SearchField
               id="f-q"
-              type="search"
+              label={t('common.search')}
               value={filters.q}
-              onChange={(e) => update({ q: e.target.value })}
+              onChange={(q) => update({ q })}
             />
-          </div>
-          {/* Phones: the other filters live in a sheet, so the list starts on the first screen. */}
-          <Button
-            variant="outline"
-            className="md:hidden"
-            aria-haspopup="dialog"
-            onClick={() => setFiltersOpen(true)}
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            {t('employees.filters')}
-            {activeFilters > 0 ? (
-              <Badge variant="default" className="ml-1 px-1.5 py-0 tabular-nums">
-                {activeFilters}
-              </Badge>
-            ) : null}
-          </Button>
-          <div className="hidden md:contents">{filterFields('f')}</div>
-        </div>
-
-        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <SheetContent side="bottom" className="max-h-[85dvh] gap-5 rounded-t-xl p-5 md:hidden">
-            <SheetHeader>
-              <SheetTitle>{t('employees.filters')}</SheetTitle>
-              <SheetDescription>{t('employees.filtersHint')}</SheetDescription>
-            </SheetHeader>
-            <div className="-mx-5 flex flex-col gap-3 overflow-y-auto px-5 sm:[&>div]:w-full">
-              {filterFields('fm')}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                disabled={activeFilters === 0}
-                onClick={() => {
-                  setFilters((f) => ({ ...NO_FILTERS, q: f.q }));
-                  setOffset(0);
-                }}
-              >
-                <FilterX className="h-4 w-4" aria-hidden />
-                {t('employees.clearFilters')}
-              </Button>
-              <Button onClick={() => setFiltersOpen(false)}>
-                <Check className="h-4 w-4" aria-hidden />
-                {list.data
-                  ? t('employees.showResults', {
-                      count: new Intl.NumberFormat('vi-VN').format(total),
-                    })
-                  : t('common.done')}
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+          }
+          filters={mainFields}
+          more={moreFields}
+          activeCount={activeFilters}
+          moreCount={moreFilters}
+          searching={filters.q !== ''}
+          onClear={() => {
+            setFilters(NO_FILTERS);
+            setOffset(0);
+          }}
+          doneLabel={
+            list.data
+              ? t('employees.showResults', {
+                  count: new Intl.NumberFormat('vi-VN').format(total),
+                })
+              : undefined
+          }
+        />
 
         {error ? <Alert variant="destructive">{apiErrorText(error)}</Alert> : null}
 
