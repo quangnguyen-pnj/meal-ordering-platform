@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm-dialog';
 import { EmployeePicker, type PickedEmployee } from '@/components/employee-picker';
 import { ResponsiveSelect } from '@/components/responsive-select';
+import { SearchField } from '@/components/filter-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -298,13 +299,11 @@ function TreeTab() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            className="w-full sm:max-w-xs"
-            type="search"
-            aria-label={t('org.filterTree')}
-            placeholder={t('org.filterTree')}
+          <SearchField
+            label={t('org.filterTree')}
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={setFilter}
+            className="sm:max-w-xs"
           />
           <div
             role="group"

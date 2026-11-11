@@ -1,8 +1,8 @@
 'use client';
 
 import type { OrgFilterOption } from '@/lib/api-types';
+import { FilterField } from '@/components/filter-field';
 import { ResponsiveSelect } from '@/components/responsive-select';
-import { Label } from '@/components/ui/label';
 import { orgFilterChange, orgFilterLevels } from '@/lib/org-filter';
 import { t } from '@/messages';
 
@@ -22,8 +22,12 @@ export function OrgLevelFilter({
   return (
     <>
       {levels.map((level, depth) => (
-        <div key={depth} className="flex w-full flex-col gap-2 sm:w-52">
-          <Label htmlFor={`${id}-${depth}`}>{level.label || t('common.orgFilter')}</Label>
+        <FilterField
+          key={depth}
+          label={level.label || t('common.orgFilter')}
+          htmlFor={`${id}-${depth}`}
+          className="sm:w-52"
+        >
           <ResponsiveSelect
             id={`${id}-${depth}`}
             value={level.value}
@@ -33,7 +37,7 @@ export function OrgLevelFilter({
               ...level.options.map((o) => ({ value: o.id, label: o.name })),
             ]}
           />
-        </div>
+        </FilterField>
       ))}
     </>
   );
