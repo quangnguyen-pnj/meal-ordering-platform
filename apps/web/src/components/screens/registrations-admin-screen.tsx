@@ -911,7 +911,7 @@ export function GridDayTabs({
               the full day name is what is read out. */}
             <span aria-hidden>{weekdayShort(d.date)}</span>
             <span className="sr-only">{weekdayName(d.date)}</span>
-            <span className="tabular-nums">{formatDate(d.date).slice(0, 5)}</span>
+            <span className="tabular-nums"> - {formatDate(d.date).slice(0, 5)}</span>
             {d.window !== 'ON_BEHALF' ? (
               <span className="sr-only">{t('registrations.dayLocked')}</span>
             ) : null}
