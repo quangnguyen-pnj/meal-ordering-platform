@@ -514,7 +514,11 @@ function GridTab({ weekStart }: { weekStart: string }) {
         {view?.state === 'PUBLISHED' && day && groups ? (
           <>
             {/* "Which day, which rows": the day tabs, then search and row filter (side by side, also
-              on phones). The day's entry window sits in the bar under the grid, next to "Lưu". */}
+              on phones). The wider gap between the two groups sets them apart without a line:
+              a day changes the data, the search and filter only the view. A column gap is only
+              there on a shared line, so a group that wraps starts at the left edge. "Đang hiện …"
+              is its own item: when it does not fit it wraps alone, and the search box being typed
+              in stays put. The day's entry window sits in the bar under the grid, next to "Lưu". */}
             <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
               <GridDayTabs days={view.days} value={date} onPick={(d) => void pickDay(d)} />
               <Separator orientation="vertical" className="min-h-6" />
@@ -545,7 +549,10 @@ function GridTab({ weekStart }: { weekStart: string }) {
               {filtered ? (
                 <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
                   <span aria-live="polite">
-                    {t('registrations.gridShown', { shown: shown.length, total: view.rows.length })}
+                    {t('registrations.gridShown', {
+                      shown: shown.length,
+                      total: view.rows.length,
+                    })}
                   </span>
                   <Button
                     variant="tertiary"
@@ -894,9 +901,9 @@ export function GridDayTabs({
 }) {
   return (
     <Tabs value={value} onValueChange={onPick} activationMode="manual" className="min-w-0">
-      <TabsList aria-label={t('registrations.tabs.grid')}>
+      <TabsList variant="line" aria-label={t('registrations.tabs.grid')}>
         {days.map((d) => (
-          <TabsTrigger key={d.date} value={d.date} className="gap-1 px-2.5 sm:px-3">
+          <TabsTrigger key={d.date} value={d.date} className="gap-1">
             {d.window !== 'ON_BEHALF' ? (
               <Lock className="h-3.5 w-3.5 opacity-70" aria-hidden />
             ) : null}
