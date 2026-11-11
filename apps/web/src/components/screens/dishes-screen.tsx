@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DishName, DishTypeTag } from '@/components/dish-name';
 import { ExcelImportDialog } from '@/components/excel-import-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { FilterField, SearchField } from '@/components/filter-field';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -67,10 +69,23 @@ export function DishesScreen() {
 
   return (
     <Card variant="page">
-      <CardHeader className="gap-4">
-        <div className="flex flex-col gap-1.5">
-          <CardTitle>{t('dishes.title')}</CardTitle>
-          <CardDescription>{t('dishes.intro')}</CardDescription>
+      <CardHeader>
+        {/* The canteen sets what the whole library shows, so it sits with the title. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle>{t('dishes.title')}</CardTitle>
+            <CardDescription>{t('dishes.intro')}</CardDescription>
+          </div>
+          {canteens.data && canteens.data.items.length > 0 && tab !== 'types' ? (
+            <FilterField label={t('dishes.canteen')} htmlFor="dish-canteen" className="sm:w-60">
+              <ResponsiveSelect
+                id="dish-canteen"
+                value={canteenId ?? ''}
+                onValueChange={setCanteenId}
+                options={canteens.data.items.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </FilterField>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -87,18 +102,6 @@ export function DishesScreen() {
             <TabsTrigger value="desserts">{t('dishes.tabs.desserts')}</TabsTrigger>
             <TabsTrigger value="types">{t('dishes.tabs.types')}</TabsTrigger>
           </TabsList>
-
-          {canteens.data && canteens.data.items.length > 0 && tab !== 'types' ? (
-            <div className="flex w-full flex-col gap-2 sm:w-60 mt-5">
-              <Label htmlFor="dish-canteen">{t('dishes.canteen')}</Label>
-              <ResponsiveSelect
-                id="dish-canteen"
-                value={canteenId ?? ''}
-                onValueChange={setCanteenId}
-                options={canteens.data.items.map((c) => ({ value: c.id, label: c.name }))}
-              />
-            </div>
-          ) : null}
 
           <TabsContent value="main">
             {canteen ? <MainDishes key={canteen.id} canteen={canteen} /> : null}
@@ -204,24 +207,6 @@ function LibraryImport({ canteen }: { canteen: { id: string; name: string } }) {
   );
 }
 
-/** A name search box over the library, filtered here: the list is already loaded whole. */
-function NameSearch({
-  id,
-  value,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex w-full flex-col gap-2 sm:w-56">
-      <Label htmlFor={id}>{t('dishes.searchName')}</Label>
-      <Input id={id} type="search" value={value} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  );
-}
-
 const nameMatches = (name: string, q: string) =>
   name.toLocaleLowerCase('vi').includes(q.trim().toLocaleLowerCase('vi'));
 
@@ -272,38 +257,62 @@ function MainDishes({ canteen }: { canteen: { id: string; name: string } }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <NameSearch id="dish-q" value={q} onChange={setQ} />
-        <div className="flex w-full flex-col gap-2 sm:w-48">
-          <Label htmlFor="dish-filter">{t('dishes.filterType')}</Label>
-          <ResponsiveSelect
-            id="dish-filter"
-            value={filter}
-            onValueChange={setFilter}
-            options={[
-              { value: '', label: t('common.all') },
-              ...(types.data?.items ?? []).map((type) => ({ value: type.id, label: type.name })),
-            ]}
-          />
-        </div>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
-          <Checkbox checked={showArchived} onCheckedChange={(v) => setShowArchived(v === true)} />
-          {t('dishes.showArchived')}
-        </label>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <LibraryImport canteen={canteen} />
-          <Button
-            disabled={activeTypes.length === 0}
-            onClick={() => {
-              save.reset();
-              setEditing({ id: null, name: '', typeId: activeTypes[0]?.id ?? '' });
-            }}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {t('dishes.addMain')}
-          </Button>
-        </div>
-      </div>
+      <FilterBar
+        search={
+          <SearchField id="dish-q" label={t('dishes.searchName')} value={q} onChange={setQ} />
+        }
+        filters={(prefix) => (
+          <>
+            <FilterField
+              label={t('dishes.filterType')}
+              htmlFor={`${prefix}-dish-type`}
+              className="sm:w-48"
+            >
+              <ResponsiveSelect
+                id={`${prefix}-dish-type`}
+                value={filter}
+                onValueChange={setFilter}
+                options={[
+                  { value: '', label: t('common.all') },
+                  ...(types.data?.items ?? []).map((type) => ({
+                    value: type.id,
+                    label: type.name,
+                  })),
+                ]}
+              />
+            </FilterField>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <Checkbox
+                checked={showArchived}
+                onCheckedChange={(v) => setShowArchived(v === true)}
+              />
+              {t('dishes.showArchived')}
+            </label>
+          </>
+        )}
+        activeCount={(filter ? 1 : 0) + (showArchived ? 1 : 0)}
+        searching={q !== ''}
+        onClear={() => {
+          setQ('');
+          setFilter('');
+          setShowArchived(false);
+        }}
+        actions={
+          <>
+            <LibraryImport canteen={canteen} />
+            <Button
+              disabled={activeTypes.length === 0}
+              onClick={() => {
+                save.reset();
+                setEditing({ id: null, name: '', typeId: activeTypes[0]?.id ?? '' });
+              }}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {t('dishes.addMain')}
+            </Button>
+          </>
+        }
+      />
 
       <AppDialog
         open={editing !== null}
@@ -467,25 +476,37 @@ function Desserts({ canteen }: { canteen: { id: string; name: string } }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <NameSearch id="dessert-q" value={q} onChange={setQ} />
-        <label className="flex min-h-11 items-center gap-2 text-sm">
-          <Checkbox checked={showArchived} onCheckedChange={(v) => setShowArchived(v === true)} />
-          {t('dishes.showArchived')}
-        </label>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <LibraryImport canteen={canteen} />
-          <Button
-            onClick={() => {
-              save.reset();
-              setEditing({ id: null, name: '' });
-            }}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {t('dishes.addDessert')}
-          </Button>
-        </div>
-      </div>
+      <FilterBar
+        search={
+          <SearchField id="dessert-q" label={t('dishes.searchName')} value={q} onChange={setQ} />
+        }
+        filters={() => (
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <Checkbox checked={showArchived} onCheckedChange={(v) => setShowArchived(v === true)} />
+            {t('dishes.showArchived')}
+          </label>
+        )}
+        activeCount={showArchived ? 1 : 0}
+        searching={q !== ''}
+        onClear={() => {
+          setQ('');
+          setShowArchived(false);
+        }}
+        actions={
+          <>
+            <LibraryImport canteen={canteen} />
+            <Button
+              onClick={() => {
+                save.reset();
+                setEditing({ id: null, name: '' });
+              }}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {t('dishes.addDessert')}
+            </Button>
+          </>
+        }
+      />
       <AppDialog
         open={editing !== null}
         onClose={() => setEditing(null)}

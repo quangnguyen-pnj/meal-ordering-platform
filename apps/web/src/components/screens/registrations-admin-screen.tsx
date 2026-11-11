@@ -20,7 +20,6 @@ import {
   Lock,
   Plus,
   Save,
-  Search,
   Undo2,
   UserRound,
 } from 'lucide-react';
@@ -30,6 +29,8 @@ import { AppDialog } from '@/components/app-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
 import { DishName } from '@/components/dish-name';
 import { ExcelImportDialog } from '@/components/excel-import-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { FilterField, SearchField } from '@/components/filter-field';
 import { OrgLevelFilter } from '@/components/org-level-filter';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { Alert } from '@/components/ui/alert';
@@ -237,22 +238,34 @@ function NotRegisteredTab({ weekStart }: { weekStart: string }) {
   ];
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="flex w-full flex-col gap-2 sm:w-56">
-          <Label htmlFor="nr-q">{t('common.search')}</Label>
-          <Input id="nr-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-56">
-          <Label htmlFor="nr-day">{t('history.date')}</Label>
-          <ResponsiveSelect id="nr-day" value={date} onValueChange={setDate} options={options} />
-        </div>
-        <OrgLevelFilter
-          id="nr-org"
-          options={orgUnits.data?.items ?? []}
-          value={orgUnitId}
-          onChange={setOrgUnitId}
-        />
-      </div>
+      <FilterBar
+        search={<SearchField id="nr-q" label={t('common.search')} value={q} onChange={setQ} />}
+        filters={(prefix) => (
+          <>
+            <FilterField label={t('history.date')} htmlFor={`${prefix}-nr-day`} className="sm:w-56">
+              <ResponsiveSelect
+                id={`${prefix}-nr-day`}
+                value={date}
+                onValueChange={setDate}
+                options={options}
+              />
+            </FilterField>
+            <OrgLevelFilter
+              id={`${prefix}-nr-org`}
+              options={orgUnits.data?.items ?? []}
+              value={orgUnitId}
+              onChange={setOrgUnitId}
+            />
+          </>
+        )}
+        activeCount={(date ? 1 : 0) + (orgUnitId ? 1 : 0)}
+        searching={q !== ''}
+        onClear={() => {
+          setQ('');
+          setDate('');
+          setOrgUnitId('');
+        }}
+      />
       {query.error ? <Alert variant="destructive">{apiErrorText(query.error)}</Alert> : null}
       {query.isLoading ? <LoadingRows /> : null}
       <Refreshing busy={query.isPlaceholderData} className="flex flex-col gap-3 empty:hidden">
@@ -436,7 +449,7 @@ function GridTab({ weekStart }: { weekStart: string }) {
   return (
     <div className="flex flex-col gap-4">
       {confirmDialog}
-      <div className="flex flex-wrap items-end gap-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
         <UnitPicker
           id="grid-unit"
           units={units.data?.items ?? []}
@@ -501,31 +514,28 @@ function GridTab({ weekStart }: { weekStart: string }) {
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <div className="flex w-full min-w-0 gap-2 lg:w-auto">
-                <div className="relative min-w-0 flex-1 lg:w-64 lg:flex-none">
-                  <Search
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <Input
-                    type="search"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder={t('registrations.gridSearch')}
-                    aria-label={t('registrations.gridSearch')}
-                    className="pl-9"
-                  />
-                </div>
-                <ResponsiveSelect
-                  aria-label={t('registrations.gridFilter')}
-                  value={filter}
-                  onValueChange={(v) => pickFilter(v as GridFilter)}
-                  className="w-40 shrink-0 sm:w-52"
-                  options={GRID_FILTERS.map((f) => ({
-                    value: f,
-                    label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
-                    disabled: f !== 'all' && f !== filter && groups[f].length === 0,
-                  }))}
+                <SearchField
+                  label={t('registrations.gridSearch')}
+                  value={q}
+                  onChange={setQ}
+                  className="min-w-0 flex-1 lg:w-64 lg:flex-none"
                 />
+                <FilterField
+                  label={t('registrations.gridFilter')}
+                  htmlFor="grid-filter"
+                  className="w-40 shrink-0 sm:w-52"
+                >
+                  <ResponsiveSelect
+                    id="grid-filter"
+                    value={filter}
+                    onValueChange={(v) => pickFilter(v as GridFilter)}
+                    options={GRID_FILTERS.map((f) => ({
+                      value: f,
+                      label: t(`registrations.gridFilters.${f}`, { count: groups[f].length }),
+                      disabled: f !== 'all' && f !== filter && groups[f].length === 0,
+                    }))}
+                  />
+                </FilterField>
               </div>
               {filtered ? (
                 <p className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">

@@ -69,6 +69,10 @@ export const vi = {
     weekRelative: { current: 'tuần hiện tại', next: 'tuần sau', previous: 'tuần trước' },
     orgFilter: 'Lọc theo đơn vị',
     orgLevelAll: 'Tất cả {level}',
+    filters: 'Bộ lọc',
+    moreFilters: 'Thêm bộ lọc',
+    filtersHint: 'Danh sách cập nhật ngay khi bạn chọn.',
+    clearFilters: 'Xóa lọc',
   },
   weekdays: {
     1: 'Thứ Hai',
@@ -214,7 +218,6 @@ export const vi = {
   menu: {
     title: 'Thực đơn tuần',
     canteen: 'Nhà ăn',
-    week: 'Tuần',
     previousWeek: 'Tuần trước',
     nextWeek: 'Tuần sau',
     backToUpcoming: 'Về tuần sắp tới',
@@ -761,9 +764,6 @@ export const vi = {
   employees: {
     title: 'Nhân viên',
     intro: 'Tìm nhân viên và cấp lại mã PIN.',
-    filters: 'Bộ lọc',
-    filtersHint: 'Danh sách cập nhật ngay khi bạn chọn.',
-    clearFilters: 'Xóa bộ lọc',
     showResults: 'Xem {count} người',
     orgUnit: 'Đơn vị (gồm cấp dưới)',
     mealStatus: 'Tình trạng suất ăn',

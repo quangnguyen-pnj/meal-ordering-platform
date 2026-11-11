@@ -14,6 +14,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppDialog } from '@/components/app-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { FilterField, SearchField } from '@/components/filter-field';
 import { OrgLevelFilter } from '@/components/org-level-filter';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -117,11 +119,24 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
   return (
     <Card variant="page">
       <CardHeader>
-        <CardTitle>{t('adminToday.title')}</CardTitle>
-        <CardDescription>
-          {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
-          {t('adminToday.intro')}
-        </CardDescription>
+        {/* The day is what the whole page is about: it sits with the title, like the week elsewhere. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle>{t('adminToday.title')}</CardTitle>
+            <CardDescription>
+              {view ? `${weekdayName(view.date)} ${formatDate(view.date)} · ` : ''}
+              {t('adminToday.intro')}
+            </CardDescription>
+          </div>
+          <FilterField label={t('adminToday.date')} htmlFor="today-date" className="sm:w-44">
+            <DatePicker
+              id="today-date"
+              value={date || view?.date || ''}
+              onChange={setDate}
+              placeholder={t('adminToday.datePlaceholder')}
+            />
+          </FilterField>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {/* What matters first: today's numbers and the attendance sync; the filters sit right above the list they filter. */}
@@ -143,34 +158,13 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
           </Refreshing>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex w-full flex-col gap-2 sm:w-44">
-            <Label htmlFor="today-date">{t('adminToday.date')}</Label>
-            <DatePicker
-              id="today-date"
-              value={date || view?.date || ''}
-              onChange={setDate}
-              placeholder={t('adminToday.datePlaceholder')}
-            />
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-56">
-            <Label htmlFor="today-q">{t('common.search')}</Label>
-            <Input id="today-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-          <OrgLevelFilter
-            id="today-org"
-            options={orgUnits.data?.items ?? []}
-            value={orgUnitId}
-            onChange={setOrgUnitId}
-          />
-        </div>
-
         {query.error ? <Alert variant="destructive">{apiErrorText(query.error)}</Alert> : null}
         {query.isLoading ? <LoadingRows rows={4} /> : null}
 
         {view ? (
           <>
-            <Refreshing busy={stale} className="flex flex-col gap-6">
+            {/* The row filters stay sharp while the list below is dimmed for a new unit. */}
+            <Refreshing busy={stale}>
               <Tabs value={tab} onValueChange={(v) => setTab(v as 'all' | 'exceptions')}>
                 <TabsList>
                   <TabsTrigger value="all">{t('adminToday.tabs.all')}</TabsTrigger>
@@ -179,7 +173,29 @@ export function AdminTodayScreen({ canSync }: { canSync: boolean }) {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+            </Refreshing>
 
+            <FilterBar
+              search={
+                <SearchField id="today-q" label={t('common.search')} value={q} onChange={setQ} />
+              }
+              filters={(prefix) => (
+                <OrgLevelFilter
+                  id={`${prefix}-today-org`}
+                  options={orgUnits.data?.items ?? []}
+                  value={orgUnitId}
+                  onChange={setOrgUnitId}
+                />
+              )}
+              activeCount={orgUnitId ? 1 : 0}
+              searching={q !== ''}
+              onClear={() => {
+                setQ('');
+                setOrgUnitId('');
+              }}
+            />
+
+            <Refreshing busy={stale} className="flex flex-col gap-6">
               {rows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('adminToday.empty')}</p>
               ) : (

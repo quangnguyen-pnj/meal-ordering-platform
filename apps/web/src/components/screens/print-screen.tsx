@@ -55,7 +55,7 @@ export function PrintScreen() {
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           {units.error ? <Alert variant="destructive">{apiErrorText(units.error)}</Alert> : null}
-          <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
             <UnitPicker
               id="print-unit"
               units={units.data?.items ?? []}

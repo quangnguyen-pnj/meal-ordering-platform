@@ -3,11 +3,10 @@
 import type { TeamDayView } from '@/lib/api-types';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchField } from '@/components/filter-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { LoadingRows, Refreshing } from '@/components/ui/skeleton';
 import {
@@ -50,10 +49,13 @@ export function TeamScreen() {
         <CardDescription>{t('team.intro')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex w-full flex-col gap-2 sm:w-72">
-          <Label htmlFor="team-q">{t('common.search')}</Label>
-          <Input id="team-q" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
+        <SearchField
+          id="team-q"
+          label={t('common.search')}
+          value={q}
+          onChange={setQ}
+          className="sm:w-72"
+        />
         {query.error ? (
           // No meal unit means no team (BR-60): the API answers 403 or 404.
           query.error instanceof ApiError && [403, 404].includes(query.error.status) ? (
