@@ -523,6 +523,7 @@ export const vi = {
     noExceptions: 'Không có trường hợp cần xem xét.',
     finalize: 'Chốt số',
     finalizing: 'Đang chốt…',
+    closeShort: 'Chốt số',
     finalizeOpensAt: 'Chốt số từ {at}. Nếu chưa chốt, hệ thống tự chốt lúc {auto}.',
     finalizeTitle: 'Chốt số ngày {date}?',
     finalizeDescription:

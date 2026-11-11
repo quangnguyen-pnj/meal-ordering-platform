@@ -42,7 +42,7 @@ import { api } from '@/lib/api';
 import { apiErrorText } from '@/lib/errors';
 import { linesOf } from '@/lib/registration-draft';
 import { BANNERS_KEY } from '@/lib/banners';
-import { formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
+import { cn, formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
 import { t } from '@/messages';
 import { weekdayName } from './day-meals';
 
@@ -306,11 +306,14 @@ export function SyncPanel({
   canSync,
   onDone,
   compact = false,
+  className,
 }: {
   status: AttendanceStatus;
   canSync: boolean;
   onDone: () => void;
   compact?: boolean;
+  /** Compact form only: e.g. drop the card look when it sits inside another card. */
+  className?: string;
 }) {
   const qc = useQueryClient();
   const rerun = useMutation({
@@ -353,7 +356,10 @@ export function SyncPanel({
     return (
       <section
         aria-label={t('adminToday.sync.title')}
-        className="flex flex-col gap-2 rounded-lg bg-card px-4 py-3 text-sm shadow-block"
+        className={cn(
+          'flex flex-col gap-2 rounded-lg bg-card px-4 py-3 text-sm shadow-block',
+          className,
+        )}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p>

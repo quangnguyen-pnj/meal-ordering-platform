@@ -39,7 +39,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api, ApiError } from '@/lib/api';
 import { BANNERS_KEY } from '@/lib/banners';
 import { apiErrorText } from '@/lib/errors';
-import { formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
+import { cn, formatDate, formatVnTime, vnDateOf } from '@/lib/utils';
 import { t } from '@/messages';
 import { SyncPanel } from './admin-today-screen';
 import { weekdayName } from './day-meals';
@@ -155,24 +155,24 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
               {t('reconciliation.intro')}
             </CardDescription>
           </div>
-          <DayNav
-            id="recon-date"
-            date={date || view?.date || ''}
-            today={today}
-            onChange={setDate}
-          />
+          {/* The day and the unit filter share one row: two small controls, not two rows. */}
+          <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-4 sm:w-auto">
+            <DayNav
+              id="recon-date"
+              date={date || view?.date || ''}
+              today={today}
+              onChange={setDate}
+            />
+            <OrgLevelFilter
+              id="recon-org"
+              options={orgUnits.data?.items ?? []}
+              value={orgUnitId}
+              onChange={setOrgUnitId}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-end gap-4">
-          <OrgLevelFilter
-            id="recon-org"
-            options={orgUnits.data?.items ?? []}
-            value={orgUnitId}
-            onChange={setOrgUnitId}
-          />
-        </div>
-
         {query.error ? <Alert variant="destructive">{apiErrorText(query.error)}</Alert> : null}
         {query.isLoading ? <LoadingRows rows={4} /> : null}
 
@@ -183,95 +183,121 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
               <Alert>{t('reconciliation.pastDay')}</Alert>
             ) : null}
 
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label={t('reconciliation.summary.forecast')} value={view.summary.forecast} />
-              <Stat label={t('reconciliation.summary.actual')} value={view.summary.actual} />
-              <Stat
-                label={t('reconciliation.summary.difference')}
-                value={signed(view.summary.difference)}
-              />
-              <Stat label={t('reconciliation.summary.cases')} value={view.summary.cases} />
-              {view.closed ? (
-                <>
-                  <Stat
-                    label={t('reconciliation.summary.final')}
-                    value={view.summary.finalCount ?? 0}
-                  />
-                  <Stat
-                    label={t('reconciliation.summary.adjustment')}
-                    value={signed(view.summary.adjustment ?? 0)}
-                  />
-                  <Stat
-                    label={t('reconciliation.summary.effective')}
-                    value={view.summary.effective ?? 0}
-                  />
-                </>
-              ) : null}
-            </dl>
+            {/* One card for the day: the figures on one row, then the finalization and the
+                attendance sync, one line each with their action on the right. */}
+            <section className="flex flex-col gap-4 rounded-lg bg-card p-4 text-sm shadow-block">
+              <dl className="grid grid-cols-4 gap-x-2 gap-y-3 sm:flex sm:flex-wrap sm:gap-x-8">
+                <Stat label={t('reconciliation.summary.forecast')} value={view.summary.forecast} />
+                <Stat label={t('reconciliation.summary.actual')} value={view.summary.actual} />
+                <Stat
+                  label={t('reconciliation.summary.difference')}
+                  value={signed(view.summary.difference)}
+                  tone={view.meals.some((m) => m.deviates) ? 'warning' : undefined}
+                />
+                <Stat
+                  label={t('reconciliation.summary.cases')}
+                  value={view.summary.cases}
+                  tone={
+                    view.exceptions.some((r) => r.cases.some((c) => URGENT.includes(c)))
+                      ? 'destructive'
+                      : view.summary.cases > 0
+                        ? 'warning'
+                        : undefined
+                  }
+                />
+                {view.closed ? (
+                  <>
+                    {/* After finalization: set apart by space, a new row on phones. */}
+                    <Stat
+                      className="col-start-1 sm:ml-6"
+                      label={t('reconciliation.summary.final')}
+                      value={view.summary.finalCount ?? 0}
+                    />
+                    <Stat
+                      label={t('reconciliation.summary.adjustment')}
+                      value={signed(view.summary.adjustment ?? 0)}
+                    />
+                    <Stat
+                      label={t('reconciliation.summary.effective')}
+                      value={view.summary.effective ?? 0}
+                    />
+                  </>
+                ) : null}
+              </dl>
 
-            <section className="flex flex-col gap-2 rounded-lg bg-card p-4 text-sm shadow-block">
-              {view.closed ? (
-                <p className="flex items-center gap-2 font-medium">
-                  <Lock className="h-4 w-4" aria-hidden />
-                  {view.closed.autoFinalized
-                    ? t('reconciliation.closedAuto', { at: formatVnTime(view.closed.finalizedAt) })
-                    : t('reconciliation.closed', {
-                        at: formatVnTime(view.closed.finalizedAt),
-                        name: view.closed.finalizedByName ?? '',
-                      })}
-                </p>
-              ) : view.servingDay ? (
-                <p className="text-muted-foreground">
-                  {t('reconciliation.finalizeOpensAt', {
-                    at: formatVnTime(view.finalizeOpensAt),
-                    auto: formatVnTime(view.autoFinalizeAt),
-                  })}
-                </p>
-              ) : null}
-              {view.closed ? (
-                <p className="text-muted-foreground">
-                  {view.canAdjust
-                    ? t('reconciliation.adjustUntil', {
-                        deadline: formatVnTime(view.adjustmentDeadlineAt),
-                      })
-                    : t('reconciliation.adjustClosed', {
-                        deadline: formatVnTime(view.adjustmentDeadlineAt),
-                      })}
-                </p>
-              ) : null}
-              {finalize.error ? (
-                <Alert variant="destructive">{apiErrorText(finalize.error)}</Alert>
-              ) : null}
-              {exportFinal.error ? (
-                <Alert variant="destructive">{apiErrorText(exportFinal.error)}</Alert>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                {can.finalize && !view.closed && view.servingDay ? (
-                  <Button
-                    disabled={!view.canFinalize || finalize.isPending}
-                    onClick={() => void askFinalize(view)}
-                  >
-                    <Lock className="h-4 w-4" aria-hidden />
-                    {finalize.isPending
-                      ? t('reconciliation.finalizing')
-                      : t('reconciliation.finalize')}
-                  </Button>
+              <div className="flex flex-col gap-2">
+                {view.servingDay ? (
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    {/* Same form as the attendance line below: a short label, then the state. */}
+                    <p className="min-w-0">
+                      <span className="font-medium">{t('reconciliation.closeShort')}: </span>
+                      <span className="text-muted-foreground">
+                        {view.closed
+                          ? `${
+                              view.closed.autoFinalized
+                                ? t('reconciliation.closedAuto', {
+                                    at: formatVnTime(view.closed.finalizedAt),
+                                  })
+                                : t('reconciliation.closed', {
+                                    at: formatVnTime(view.closed.finalizedAt),
+                                    name: view.closed.finalizedByName ?? '',
+                                  })
+                            } ${
+                              view.canAdjust
+                                ? t('reconciliation.adjustUntil', {
+                                    deadline: formatVnTime(view.adjustmentDeadlineAt),
+                                  })
+                                : t('reconciliation.adjustClosed', {
+                                    deadline: formatVnTime(view.adjustmentDeadlineAt),
+                                  })
+                            }`
+                          : t('reconciliation.finalizeOpensAt', {
+                              at: formatVnTime(view.finalizeOpensAt),
+                              auto: formatVnTime(view.autoFinalizeAt),
+                            })}
+                      </span>
+                    </p>
+                    {can.finalize && !view.closed ? (
+                      <Button
+                        size="sm"
+                        disabled={!view.canFinalize || finalize.isPending}
+                        onClick={() => void askFinalize(view)}
+                      >
+                        <Lock className="h-4 w-4" aria-hidden />
+                        {finalize.isPending
+                          ? t('reconciliation.finalizing')
+                          : t('reconciliation.finalize')}
+                      </Button>
+                    ) : null}
+                    {can.export && view.closed ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={exportFinal.isPending}
+                        onClick={() => exportFinal.mutate(view.date)}
+                      >
+                        <Download className="h-4 w-4" aria-hidden />
+                        {t('reconciliation.exportFinal')}
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
-                {can.export && view.closed ? (
-                  <Button
-                    variant="outline"
-                    disabled={exportFinal.isPending}
-                    onClick={() => exportFinal.mutate(view.date)}
-                  >
-                    <Download className="h-4 w-4" aria-hidden />
-                    {t('reconciliation.exportFinal')}
-                  </Button>
+                {finalize.error ? (
+                  <Alert variant="destructive">{apiErrorText(finalize.error)}</Alert>
                 ) : null}
+                {exportFinal.error ? (
+                  <Alert variant="destructive">{apiErrorText(exportFinal.error)}</Alert>
+                ) : null}
+                {/* One line here: the details and the per-person view are on /admin/today. */}
+                <SyncPanel
+                  compact
+                  className="rounded-none bg-transparent p-0 shadow-none"
+                  status={view.attendance}
+                  canSync={can.sync}
+                  onDone={refresh}
+                />
               </div>
             </section>
-
-            {/* One line here: the details and the per-person view are on /admin/today. */}
-            <SyncPanel compact status={view.attendance} canSync={can.sync} onDone={refresh} />
 
             <Tabs value={shownTab} onValueChange={(v) => setTab(v as Tab)}>
               <TabsList>
@@ -299,11 +325,32 @@ export function ReconciliationScreen({ can }: { can: ReconciliationPermissions }
   );
 }
 
-function Stat({ label, value }: { label: string; value: number | string }) {
+/** One figure of the day; a tone marks the ones that need the admin's attention. */
+function Stat({
+  label,
+  value,
+  tone,
+  className,
+}: {
+  label: string;
+  value: number | string;
+  tone?: 'warning' | 'destructive';
+  className?: string;
+}) {
   return (
-    <div className="rounded-lg bg-card p-4 shadow-block">
+    <div className={cn('flex min-w-0 flex-col gap-0.5', className)}>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-xl font-semibold tabular-nums">{value}</dd>
+      <dd
+        className={cn(
+          'w-fit text-lg font-semibold tabular-nums',
+          // A tinted chip, like the badges: noticeable without shouting.
+          tone && '-mx-1.5 rounded-md px-1.5',
+          tone === 'warning' && 'bg-warning/20',
+          tone === 'destructive' && 'bg-destructive/10 text-destructive',
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -314,11 +361,13 @@ function MealsTable({ view }: { view: ReconciliationView }) {
     return <p className="text-sm text-muted-foreground">{t('reconciliation.noMeals')}</p>;
   }
   const closed = view.closed !== null;
+  // The canteen under each meal only tells something when the day has more than one.
+  const severalCanteens = new Set(view.meals.map((m) => m.canteenName)).size > 1;
   return (
     <Table className="min-w-[40rem]">
       <TableHeader>
         <TableRow>
-          <TableHead>{t('reconciliation.columns.meal')}</TableHead>
+          <TableHead className="min-w-44">{t('reconciliation.columns.meal')}</TableHead>
           <TableHead className="text-right">{t('reconciliation.columns.forecast')}</TableHead>
           <TableHead className="text-right">{t('reconciliation.columns.actual')}</TableHead>
           <TableHead className="text-right">{t('reconciliation.columns.difference')}</TableHead>
@@ -336,13 +385,19 @@ function MealsTable({ view }: { view: ReconciliationView }) {
           <TableRow key={m.menuItemId}>
             <TableCell>
               <span className="block">{m.displayName}</span>
-              <span className="text-xs text-muted-foreground">{m.canteenName}</span>
+              {severalCanteens ? (
+                <span className="text-xs text-muted-foreground">{m.canteenName}</span>
+              ) : null}
             </TableCell>
             <TableCell className="text-right tabular-nums">{m.forecast}</TableCell>
             <TableCell className="text-right tabular-nums">{m.actual}</TableCell>
-            <TableCell className="text-right tabular-nums">{signed(m.difference)}</TableCell>
+            <TableCell className="text-right tabular-nums">
+              <span className={cn(m.deviates && '-mx-1.5 rounded-md bg-warning/20 px-1.5')}>
+                {signed(m.difference)}
+              </span>
+            </TableCell>
             <TableCell>
-              <div className="flex flex-col items-start gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <Badge variant={m.status === 'MATCHED' ? 'success' : 'outline'}>
                   {t(`reconciliation.status.${m.status}`)}
                 </Badge>
