@@ -546,7 +546,7 @@ function Library({ dishes, desserts }: { dishes: DishView[]; desserts: DessertVi
   const [q, setQ] = useState('');
   const match = (name: string) => name.toLowerCase().includes(q.trim().toLowerCase());
   return (
-    <aside className="hidden flex-col gap-4 rounded-lg bg-muted p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
+    <aside className="hidden flex-col gap-4 rounded-lg bg-muted/40 p-5 lg:sticky lg:top-4 lg:flex lg:max-h-[80vh] lg:self-start lg:overflow-y-auto">
       <p className="font-medium">{t('menu.library')}</p>
       <p className="text-xs text-muted-foreground">{t('menu.libraryHint')}</p>
       <Input
