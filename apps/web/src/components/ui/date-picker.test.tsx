@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { DatePicker, parseIsoDate, toIsoDate } from './date-picker';
 
-function Harness({ initial }: { initial: string }) {
+function Harness({ initial, max }: { initial: string; max?: string }) {
   const [value, setValue] = useState(initial);
   return (
     <>
-      <DatePicker id="d" value={value} onChange={setValue} placeholder="Chọn ngày" />
+      <DatePicker id="d" value={value} onChange={setValue} placeholder="Chọn ngày" max={max} />
       <p data-testid="value">{value}</p>
     </>
   );
@@ -41,6 +41,22 @@ describe('DatePicker', () => {
     expect(screen.getByTestId('value')).toHaveTextContent('2026-11-12');
     // The popover closes after a pick.
     expect(screen.queryByRole('grid')).toBeNull();
+  });
+
+  it('greys out days after max and cannot page past its month', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="2026-11-10" max="2026-11-12" />);
+    await user.click(screen.getByRole('button', { name: /10\/11\/2026/ }));
+    const dayButton = (iso: string) =>
+      screen
+        .getAllByRole('gridcell')
+        .find((c) => c.getAttribute('data-day') === iso)!
+        .querySelector('button')!;
+    expect(dayButton('2026-11-12')).toBeEnabled();
+    expect(dayButton('2026-11-13')).toBeDisabled();
+    await user.click(dayButton('2026-11-13'));
+    expect(screen.getByTestId('value')).toHaveTextContent('2026-11-10');
+    expect(screen.queryByText('Tháng Mười Hai 2026')).toBeNull();
   });
 
   it('round-trips YYYY-MM-DD without a timezone shift', () => {

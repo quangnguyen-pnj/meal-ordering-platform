@@ -149,6 +149,20 @@ describe('ReconciliationScreen', () => {
     expect(screen.getByText('Tạm hủy do chưa chấm công')).toBeInTheDocument();
   });
 
+  it('does not let the date picker pick a future day', async () => {
+    const user = userEvent.setup();
+    show(base, DEPT);
+    await screen.findByText('Mặn Cơm gà');
+    await user.click(document.getElementById('recon-date')!);
+    const dayButton = (iso: string) =>
+      screen
+        .getAllByRole('gridcell')
+        .find((c) => c.getAttribute('data-day') === iso)!
+        .querySelector('button')!;
+    expect(dayButton('2026-11-03')).toBeEnabled();
+    expect(dayButton('2026-11-04')).toBeDisabled();
+  });
+
   it('BR-43: the HC admin finalizes after confirming', async () => {
     const user = userEvent.setup();
     const fetchMock = show(base, HC);
