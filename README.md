@@ -33,6 +33,8 @@ pnpm dev             # terminal 2: Java API :3001 (jobs on), web :3000
 
 Sign in at http://localhost:3000 with `PNJP000001` and the PIN `123456`; you are asked to change it. More accounts and the demo scripts: [docs/demo-p0.md](docs/demo-p0.md), [docs/demo-p1.md](docs/demo-p1.md), [docs/demo-p2.md](docs/demo-p2.md), [docs/demo-p3.md](docs/demo-p3.md), [docs/demo-cr-2026-10-23.md](docs/demo-cr-2026-10-23.md).
 
+A step-by-step walkthrough of every workflow, role by role and case by case (in Vietnamese): [docs/workflow-guide.md](docs/workflow-guide.md).
+
 ## Quick start (Docker)
 
 ```bash
