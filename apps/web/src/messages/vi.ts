@@ -94,6 +94,8 @@ export const vi = {
   sessions: { LUNCH: 'Bữa trưa' },
   nav: {
     label: 'Điều hướng chính',
+    collapse: 'Thu gọn menu',
+    expand: 'Mở rộng menu',
     comingSoon: 'Sắp có',
     comingSoonHint: 'Màn hình này sẽ có ở giai đoạn {phase}.',
     groups: {
