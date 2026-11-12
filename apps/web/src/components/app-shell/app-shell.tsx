@@ -4,7 +4,7 @@ import type { BannerView, SessionUser } from '@/lib/api-types';
 import { ChevronDown, LogOut, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -146,6 +146,20 @@ function useScrolled(): boolean {
   return scrolled;
 }
 
+/** Marks the element as scrolling (data-scrolling) until it has been still for a moment. */
+function useAutoHideScrollbar(): React.UIEventHandler<HTMLElement> {
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (e) => {
+    const el = e.currentTarget;
+    el.dataset.scrolling = 'true';
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      el.dataset.scrolling = 'false';
+    }, 800);
+  };
+}
+
 /** The sidebar's collapsed choice, kept per browser. Read after mount so server and client agree. */
 function useCollapsed(): { collapsed: boolean; toggle: () => void; ready: boolean } {
   const [collapsed, setCollapsed] = useState(false);
@@ -245,6 +259,8 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
   const { collapsed, toggle, ready } = useCollapsed();
+  const onSidebarScroll = useAutoHideScrollbar();
+  const onDrawerScroll = useAutoHideScrollbar();
 
   // Rotating a tablet or resizing past the breakpoint swaps the drawer for the sidebar; close the
   // drawer so its overlay and scroll lock do not linger behind it.
@@ -331,7 +347,9 @@ export function AppShell({
             <SheetTitle>{t('app.name')}</SheetTitle>
             <SheetDescription>{t('app.factory')}</SheetDescription>
           </div>
-          <div className="flex-1 overflow-y-auto">{renderNav(false)}</div>
+          <div className="scrollbar-autohide flex-1 overflow-y-auto" onScroll={onDrawerScroll}>
+            {renderNav(false)}
+          </div>
           <div className="flex items-center justify-between gap-3 bg-muted/40 p-4">
             <UserBlock user={user} onSignOut={signOut} />
           </div>
@@ -341,8 +359,9 @@ export function AppShell({
       {/* Desktop: the sidebar narrows to a column of icons; the width animates, labels fade. */}
       <aside
         data-collapsed={collapsed}
+        onScroll={onSidebarScroll}
         className={cn(
-          'hidden overflow-y-auto overflow-x-hidden bg-card shadow-block lg:sticky lg:top-0 lg:z-30 lg:flex lg:h-screen lg:shrink-0 lg:flex-col print:hidden',
+          'scrollbar-autohide hidden overflow-y-auto overflow-x-hidden bg-card shadow-block lg:sticky lg:top-0 lg:z-30 lg:flex lg:h-screen lg:shrink-0 lg:flex-col print:hidden',
           collapsed ? 'lg:w-16' : 'lg:w-64',
           ready && 'transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
         )}
