@@ -54,7 +54,27 @@ async function call(cookie, method, path, body) {
 }
 async function login(employeeCode) {
   await psql(`UPDATE "Employee" SET "pinMustChange" = false, "pinFailedCount" = 0, "lockedUntil" = NULL WHERE "employeeCode" = '${employeeCode}'`);
-  const { res } = await call(null, 'POST', '/api/auth/pin/login', { employeeCode, pin: PIN });
+  let res = await fetch(`${API}/api/auth/pin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ employeeCode, pin: PIN }),
+  });
+  if (res.status === 401) {
+    // The PIN was changed on the web (first sign-in). The seed gives every employee the same hash
+    // of SEED_INITIAL_PIN, so the most common hash is that PIN: put it back on this demo account.
+    console.log(`${employeeCode}: PIN was changed, resetting it to the seed PIN ${PIN}.`);
+    await psql(`
+      UPDATE "Employee" SET "pinHash" = (
+        SELECT "pinHash" FROM "Employee" GROUP BY "pinHash" ORDER BY count(*) DESC LIMIT 1
+      ), "pinMustChange" = false, "pinFailedCount" = 0, "lockedUntil" = NULL
+      WHERE "employeeCode" = '${employeeCode}'`);
+    res = await fetch(`${API}/api/auth/pin/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ employeeCode, pin: PIN }),
+    });
+  }
+  if (!res.ok) throw new Error(`POST /api/auth/pin/login (${employeeCode}) -> ${res.status} ${await res.text()}`);
   return res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
 }
 
