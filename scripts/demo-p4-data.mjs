@@ -4,7 +4,8 @@
 //
 // Needs `pnpm db:local`, `pnpm db:seed` and `pnpm dev` running (API on :3001, CLOCK_FAKE_ENABLED=true),
 // with DMP_MOCK_SCENARIO=p4-demo in .env for the attendance cases.
-// Usage: node scripts/demo-p4-data.mjs [weekStart=YYYY-MM-DD, a Monday] [--force]
+// Usage: node scripts/demo-p4-data.mjs [weekStart=YYYY-MM-DD, a Monday]
+// A week that already has a menu or registrations is skipped: the script takes the next free one.
 //
 // Week of weekStart, Monday to Friday, canteen Gò Vấp. The same registrations every day:
 //   Dish A  PNJP000001, 008..040 (34)  most attendance cases -> "Vượt ngưỡng"
@@ -27,8 +28,7 @@ const DB = (
   process.env.DATABASE_URL ?? 'postgresql://meal:meal_dev_password@localhost:5433/meal'
 ).replace(/\?.*$/, '');
 const PIN = process.env.SEED_INITIAL_PIN ?? '123456';
-const force = process.argv.includes('--force');
-const weekStart = process.argv.slice(2).find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a)) ?? nextMonday();
+const requested = process.argv.slice(2).find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a)) ?? nextMonday();
 
 function nextMonday() {
   const d = new Date();
@@ -40,9 +40,8 @@ const addDays = (iso, n) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-if (new Date(`${weekStart}T00:00:00Z`).getUTCDay() !== 1)
-  throw new Error(`${weekStart} is not a Monday`);
-const DAYS = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+if (new Date(`${requested}T00:00:00Z`).getUTCDay() !== 1)
+  throw new Error(`${requested} is not a Monday`);
 
 const code = (n) => `PNJP${String(n).padStart(6, '0')}`;
 const range = (from, to) => Array.from({ length: to - from + 1 }, (_, k) => code(from + k));
@@ -119,14 +118,20 @@ async function register(rows) {
 }
 
 try {
-  const [{ count }] = await sql(
-    `SELECT count(*) FROM "Registration" WHERE date BETWEEN '${DAYS[0]}' AND '${DAYS[4]}'`,
-  );
-  if (Number(count) > 0 && !force) {
-    throw new Error(
-      `${count} registrations already exist in the week of ${weekStart}; pick another Monday or use --force`,
-    );
+  // The first week from the requested one with no menu (any status) and no registrations.
+  let weekStart = requested;
+  for (;;) {
+    const [{ menus, regs }] = await sql(`
+      SELECT (SELECT count(*) FROM "MenuWeek" WHERE "canteenId" = 'ct_gv'
+                AND "weekStart" = '${weekStart}') AS menus,
+             (SELECT count(*) FROM "Registration"
+                WHERE date BETWEEN '${weekStart}' AND '${addDays(weekStart, 4)}') AS regs`);
+    if (Number(menus) === 0 && Number(regs) === 0) break;
+    console.log(`Week ${weekStart} already has a menu or registrations, trying the next one.`);
+    weekStart = addDays(weekStart, 7);
   }
+  const DAYS = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+  console.log(`Using the week of ${weekStart}.`);
 
   // 1. Menu, published the week before.
   let hc = await at(`${addDays(weekStart, -7)}T10:00`);

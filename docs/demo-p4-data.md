@@ -27,7 +27,7 @@ pnpm dev
 node scripts/demo-p4-data.mjs
 ```
 
-Mặc định là tuần có thứ Hai kế tiếp. Chọn tuần khác: `node scripts/demo-p4-data.mjs 2026-11-23`. Nếu tuần đó đã có đăng ký, script dừng lại (thêm `--force` để vẫn chạy).
+Mặc định là tuần có thứ Hai kế tiếp; muốn bắt đầu từ tuần khác thì truyền ngày thứ Hai, ví dụ `node scripts/demo-p4-data.mjs 2026-11-23`. Tuần nào đã có thực đơn hoặc đăng ký thì script bỏ qua và lấy tuần trống kế tiếp; ngày thứ Hai được dùng in ra ở cuối ("Fake clock: …").
 
 Script để đồng hồ giả ở **thứ Hai 07:20**, dự trù đã chốt. Tài khoản (PIN `123456`): HC `PNJP000003`, admin phòng ban `PNJP000002` (Xưởng Chế tác), system admin `PNJP000004` (đổi giờ giả bằng `PUT /api/dev/clock`, body `{"at":"<ngày>T08:10:00+07:00"}`).
 
