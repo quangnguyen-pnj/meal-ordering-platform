@@ -1,7 +1,7 @@
 'use client';
 
 import type { BannerView, SessionUser } from '@/lib/api-types';
-import { ChevronDown, LogOut, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, ChevronLeft, LogOut, Menu } from 'lucide-react';
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -377,45 +377,51 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      {/* Desktop: the sidebar narrows to a column of icons; the width animates, labels fade. */}
-      <aside
+      {/* Desktop: the sidebar narrows to a column of icons; the width animates, labels fade.
+          The wrapper does not clip, so the toggle can sit half outside on the sidebar's edge. */}
+      <div
         data-collapsed={collapsed}
-        {...sidebarScrollbar}
         className={cn(
-          'scrollbar-autohide hidden overflow-y-auto overflow-x-hidden bg-card shadow-block lg:sticky lg:top-0 lg:z-30 lg:flex lg:h-screen lg:shrink-0 lg:flex-col print:hidden',
+          'relative hidden lg:sticky lg:top-0 lg:z-30 lg:block lg:h-screen lg:shrink-0 print:hidden',
           collapsed ? 'lg:w-16' : 'lg:w-64',
           ready && 'transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
         )}
       >
-        {/* The app name stays put while a long menu scrolls under it (no shadow, by choice). */}
-        <div className="sticky top-0 z-10 flex items-center gap-2 bg-card px-3 py-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? t('nav.expand') : t('nav.collapse')}
-            onClick={toggle}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="h-5 w-5" aria-hidden />
-            ) : (
-              <PanelLeftClose className="h-5 w-5" aria-hidden />
-            )}
-          </Button>
-          <div
-            className={cn(
-              'min-w-0 whitespace-nowrap transition-opacity duration-200',
-              collapsed && 'opacity-0',
-            )}
-            aria-hidden={collapsed || undefined}
-          >
-            <p className="text-lg font-semibold leading-tight">{t('app.name')}</p>
-            <p className="text-sm text-muted-foreground">{t('app.factory')}</p>
+        <aside
+          {...sidebarScrollbar}
+          className="scrollbar-autohide flex h-full flex-col overflow-y-auto overflow-x-hidden bg-card shadow-block"
+        >
+          {/* The app name stays put while a long menu scrolls under it (no shadow, by choice). */}
+          <div className="sticky top-0 z-10 bg-card px-4 py-5">
+            <div
+              className={cn(
+                'whitespace-nowrap transition-opacity duration-200',
+                collapsed && 'opacity-0',
+              )}
+              aria-hidden={collapsed || undefined}
+            >
+              <p className="text-lg font-semibold">{t('app.name')}</p>
+              <p className="text-sm text-muted-foreground">{t('app.factory')}</p>
+            </div>
           </div>
-        </div>
-        {renderNav(collapsed)}
-      </aside>
+          {renderNav(collapsed)}
+        </aside>
+        <button
+          type="button"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t('nav.expand') : t('nav.collapse')}
+          onClick={toggle}
+          className="absolute -right-3 top-6 z-10 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronLeft
+            aria-hidden
+            className={cn(
+              'h-4 w-4 transition-transform duration-300 motion-reduce:transition-none',
+              collapsed && 'rotate-180',
+            )}
+          />
+        </button>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Same canvas as the page so it reads as part of it; a soft shadow appears once content scrolls under. */}
