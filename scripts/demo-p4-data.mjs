@@ -10,8 +10,11 @@
 //   - 10 more employees (PNJP000041..050) with dish B every day;
 //   - the fake clock on Monday 07:20, the forecast taken, and PNJP000040 adding dish B (an "ADDED" case).
 // Then follow docs/demo-p4.md "Preparing a day by hand" with DMP_MOCK_SCENARIO=forgot-to-check-in.
-// Registrations are written with SQL (psql), like the integration tests; nothing is deleted.
-import { execFileSync } from 'node:child_process';
+// Registrations are written with SQL (the pg client, no psql needed), like the integration tests; nothing is deleted.
+import { createRequire } from 'node:module';
+
+// `pg` comes with embedded-postgres (pnpm db:local), so no psql is needed on the machine.
+const { Client } = createRequire(createRequire(import.meta.url).resolve('embedded-postgres'))('pg');
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 const DB = (process.env.DATABASE_URL ?? 'postgresql://meal:meal_dev_password@localhost:5433/meal').replace(/\?.*$/, '');
@@ -31,8 +34,12 @@ const addDays = (iso, n) => {
 };
 if (new Date(`${weekStart}T00:00:00Z`).getUTCDay() !== 1) throw new Error(`${weekStart} is not a Monday`);
 
-const psql = (sql) =>
-  execFileSync('psql', [DB, '-v', 'ON_ERROR_STOP=1', '-At', '-c', sql], { encoding: 'utf8' }).trim();
+const db = new Client({ connectionString: DB });
+await db.connect();
+const psql = async (sql) => {
+  const r = await db.query(sql);
+  return r.rows[0] ? String(Object.values(r.rows[0])[0]) : '';
+};
 const code = (n) => `PNJP${String(n).padStart(6, '0')}`;
 
 async function call(cookie, method, path, body) {
@@ -46,7 +53,7 @@ async function call(cookie, method, path, body) {
   return { json: text ? JSON.parse(text) : null, res };
 }
 async function login(employeeCode) {
-  psql(`UPDATE "Employee" SET "pinMustChange" = false, "pinFailedCount" = 0, "lockedUntil" = NULL WHERE "employeeCode" = '${employeeCode}'`);
+  await psql(`UPDATE "Employee" SET "pinMustChange" = false, "pinFailedCount" = 0, "lockedUntil" = NULL WHERE "employeeCode" = '${employeeCode}'`);
   const { res } = await call(null, 'POST', '/api/auth/pin/login', { employeeCode, pin: PIN });
   return res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
 }
@@ -58,7 +65,7 @@ await call(sys, 'PUT', '/api/dev/clock', { at: publishAt });
 const hc = await login(code(3));
 
 const existing = Number(
-  psql(`SELECT count(*) FROM "Registration" WHERE date BETWEEN '${weekStart}' AND '${addDays(weekStart, 4)}'`),
+  await psql(`SELECT count(*) FROM "Registration" WHERE date BETWEEN '${weekStart}' AND '${addDays(weekStart, 4)}'`),
 );
 if (existing > 0 && !force) {
   throw new Error(`${existing} registrations already exist in the week of ${weekStart}; use another week or --force`);
@@ -98,7 +105,7 @@ for (let day = 0; day < 5; day++) {
     for (const c of g.codes) rows.push(`('${c}', '${items[day][g.dish]}', '${addDays(weekStart, day)}')`);
   }
 }
-psql(`
+await psql(`
   INSERT INTO "Registration" (id, "employeeId", "menuItemId", date, quantity, source, status, "updatedAt")
   SELECT 'demo_p4_' || gen_random_uuid()::text, e.id, v.item, CAST(v.d AS date), 1, 'SELF', 'ACTIVE', now()
   FROM (VALUES ${rows.join(',')}) AS v(code, item, d)
@@ -111,7 +118,7 @@ await call(sys, 'PUT', '/api/dev/clock', { at: `${monday}T07:20:00+07:00` });
 const hcNow = await login(code(3));
 await call(hcNow, 'GET', `/api/admin/today?date=${monday}`);
 // BR-23: PNJP000040 adds dish B after the forecast -> an "ADDED" case.
-psql(`
+await psql(`
   INSERT INTO "Registration" (id, "employeeId", "menuItemId", date, quantity, source, status, "updatedAt")
   SELECT 'demo_p4_' || gen_random_uuid()::text, id, '${items[0][1]}', '${monday}', 1, 'SELF', 'ACTIVE', now()
   FROM "Employee" WHERE "employeeCode" = '${code(40)}'
@@ -123,3 +130,5 @@ console.log('  1. Set DMP_MOCK_SCENARIO=forgot-to-check-in in .env and restart `
 console.log(`  2. As PNJP000004 move the clock: PUT /api/dev/clock {"at":"${monday}T08:10:00+07:00"} (13 people provisionally cancelled),`);
 console.log(`     then 08:30 -> "Chốt số", 10:00 -> adjustment, 10:30 -> adjustment closed.`);
 console.log('  3. Open /admin/reconciliation as PNJP000003 (PIN 123456) and PNJP000002 (Xưởng Chế tác).');
+
+await db.end();
