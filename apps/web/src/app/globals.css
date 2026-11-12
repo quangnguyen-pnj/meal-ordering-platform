@@ -64,14 +64,14 @@
 }
 
 /* Thin, pale scrollbar that only shows while the element is scrolling (data-scrolling is set by
-   useAutoHideScrollbar). Chrome/Safari/Edge draw the 4px bar; Firefox only offers "thin". */
+   useAutoHideScrollbar). Chrome/Safari/Edge draw the 6px bar; Firefox only offers "thin". */
 @layer components {
   .scrollbar-autohide {
     scrollbar-gutter: auto;
   }
   .scrollbar-autohide::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 6px;
+    height: 6px;
   }
   .scrollbar-autohide::-webkit-scrollbar-track {
     background: transparent;
@@ -80,7 +80,8 @@
     border-radius: 9999px;
     background-color: transparent;
   }
-  .scrollbar-autohide[data-scrolling='true']::-webkit-scrollbar-thumb {
+  .scrollbar-autohide[data-scrolling='true']::-webkit-scrollbar-thumb,
+  .scrollbar-autohide[data-hover='true']::-webkit-scrollbar-thumb {
     background-color: hsl(var(--input) / 0.7);
   }
   @supports not selector(::-webkit-scrollbar) {
@@ -88,7 +89,8 @@
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
     }
-    .scrollbar-autohide[data-scrolling='true'] {
+    .scrollbar-autohide[data-scrolling='true'],
+    .scrollbar-autohide[data-hover='true'] {
       scrollbar-color: hsl(var(--input) / 0.7) transparent;
     }
   }

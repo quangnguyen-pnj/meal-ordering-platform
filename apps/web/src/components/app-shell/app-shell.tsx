@@ -146,17 +146,38 @@ function useScrolled(): boolean {
   return scrolled;
 }
 
-/** Marks the element as scrolling (data-scrolling) until it has been still for a moment. */
-function useAutoHideScrollbar(): React.UIEventHandler<HTMLElement> {
+/** Width of the strip along the right edge that counts as "on the scrollbar". */
+const SCROLLBAR_ZONE_PX = 14;
+
+/**
+ * Shows the scrollbar while the element scrolls (data-scrolling) and while the pointer is over the
+ * scrollbar itself (data-hover), so it can be grabbed and dragged. Hidden otherwise.
+ */
+function useAutoHideScrollbar(): Pick<
+  React.HTMLAttributes<HTMLElement>,
+  'onScroll' | 'onPointerMove' | 'onPointerLeave'
+> {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
-  return (e) => {
-    const el = e.currentTarget;
-    el.dataset.scrolling = 'true';
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      el.dataset.scrolling = 'false';
-    }, 800);
+  return {
+    onScroll: (e) => {
+      const el = e.currentTarget;
+      el.dataset.scrolling = 'true';
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        el.dataset.scrolling = 'false';
+      }, 800);
+    },
+    onPointerMove: (e) => {
+      const el = e.currentTarget;
+      const onBar =
+        el.scrollHeight > el.clientHeight &&
+        el.getBoundingClientRect().right - e.clientX <= SCROLLBAR_ZONE_PX;
+      el.dataset.hover = String(onBar);
+    },
+    onPointerLeave: (e) => {
+      e.currentTarget.dataset.hover = 'false';
+    },
   };
 }
 
@@ -259,8 +280,8 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
   const { collapsed, toggle, ready } = useCollapsed();
-  const onSidebarScroll = useAutoHideScrollbar();
-  const onDrawerScroll = useAutoHideScrollbar();
+  const sidebarScrollbar = useAutoHideScrollbar();
+  const drawerScrollbar = useAutoHideScrollbar();
 
   // Rotating a tablet or resizing past the breakpoint swaps the drawer for the sidebar; close the
   // drawer so its overlay and scroll lock do not linger behind it.
@@ -347,7 +368,7 @@ export function AppShell({
             <SheetTitle>{t('app.name')}</SheetTitle>
             <SheetDescription>{t('app.factory')}</SheetDescription>
           </div>
-          <div className="scrollbar-autohide flex-1 overflow-y-auto" onScroll={onDrawerScroll}>
+          <div className="scrollbar-autohide flex-1 overflow-y-auto" {...drawerScrollbar}>
             {renderNav(false)}
           </div>
           <div className="flex items-center justify-between gap-3 bg-muted/40 p-4">
@@ -359,7 +380,7 @@ export function AppShell({
       {/* Desktop: the sidebar narrows to a column of icons; the width animates, labels fade. */}
       <aside
         data-collapsed={collapsed}
-        onScroll={onSidebarScroll}
+        {...sidebarScrollbar}
         className={cn(
           'scrollbar-autohide hidden overflow-y-auto overflow-x-hidden bg-card shadow-block lg:sticky lg:top-0 lg:z-30 lg:flex lg:h-screen lg:shrink-0 lg:flex-col print:hidden',
           collapsed ? 'lg:w-16' : 'lg:w-64',
