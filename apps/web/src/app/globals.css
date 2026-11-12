@@ -62,3 +62,34 @@
       sans-serif;
   }
 }
+
+/* Thin, pale scrollbar that only shows while the element is scrolling (data-scrolling is set by
+   useAutoHideScrollbar). Chrome/Safari/Edge draw the 4px bar; Firefox only offers "thin". */
+@layer components {
+  .scrollbar-autohide {
+    scrollbar-gutter: auto;
+  }
+  .scrollbar-autohide::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-autohide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-autohide::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: transparent;
+  }
+  .scrollbar-autohide[data-scrolling='true']::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--input) / 0.7);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .scrollbar-autohide {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+    .scrollbar-autohide[data-scrolling='true'] {
+      scrollbar-color: hsl(var(--input) / 0.7) transparent;
+    }
+  }
+}
