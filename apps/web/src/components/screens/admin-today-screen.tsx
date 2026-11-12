@@ -364,7 +364,7 @@ export function SyncPanel({
     ) : null;
     return (
       <section aria-label={t('adminToday.sync.title')} className="flex flex-col gap-2 text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap font-medium items-center justify-between gap-2">
           <p>
             <span className="font-medium">{t('adminToday.sync.short')}: </span>
             <span className={failed ? 'text-destructive' : 'text-muted-foreground'}>

@@ -405,6 +405,12 @@ function Milestones({ view }: { view: ReconciliationView }) {
       at: view.finalizeOpensAt,
       done: reached(view.now, view.finalizeOpensAt),
     },
+    {
+      key: 'adjust',
+      label: t('reconciliation.milestones.adjust'),
+      at: view.adjustmentDeadlineAt,
+      done: reached(view.now, view.adjustmentDeadlineAt),
+    },
     view.closed
       ? {
           key: 'closed',
@@ -418,12 +424,6 @@ function Milestones({ view }: { view: ReconciliationView }) {
           at: view.autoFinalizeAt,
           done: false,
         },
-    {
-      key: 'adjust',
-      label: t('reconciliation.milestones.adjust'),
-      at: view.adjustmentDeadlineAt,
-      done: reached(view.now, view.adjustmentDeadlineAt),
-    },
   ];
   return (
     <ol
@@ -451,13 +451,14 @@ function Milestones({ view }: { view: ReconciliationView }) {
             ) : null}
           </span>
           <span
-            className={
+            className={cn(
+              'font-medium',
               'held' in m && m.held
                 ? 'text-destructive'
                 : m.done
                   ? 'text-muted-foreground'
-                  : 'text-foreground'
-            }
+                  : 'text-foreground',
+            )}
           >
             <span className="font-medium tabular-nums">{formatVnTime(m.at)}</span> {m.label}
           </span>
@@ -503,8 +504,8 @@ function Summary({ view, onOpenCases }: { view: ReconciliationView; onOpenCases:
       </span>
       <span
         className={cn(
-          'text-xs',
-          s.deviatingMeals > 0 ? 'font-medium text-foreground' : 'text-muted-foreground',
+          'text-xs font-medium',
+          s.deviatingMeals > 0 ? 'text-foreground' : 'text-muted-foreground',
         )}
       >
         {s.deviatingMeals > 0
@@ -561,7 +562,7 @@ function Stat({
       <dd className={cn('text-2xl font-semibold tabular-nums', emphasis && 'text-primary')}>
         {value}
       </dd>
-      {hint ? <dd className="text-xs text-muted-foreground">{hint}</dd> : null}
+      {hint ? <dd className="text-xs font-medium text-muted-foreground">{hint}</dd> : null}
     </div>
   );
 }
