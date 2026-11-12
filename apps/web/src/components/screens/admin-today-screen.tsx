@@ -350,11 +350,20 @@ export function SyncPanel({
   const failed = sync?.status === 'FAILED';
   const held = !!cutoff && cutoff.outcome !== 'CANCELLED';
   if (compact) {
-    return (
-      <section
-        aria-label={t('adminToday.sync.title')}
-        className="flex flex-col gap-2 rounded-lg bg-card px-4 py-3 text-sm shadow-block"
+    // No card of its own: /admin/reconciliation shows it as the last line of its day status card.
+    const quietButton = canSync ? (
+      <Button
+        size="sm"
+        variant="tertiary"
+        disabled={rerun.isPending}
+        onClick={() => rerun.mutate()}
       >
+        <RefreshCw className="h-4 w-4" aria-hidden />
+        {rerun.isPending ? t('adminToday.sync.rerunning') : t('adminToday.sync.rerun')}
+      </Button>
+    ) : null;
+    return (
+      <section aria-label={t('adminToday.sync.title')} className="flex flex-col gap-2 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p>
             <span className="font-medium">{t('adminToday.sync.short')}: </span>
@@ -366,7 +375,7 @@ export function SyncPanel({
               {cutoffText}
             </span>
           </p>
-          {button}
+          {quietButton}
         </div>
         {rerun.error ? <Alert variant="destructive">{apiErrorText(rerun.error)}</Alert> : null}
       </section>
