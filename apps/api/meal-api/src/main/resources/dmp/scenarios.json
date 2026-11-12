@@ -82,6 +82,36 @@
         }
       ]
     },
+    "p4-demo": {
+      "description": "Every P4 attendance case in one day (scripts/demo-p4-data.mjs): 008-012 no check-in (011-012 for an admin to confirm), 013-014 at 08:15, 015-016 at 08:05 arriving 08:20, 017-018 manager-confirmed from 08:20, 019-020 manager-confirmed from 08:40 and 021-022 at 08:05 arriving 08:40 (after finalization), 023 on morning leave.",
+      "defaultCheckIn": "07:45",
+      "overrides": [
+        { "range": ["PNJP000008", "PNJP000012"], "checkIn": null },
+        { "range": ["PNJP000013", "PNJP000014"], "checkIn": "08:15" },
+        { "range": ["PNJP000015", "PNJP000016"], "checkIn": "08:05", "arrivesAt": "08:20" },
+        {
+          "range": ["PNJP000017", "PNJP000018"],
+          "checkIn": null,
+          "managerConfirmed": true,
+          "arrivesAt": "08:20"
+        },
+        {
+          "range": ["PNJP000019", "PNJP000020"],
+          "checkIn": null,
+          "managerConfirmed": true,
+          "arrivesAt": "08:40"
+        },
+        { "range": ["PNJP000021", "PNJP000022"], "checkIn": "08:05", "arrivesAt": "08:40" },
+        { "employees": ["PNJP000023"], "checkIn": "13:00" }
+      ],
+      "leave": [
+        {
+          "employees": ["PNJP000023"],
+          "dayType": "AM",
+          "leaveTypeName": "Nghỉ phép nửa ngày (sáng)"
+        }
+      ]
+    },
     "api-error": {
       "description": "Every attendance and leave call fails, as when DMP is down.",
       "error": "Simulated DMP API error"
