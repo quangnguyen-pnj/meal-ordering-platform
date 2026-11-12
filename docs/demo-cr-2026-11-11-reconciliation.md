@@ -13,14 +13,14 @@ Setup: `pnpm db:local`, `pnpm db:seed`, `pnpm dev`. As the system admin (`PNJP00
 ## 2. Totals
 
 1. Before finalizing: three cards. "Thực tế" says "−N so với dự trù (−x,y%)"; "Cần xem xét" shows the people and "N món vượt ngưỡng", and clicking it opens the cases tab.
-2. After finalizing: Dự trù, Đã chốt, Điều chỉnh, Hiệu lực (highlighted), Cần xem xét. No "Thực tế" card next to "Đã chốt".
+2. After finalizing: Dự trù, Thực tế (the final count, with its difference), Điều chỉnh, Đã chốt (Thực tế + điều chỉnh, highlighted), Cần xem xét.
 
 ## 3. Meals by canteen
 
 1. Tab "Theo món": one line above the table states the threshold ("lệch quá 10%").
 2. Each canteen is a bold row with its subtotals, its meals indented below; a "Tổng" row closes the table when there are several canteens.
 3. Each meal has one badge: "Khớp", "Lệch", "Vượt ngưỡng −10,6%" or "Không có dự trù". Negative numbers use "−", decimals a comma.
-4. After finalizing, the second column is "Đã chốt", then Chênh lệch, Điều chỉnh (a dash when zero), Hiệu lực, and the status last.
+4. After finalizing, the second column stays "Thực tế", then Chênh lệch, Điều chỉnh (a dash when zero), Đã chốt, and the status last.
 
 ## 4. Cases to review
 

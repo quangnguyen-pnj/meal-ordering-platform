@@ -28,7 +28,7 @@ pnpm --filter @meal/web test   # reconciliation-screen.test.tsx, banners.test.ts
 ## 1. File totals equal FinalCount totals and the reconciliation screen
 
 - **Automated:** `CloseTest.finalizeDay` (22 meals: `FinalCount` = `FinalEmployeeLine` = the screen's "Đã chốt") and `CloseTest.files` (the "Tổng cộng" row of "Chốt số 02-04" equals `FinalCount`; the box labels add up to it; the weekly file has one sheet per serving day, each 34).
-- **By hand:** at 08:30 press "Chốt số" and confirm. The cards show "Đã chốt" and "Hiệu lực". Press "Tải file chốt số": the "Tổng cộng" row equals the "Đã chốt" card; the "Nhãn hộp cơm" sheet has one label per meal unit. On the "Dự trù tuần" tab, "Tải file dự trù tuần" gives one sheet per day whose totals match the tab.
+- **By hand:** at 08:30 press "Chốt số" and confirm. The cards show "Thực tế" and "Đã chốt". Press "Tải file chốt số": the "Tổng cộng" row equals the "Thực tế" card; the "Nhãn hộp cơm" sheet has one label per meal unit. On the "Dự trù tuần" tab, "Tải file dự trù tuần" gives one sheet per day whose totals match the tab.
 
 ## 2. A manager's DMP confirmation arriving after finalization adds nothing and only shows as a case to review
 
@@ -43,7 +43,7 @@ pnpm --filter @meal/web test   # reconciliation-screen.test.tsx, banners.test.ts
 ## 4. An HC admin adjustment before 10:30 is accepted, leaves FinalCount unchanged and changes the effective count
 
 - **Automated:** `CloseTest.adjustments` (+1 with the caterer tick and a reason: 201, `FinalCount` still 21, effective 22; −1 without the tick: 201; missing tick, blank reason and going below zero: 400 with the line's code; the supplementary file "Điều chỉnh 1" holds only the changed cell; the employee's `/today` shows final 1, effective 2 and no reason; `/history` shows 2).
-- **By hand:** on the "Điều chỉnh" tab press "Thêm điều chỉnh", pick an employee, enter `1` for a dish, type a reason and tick "Nhà cung cấp đã đồng ý". "Lưu điều chỉnh" stays disabled without the tick. The "Hiệu lực" card grows by one, "Đã chốt" does not; "Tải file bổ sung" gives only the changed cell. As that employee, `/today` shows "Đã điều chỉnh sau chốt: từ 1 thành 2 suất."
+- **By hand:** on the "Điều chỉnh" tab press "Thêm điều chỉnh", pick an employee, enter `1` for a dish, type a reason and tick "Nhà cung cấp đã đồng ý". "Lưu điều chỉnh" stays disabled without the tick. The "Đã chốt" card grows by one, "Thực tế" does not; "Tải file bổ sung" gives only the changed cell. As that employee, `/today` shows "Đã điều chỉnh sau chốt: từ 1 thành 2 suất."
 
 ## 5. An adjustment after 10:30 or by a dept admin is rejected
 

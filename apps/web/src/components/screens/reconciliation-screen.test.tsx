@@ -234,7 +234,11 @@ describe('ReconciliationScreen', () => {
     };
     show(closed, HC);
     expect(await screen.findByText(/Đã chốt lúc 08:31 bởi Lê Cường/)).toBeInTheDocument();
-    expect(screen.getByText('35')).toBeInTheDocument();
+    // After finalizing: "Thực tế" is the final count, "Đã chốt" is that plus the adjustments.
+    const tile = (label: string) => screen.getByText(label, { selector: 'dt' }).closest('div')!;
+    expect(tile('Thực tế')).toHaveTextContent('34');
+    expect(tile('Đã chốt')).toHaveTextContent('35');
+    expect(screen.queryByText('Hiệu lực')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tải file chốt số' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Chốt số' })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Điều chỉnh' })).toBeInTheDocument();
